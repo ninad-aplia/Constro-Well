@@ -1,22 +1,8 @@
-// Placeholder storefront route (TASK 1.1). No shopping workflow yet —
-// catalog tiles are static copies of the prototype's category list; the real
-// catalogue is served by the API in TASK 4.1+.
+// Placeholder storefront route (TASK 1.1). No shopping workflow yet beyond the
+// category tiles (TASK 4.1, in progress) — hero carousel, deals and best
+// sellers still to come.
 import PrimitiveShowcase from "@/components/ui/PrimitiveShowcase";
-
-const CATEGORIES = [
-  "Cement",
-  "Steel",
-  "Sand",
-  "Bricks",
-  "Blocks",
-  "Ready mix",
-  "Tiles",
-  "Plumbing",
-  "Electrical",
-  "Paint",
-  "Doors and windows",
-  "Safety",
-] as const;
+import CategoryTiles from "@/components/home/CategoryTiles";
 
 export default function Home() {
   return (
@@ -36,25 +22,8 @@ export default function Home() {
         />
       </section>
 
-      <section
-        aria-label="Product categories (static placeholder)"
-        className="mt-6"
-      >
-        <h2 className="font-display text-xl font-bold">Shop by category</h2>
-        <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-6">
-          {CATEGORIES.map((c) => (
-            <article
-              key={c}
-              className="grid place-items-center gap-2 rounded-xl border border-line bg-panel p-5 text-center"
-            >
-              <span
-                aria-hidden="true"
-                className="h-9 w-16 rounded bg-tint"
-              />
-              <span className="text-sm font-semibold">{c}</span>
-            </article>
-          ))}
-        </div>
+      <section aria-label="Product categories" className="mt-6 max-w-sm">
+        <CategoryTiles />
       </section>
 
       <section
