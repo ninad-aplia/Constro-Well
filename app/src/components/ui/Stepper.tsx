@@ -45,7 +45,7 @@ export default function Stepper({
         aria-label={`${label}: decrease`}
         onClick={() => commit(cur - 1)}
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
       </button>
       <input
         type="number"
@@ -63,7 +63,7 @@ export default function Stepper({
         aria-label={`${label}: increase`}
         onClick={() => commit(cur + 1)}
       >
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
       </button>
     </span>
   );

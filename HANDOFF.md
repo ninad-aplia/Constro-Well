@@ -18,7 +18,7 @@ Shipped the shared presentation primitives, ported from the prototypes at token 
 |---|---|
 | `npm run lint` (`eslint src`) | **exit 0, zero problems** (one round: fixed `react-hooks/set-state-in-effect` in Stepper by deriving controlled value from the prop instead of mirroring in an effect) |
 | `npm run build` (Next 16 / Turbopack) | **exit 0** — first run failed typecheck: showcase called toast context like a function (`TS2349`); fixed to `toast.show(...)`; rerun clean, TypeScript passed, `/` + `/_not-found` static prerender |
-| `npm run dev` + `curl http://localhost:3000/` | **HTTP 200**; served HTML contains the primitive showcase ("Component library (TASK 1.3 QA)", dialog buttons) |
+| `npm run dev` + `curl http://localhost:3000/` | **HTTP 200**; served HTML contains the primitive showcase ("Component library (TASK 1.3 QA)", dialog buttons). A second dev-server pass caught a React DOM warning (`Invalid DOM property stroke-linecap`) in the Stepper icons — fixed to `strokeLinecap`; re-served page 200 with zero warnings in the dev log |
 | Served CSS token check | light tokens `eaedf1 ffc72c 0b1f3a f5a623`; dark `081120`; warn `945400` (light) + `f0b74a` (dark); `.stars` rule present; `dialog` backdrop rules present; `color-scheme: light` + `color-scheme: dark`; `prefers-reduced-motion` rules — all present |
 | Prototype integrity | `git diff HEAD -- buildgrid-*.html` → empty; `git status` on the three files → clean |
 
