@@ -39,7 +39,7 @@ Priority: P0 = must ship, P1 = should ship, P2 = defer if time runs out.
 ## Phase 4 — Catalogue, inventory, cart
 | Task | Pri | Status | Depends | Acceptance criteria |
 |---|---|---|---|---|
-| 4.1 Home: hero carousel, category tiles, deals, best sellers, recently viewed | P0 | NOT STARTED | 1.3, 2.2 | parity with shop prototype sections, data from API |
+| 4.1 Home: hero carousel, category tiles, deals, best sellers, recently viewed | P0 | IN PROGRESS | 1.3, (2.2 waived per D14) | parity with shop prototype sections, data from API — **mock-data-first approved (D14, ACCEPTED 2026-11-06); category tiles done 2026-11-06 via `lib/api/catalog.ts` facade + `components/home/CategoryTiles.tsx`, verified against prototype `.tile`/`.mini4` section; hero carousel/deals/best sellers/recently viewed remain; real checkout/order processing still blocked on 2.1/2.2 per D14 condition 5** |
 | 4.2 Search: query, category, brand, price, rating, fast/deal filters, sort, pagination | P0 | NOT STARTED | 4.1 | all filters + sorts run server-side |
 | 4.3 Product detail: gallery tabs, seller offers (real sellers now), bulk pricing tiers, FBT, specifications, reviews + helpful votes + review form | P0 | NOT STARTED | 4.2 | bulk price math matches prototype rules, computed server-side |
 | 4.4 Cart: qty stepper, save-for-later, coupon engine (BUILD10/FIRST250/FREESHIP rules), free-delivery meter, GST display | P0 | NOT STARTED | 4.3 | coupon rules + thresholds match prototype `calc()` exactly (server-side) |

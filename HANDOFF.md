@@ -1,9 +1,24 @@
 # HANDOFF.md — current checkpoint for the next IDE
 
-**Last updated:** 2026-11-05 (Phase 1, TASKS 1.2 + 1.3 DONE) · **Writer agent:** OpenCode (GLM-5.3-Flash)
+**Last updated:** 2026-11-06 (D14 ACCEPTED — mock-data-first UI approved) · **Writer agent:** Claude Code (Sonnet 5)
 
 ## Current phase
-**Phase 1 complete — TASKS 1.1, 1.2 and 1.3 are DONE.** Next incomplete task: **TASK 2.1 — Prisma schema** (`app/prisma/schema.prisma` for entities in `PROJECT_CONTEXT.md` §7 + initial migration). Do not jump ahead of Phase 2 ordering (2.1 → 2.2 seed → 2.3 API skeleton → 2.4 auth integration test).
+**Phase 1 complete (TASKS 1.1–1.3 DONE).** **D14 (ACCEPTED 2026-11-06, owner decision, option A):** mock-data-first frontend development is approved for all three owner-developed portals (Customer, Seller, Delivery), ahead of TASK 2.1/2.2 (Prisma schema + seed). Binding conditions from D14 — read the full row in `DECISIONS.md` before continuing any portal UI work:
+1. UI data access must go through the API facade (`app/src/lib/api/*`) — never import mock data directly in components.
+2. Business logic stays independent of React and of the mock-data shape (already the pattern in `app/src/lib/shop/*`).
+3. Never present mock inventory/prices/sellers/availability as live or verified.
+4. **TASK 2.1/2.2 (Prisma schema, migrations, seed) must be complete before real checkout/order processing is implemented** — do not wire a real order-placement flow against mock data.
+5. COD-only + ₹50,000 order cap (D3/D4) must be enforced server-side at the real order-placement boundary once it exists.
+6. Prototype design/interaction fidelity (D13) still applies.
+7. This decision does not reorder Seller/Delivery portal scope by itself — any change there needs separate owner approval.
+
+## Last completed task (TASK 4.1 slice, this checkpoint — 2026-11-06)
+Added the catalog API facade and the first home-page section:
+- **New:** `app/src/lib/api/catalog.ts` (`getCategories`, `getFeaturedCategoryTiles` — mock-backed today, swappable for real DB calls without UI changes), `app/src/components/home/CategoryTiles.tsx` (async Server Component; ports prototype's `.tile`/`.mini4`/`.mi` "Shop by category" section).
+- **Modified:** `app/src/app/page.tsx` (static 12-category placeholder grid replaced by `<CategoryTiles />`).
+- Pre-existing, previously verified against the prototype (untracked, unchanged this session): `app/src/data/catalog.ts`, `app/src/lib/shop/{types,pricing,format}.ts`.
+- Verification: `npx tsc --noEmit` clean, `npx eslint` clean on changed files, dev server served `/` with HTTP 200 and the expected 4 SVG category icons; visually spot-checked in browser (tinted icon + label matches prototype).
+- Remaining in 4.1: hero carousel, deals, best sellers, recently viewed — not started.
 
 ## Last completed task (TASKS 1.2 + 1.3, this checkpoint)
 Shipped the shared presentation primitives, ported from the prototypes at token level:
