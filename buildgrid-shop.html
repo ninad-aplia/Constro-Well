@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BuildGrid.shop: building materials online</title>
+<meta name="theme-color" content="#0B1F3A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FFC72C'/%3E%3Cpath d='M6 26V14l10-8 10 8v12h-6v-8h-8v8z' fill='%231F1700'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EAEDF1;--panel:#fff;--tint:#F3F5F8;--ink:#0F1B2D;--ink2:#3B4A60;--muted:#5D6B80;--line:#D5DBE3;--nav:#0B1F3A;--nav2:#12305A;--hi:#FFC72C;--hi2:#F5B800;--hi-ink:#1F1700;--or:#FF8A1F;--link:#1250C0;--deal:#C7352B;--ok:#147A45;--bad:#B42318;--star:#F5A623;--star-off:#C9D0DB;--shadow:0 10px 30px rgba(11,31,58,.18);
+ --disp:"Bricolage Grotesque","Arial Narrow",Arial,sans-serif;--body:"Figtree",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--bg:#081120;--panel:#0F1D33;--tint:#13243D;--ink:#EAF0FA;--ink2:#C3CFE2;--muted:#93A3BC;--line:#22344F;--nav:#050C18;--nav2:#0B1A30;--link:#86AEFF;--deal:#FF8272;--ok:#4CC78A;--bad:#FF8A7A;--star-off:#3A4A63;color-scheme:dark}}
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--body);padding-bottom:env(safe-area-inset-bottom,0px)}
+h1,h2,h3,h4,p{margin:0}h1,h2,h3{font-family:var(--disp);letter-spacing:-.01em;line-height:1.15}h1{font-size:28px}h2{font-size:21px;font-weight:700}h3{font-size:17px}
+a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:3px solid var(--hi);outline-offset:2px;border-radius:6px}
+.hdr :focus-visible{outline-color:#fff}
+.ic{flex:none}.muted{color:var(--muted)}.sm{font-size:13px}.center{text-align:center}.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+[hidden]{display:none!important}
+.skip{position:absolute;left:-999px;top:0;background:var(--hi);color:var(--hi-ink);padding:8px 14px;z-index:300}.skip:focus{left:8px;top:8px}
+hr{border:0;border-top:1px solid var(--line);margin:14px 0}
+.stars{display:inline-block;width:84px;height:16px;vertical-align:-3px;background:linear-gradient(90deg,var(--star) var(--p),var(--star-off) var(--p));-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 24'%3E%3Cpath id='s' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(24 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(48 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(72 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(96 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3C/svg%3E") center/100% 100% no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 24'%3E%3Cpath d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(24 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(48 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(72 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(96 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3C/svg%3E") center/100% 100% no-repeat}
+/* header */
+.hdr{background:var(--nav);color:#fff;position:sticky;top:0;z-index:60;padding-top:env(safe-area-inset-top,0px)}
+.hrow{display:flex;align-items:center;gap:10px;padding:8px 16px;max-width:1600px;margin:0 auto}
+.logo{display:flex;align-items:baseline;gap:1px;color:#fff;font:700 24px var(--disp);letter-spacing:-.02em;padding:6px 8px;border-radius:8px;white-space:nowrap;position:relative;padding-left:44px}
+.logo:hover{text-decoration:none;outline:1px solid rgba(255,255,255,.4)}.logo i{font-style:normal;color:var(--hi);font-size:18px}
+.mk{position:absolute;left:6px;top:50%;transform:translateY(-50%);width:32px;height:32px;border-radius:9px;background:var(--hi);color:var(--hi-ink);display:grid;place-items:center}
+.hbtn,.deliver{color:#fff;display:flex;flex-direction:column;align-items:flex-start;line-height:1.15;padding:6px 8px;border-radius:6px;border:1px solid transparent;text-align:left}
+.hbtn:hover,.deliver:hover{border-color:rgba(255,255,255,.6);text-decoration:none}
+.hbtn small,.deliver small{font-size:12px;color:#C9D8EE}.hbtn b,.deliver b{font-size:14px;font-weight:700;white-space:nowrap}
+.deliver{flex-direction:row;align-items:center;gap:4px}.deliver span:last-child{display:flex;flex-direction:column}
+.sbar{flex:1;display:flex;position:relative;min-width:0;height:42px;border-radius:8px;overflow:visible}
+.sbar select{width:auto;max-width:130px;border-radius:8px 0 0 8px;border:0;background:#E3E6EB;color:#0F1B2D;padding:0 8px;font-size:13px}
+.sbar input{flex:1;min-width:0;border:0;padding:0 12px;font-size:15px;background:#fff;color:#0F1B2D}.sbar input:focus{outline:3px solid var(--hi);outline-offset:-3px}
+.sgo{width:48px;background:var(--hi);color:var(--hi-ink);border-radius:0 8px 8px 0;display:grid;place-items:center}.sgo:hover{background:var(--hi2)}
+#sugg{position:absolute;top:44px;left:0;right:0;background:var(--panel);color:var(--ink);border-radius:8px;box-shadow:var(--shadow);z-index:80;overflow:hidden;border:1px solid var(--line)}
+#sugg button{display:flex;gap:10px;align-items:center;width:100%;padding:9px 14px;text-align:left}#sugg button:hover,#sugg button:focus{background:var(--tint)}#sugg small{margin-left:auto;color:var(--muted)}
+.cartb{flex-direction:row;align-items:flex-end;gap:2px;position:relative}.cartb b{margin-bottom:2px}
+.cc{position:absolute;left:23px;top:-2px;color:var(--hi);font:700 16px var(--disp);min-width:18px;text-align:center}
+.acctw{position:relative}.pop{position:absolute;right:0;top:100%;width:250px;background:var(--panel);color:var(--ink);border-radius:10px;box-shadow:var(--shadow);padding:14px;display:grid;gap:4px;z-index:90;border:1px solid var(--line)}
+.pop button:not(.btn){text-align:left;padding:7px 4px;border-radius:6px}.pop button:not(.btn):hover{background:var(--tint)}
+.sub{background:var(--nav2);display:flex;gap:2px;overflow-x:auto;padding:0 12px;scrollbar-width:none}
+.sub button{color:#fff;padding:9px 11px;white-space:nowrap;font-size:14px;font-weight:600;display:flex;gap:6px;align-items:center;border:1px solid transparent;border-radius:6px}.sub button:hover{border-color:rgba(255,255,255,.6)}
+/* layout */
+main{min-height:70vh;outline:0}
+.wrap{max-width:1500px;margin:0 auto;padding:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.pad{padding:20px}.chead{margin-bottom:14px}.chead small{font:500 16px var(--body);color:var(--muted)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:0 18px;border-radius:20px;font-weight:600;border:1px solid transparent;white-space:nowrap}
+.btn.yellow{background:var(--hi);color:var(--hi-ink)}.btn.yellow:hover{background:var(--hi2)}
+.btn.orange{background:var(--or);color:#1F0F00}.btn.orange:hover{filter:brightness(.95)}
+.btn.line{background:var(--panel);border-color:var(--line)}.btn.line:hover{background:var(--tint)}
+.btn.sm{min-height:32px;padding:0 14px;font-size:13px}.btn.wide{width:100%}.btn[disabled]{opacity:.5;cursor:default}
+.lnk{color:var(--link);text-align:left}.lnk:hover{text-decoration:underline}
+.field{height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:0 10px;width:100%;min-width:0}textarea.field{height:auto;padding:10px}
+.ferr{color:var(--bad);display:block;min-height:0;font-size:13px}.ferr:empty{display:none}
+.skip+header .hbtn{}
+/* hero */
+.hero{position:relative;overflow:hidden;height:min(46vw,440px);min-height:400px;background:var(--nav)}
+.hero::after{content:"";position:absolute;left:0;right:0;bottom:0;height:140px;background:linear-gradient(transparent,var(--bg));pointer-events:none}
+.slides{display:flex;height:100%;transition:transform .7s cubic-bezier(.3,.7,.2,1)}
+.slide{flex:0 0 100%;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:0 max(24px,calc((100% - 1400px)/2 + 64px)) 175px;background:linear-gradient(120deg,var(--a),var(--b));color:#fff;overflow:hidden}
+.stxt{max-width:520px;display:grid;gap:14px;justify-items:start}.stxt h1{font-size:clamp(30px,4vw,50px);font-weight:700;letter-spacing:-.03em;line-height:1.02}.stxt p{font-size:clamp(15px,1.5vw,18px);color:rgba(255,255,255,.88)}
+.sart{position:relative;width:min(40%,480px);height:100%;flex:none;margin-bottom:-110px}.sart span{position:absolute;display:block;filter:drop-shadow(0 18px 24px rgba(0,0,0,.3))}.sart svg{width:100%;height:auto}
+.sa0{width:62%;left:6%;top:12%}.sa1{width:52%;right:0;top:34%}
+.car{position:absolute;top:0;height:60%;width:56px;color:#fff;display:grid;place-items:center;z-index:2;opacity:.8}.car:hover{background:rgba(255,255,255,.1);opacity:1}.prev{left:0}.next{right:0}
+.dots{position:absolute;bottom:160px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:3}
+.dots button{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.45)}.dots button[aria-current=true]{background:var(--hi);width:26px;border-radius:6px;transition:width .3s}
+.home .tiles{margin-top:-150px;position:relative;z-index:4;display:grid;gap:16px;grid-template-columns:repeat(4,minmax(0,1fr));margin-bottom:16px}
+.tile{padding:18px;display:flex;flex-direction:column;gap:10px}.tile h2{font-size:20px}.tile .more{margin-top:auto;font-weight:600}.tile .btn{width:100%}
+.mini4{display:grid;grid-template-columns:1fr 1fr;gap:10px}.mini4 a{display:grid;gap:4px;color:var(--ink);font-size:13px;font-weight:600}.mini4 a:hover{text-decoration:none;color:var(--link)}
+.mi{display:grid;place-items:center;aspect-ratio:4/3;border-radius:8px;background:linear-gradient(160deg,var(--tint),color-mix(in srgb,var(--h) 24%,var(--tint)))}.mi svg{width:70%}
+.bt{width:100%;border-collapse:collapse;font-size:14px}.bt th,.bt td{padding:6px 4px;border-bottom:1px solid var(--line);text-align:left}.bt td:last-child,.bt th:last-child{text-align:right}.bt b{color:var(--ok)}
+.trust{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;padding:20px;margin-top:16px}.trust div{display:grid;gap:2px;justify-items:start}.trust span{color:var(--muted);font-size:13px}.trust svg{color:var(--link)}
+/* rows */
+.rowsec{position:relative;padding:18px 18px 8px;margin-bottom:16px}.rowhead{display:flex;align-items:baseline;gap:16px;margin-bottom:10px;flex-wrap:wrap}.cd{color:var(--deal);font-weight:600;display:inline-flex;gap:5px;align-items:center}.cd b{font-variant-numeric:tabular-nums}
+.scroller{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;padding:2px 2px 14px;scrollbar-width:thin}.scroller .pcard{flex:0 0 220px;scroll-snap-align:start}
+.sc{position:absolute;top:42%;width:42px;height:84px;background:var(--panel);border:1px solid var(--line);border-radius:8px;display:grid;place-items:center;box-shadow:var(--shadow);z-index:3}.sc.l{left:4px}.sc.r{right:4px}
+/* cards */
+.pgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:14px}
+.pcard{position:relative;display:flex;flex-direction:column;overflow:hidden}.pcard:hover{border-color:var(--ink2)}
+.pimg{display:grid;place-items:center;aspect-ratio:4/3;background:linear-gradient(160deg,var(--tint),color-mix(in srgb,var(--h) 22%,var(--tint)));position:relative}.pimg svg{width:68%}
+.tagdeal{position:absolute;left:8px;top:8px;background:var(--deal);color:#fff;font-weight:700;font-size:12px;padding:2px 8px;border-radius:4px}.tagbest{position:absolute;left:8px;bottom:8px;background:var(--hi);color:var(--hi-ink);font-weight:700;font-size:11px;padding:2px 8px;border-radius:4px}.tagbest.inl{position:static;margin-left:8px}
+.heart{position:absolute;right:8px;top:8px;width:34px;height:34px;border-radius:50%;background:var(--panel);display:grid;place-items:center;z-index:2;box-shadow:0 1px 4px rgba(0,0,0,.2);color:var(--muted)}.heart.on{color:var(--deal)}.heart.on svg{fill:currentColor}
+.pinfo{padding:12px;display:flex;flex-direction:column;gap:5px;flex:1}.ptitle{color:var(--ink);font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;line-height:1.3}.ptitle:hover{color:var(--link)}
+.rate{display:flex;align-items:center;gap:6px;color:var(--link);font-size:13px;flex-wrap:wrap}.rate.big{font-size:14px;gap:8px}.rate.big b{color:var(--ink);font-size:16px}
+.price{font:700 22px var(--disp);letter-spacing:-.02em}.price sup{font-size:13px;vertical-align:top;position:relative;top:2px;margin-right:1px}.price.big{font-size:34px}.pr .mrp{margin-left:8px}
+.mrp{color:var(--muted);font-size:13px}.offt{color:var(--deal);font-size:13px;font-weight:600}.off{color:var(--deal);font:600 24px var(--disp);margin-right:6px}
+.deliv{font-size:13px;color:var(--ink2)}.fast{display:inline-flex;align-items:center;gap:2px;background:var(--nav);color:var(--hi);font-weight:700;font-size:11px;padding:1px 6px;border-radius:4px}
+.low{color:var(--bad);font-size:13px;font-weight:600}.instock{color:var(--ok);font-weight:600}.pinfo .btn{margin-top:auto}
+.vf{display:inline-flex;gap:2px;align-items:center;color:var(--ok);font-size:12px;font-weight:600}
+/* search */
+.shead{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:14px}.sortl{display:flex;align-items:center;gap:8px;font-weight:600}.sortl .field{width:auto}
+.slayout{display:grid;grid-template-columns:240px minmax(0,1fr);gap:16px;align-items:start}.filters{padding:14px;position:sticky;top:130px}
+.fdet summary{font-weight:700;cursor:pointer;list-style:none;display:none}.fgroup{margin-bottom:16px}.fgroup h3{font-size:15px;margin-bottom:6px}.flist{list-style:none;margin:0;padding:0}
+.fl{display:flex;justify-content:space-between;gap:8px;width:100%;padding:5px 6px;border-radius:6px;text-align:left;align-items:center}.fl:hover{background:var(--tint)}.fl.on{font-weight:700;background:var(--tint)}.fl span{color:var(--muted);font-size:12px}
+.chk{display:flex;gap:8px;align-items:center;padding:4px 0;cursor:pointer;font-size:14px}.chk span{margin-left:auto;color:var(--muted);font-size:12px}.chk input{accent-color:var(--nav)}
+.pager{display:flex;gap:6px;justify-content:center;margin:20px 0;flex-wrap:wrap}.btn.cur{background:var(--nav);color:#fff}
+/* product */
+.crumb{font-size:13px;color:var(--muted);margin-bottom:10px}
+.pgrid3{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,5fr) 300px;gap:20px;align-items:start;margin-bottom:16px}
+.gal{display:flex;gap:10px;position:sticky;top:130px}.thumbs{display:grid;gap:8px;align-content:start}.thumbs button{width:56px;height:56px;border-radius:8px;border:2px solid var(--line);overflow:hidden;display:grid;place-items:center;background:var(--tint)}.thumbs button.on{border-color:var(--hi2)}.thumbs svg{width:44px}.thumbs span{display:grid;place-items:center;width:100%;height:100%;background:linear-gradient(160deg,var(--tint),color-mix(in srgb,var(--h,#888) 22%,var(--tint)))}.thumbs .tspec{font-size:11px;font-weight:700;background:var(--nav);color:#fff}
+.galmain{flex:1;border-radius:12px;overflow:hidden;border:1px solid var(--line);aspect-ratio:4/3;align-self:start}.gmain{height:100%;display:grid;place-items:center;background:linear-gradient(160deg,var(--tint),color-mix(in srgb,var(--h) 22%,var(--tint)))}.gmain svg{width:66%}
+.gspec,.gscene svg{width:100%;height:100%;display:block}.gscene{position:relative;height:100%}.gart{position:absolute;left:32%;top:34%;width:40%}.gart svg{width:100%}
+.info h1{font-size:26px;margin:4px 0 8px}.brand{font-size:14px}.ipr{margin:8px 0 2px}
+.bulk{border:1px dashed var(--line);border-radius:10px;padding:12px;margin:14px 0;background:var(--tint)}.bulkrow{display:flex;gap:16px;margin-top:6px;font-size:13px}.bulkrow span{flex:1;background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 10px;text-align:center}
+.about{margin:6px 0 0;padding-left:20px}.about li{margin-bottom:5px}
+.buy{padding:18px;display:grid;gap:10px;position:sticky;top:130px}.dl{display:grid;gap:4px}.qrow{display:flex;align-items:center;gap:10px;font-weight:600}
+.stp{display:inline-flex;align-items:center;border:1px solid var(--line);border-radius:8px;overflow:hidden}.stp button{width:34px;height:34px;display:grid;place-items:center;background:var(--tint)}.stp input{width:54px;height:34px;border:0;text-align:center;background:var(--panel);font-weight:600;-moz-appearance:textfield}.stp input::-webkit-inner-spin-button{display:none}
+.seller{display:grid;grid-template-columns:70px 1fr;gap:4px 8px;font-size:13px;margin:4px 0}.seller dt{color:var(--muted)}.seller dd{margin:0}
+.pad.sellers,.fbt,.revs,.pad{margin-bottom:0}.card+.card{margin-top:16px}.pgrid3+.card{margin-top:0}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%}th{text-align:left;padding:9px 10px;color:var(--muted);font-weight:600;font-size:13px;border-bottom:1px solid var(--line);white-space:nowrap}td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}.n{text-align:right}
+.spec th{width:34%;background:var(--tint);color:var(--ink2)}.spec td{white-space:normal}
+.fbtrow{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:10px}.plus{font:600 28px var(--disp);color:var(--muted)}.fbi{display:grid;gap:4px;width:170px;cursor:pointer;position:relative}.fbi input{position:absolute;left:4px;top:4px;z-index:2;accent-color:var(--nav);width:18px;height:18px}.fa{display:grid;place-items:center;aspect-ratio:4/3;border-radius:8px;background:linear-gradient(160deg,var(--tint),color-mix(in srgb,var(--h) 22%,var(--tint)))}.fa svg{width:70%}.ft{font-size:13px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.fsum{margin-left:auto;display:grid;gap:6px;justify-items:start}.fsum b{font:700 26px var(--disp)}
+.rvgrid{display:grid;grid-template-columns:300px minmax(0,1fr);gap:32px}.hrow2{}.hrow{}.revs .hrow{display:grid;grid-template-columns:48px 1fr 40px;gap:8px;align-items:center;font-size:13px;margin:5px 0;padding:0}.revs .hrow i{display:block;height:16px;background:var(--tint);border:1px solid var(--line);border-radius:4px;overflow:hidden}.revs .hrow b{display:block;height:100%;background:var(--star)}
+.rv{padding:0 0 16px;margin-bottom:16px;border-bottom:1px solid var(--line);display:grid;gap:5px}.rvh{display:flex;align-items:center;gap:8px}.av{width:28px;height:28px;border-radius:50%;background:var(--nav);color:var(--hi);display:grid;place-items:center;font-weight:700;font-size:12px}
+/* cart / checkout */
+.cartgrid,.cogrid{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:16px;align-items:start;margin-bottom:16px}
+.cogrid>div{display:grid;gap:16px}.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.citem{display:grid;grid-template-columns:150px minmax(0,1fr) auto;gap:16px;padding:16px 0;border-bottom:1px solid var(--line)}.citem.sm{grid-template-columns:76px minmax(0,1fr) auto;padding:12px 0}.citem:last-child{border-bottom:0}
+.cimg{display:grid;place-items:center;aspect-ratio:4/3;border-radius:8px;background:linear-gradient(160deg,var(--tint),color-mix(in srgb,var(--h) 22%,var(--tint)))}.cimg svg{width:70%}.cinfo{display:grid;gap:4px;align-content:start}.cact{display:flex;gap:14px;align-items:center;flex-wrap:wrap;margin-top:4px}
+.cprice{text-align:right;display:grid;align-content:start}.cprice b{font:700 20px var(--disp)}.cprice small{color:var(--muted)}.bulkn{color:var(--ok);font-size:13px;font-weight:600;display:flex;gap:4px;align-items:center}
+.csub{text-align:right;font-size:18px;padding-top:12px}.csub b{font:700 22px var(--disp)}
+.csum{display:grid;gap:10px;align-content:start}.csum.sticky{position:sticky;top:130px}.sumrow{display:flex;justify-content:space-between}.sumrow.total{font-size:18px;border-top:1px solid var(--line);padding-top:10px}.sumrow.total b{font:700 22px var(--disp)}.sumrow.ok{color:var(--ok)}
+.meter{height:8px;background:var(--tint);border-radius:4px;overflow:hidden;border:1px solid var(--line)}.meter i{display:block;height:100%;background:var(--ok);transition:width .4s}.fship p{font-size:14px;margin-top:6px}
+.cpn{display:flex;gap:8px}.cpok{color:var(--ok);font-size:13px}.cperr{color:var(--bad);font-size:13px}
+.radio{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:10px;margin-top:8px;cursor:pointer}.radio:has(input:checked){border-color:var(--ink);background:var(--tint)}.radio input{margin-top:4px;accent-color:var(--nav)}
+.psub,.naform{display:grid;gap:10px;padding:10px 0 4px 34px}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}.fl2{display:grid;gap:4px;font-weight:600;font-size:14px}
+.num{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--nav);color:var(--hi);font-size:15px;margin-right:6px}.okt{color:var(--ok);font-size:13px;display:flex;gap:5px;align-items:center}
+.thanks{display:grid;gap:10px;justify-items:center;text-align:center;margin-bottom:16px}.tick{width:68px;height:68px;border-radius:50%;background:var(--ok);color:#fff;display:grid;place-items:center}.cta{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px}.thanks .cta{justify-content:center}
+.bigic{color:var(--muted);margin-bottom:6px}.pad.center{display:grid;justify-items:center;gap:10px;padding:40px 20px}
+.ord{margin-bottom:16px;overflow:hidden}.ohead{display:flex;gap:28px;flex-wrap:wrap;background:var(--tint);padding:12px 18px;font-size:13px;border-bottom:1px solid var(--line)}.ohead small{color:var(--muted);font-weight:600}.oid{margin-left:auto;text-align:right}.obody{padding:16px 18px}.ostat{margin-bottom:2px}.ostat.ok{color:var(--ok)}.ostat.bad{color:var(--bad)}
+.track{list-style:none;display:flex;margin:18px 0 6px;padding:0}.track li{flex:1;display:grid;justify-items:center;gap:4px;position:relative;text-align:center;font-size:13px}.track li::before{content:"";position:absolute;top:13px;left:-50%;right:50%;height:4px;background:var(--line)}.track li:first-child::before{display:none}.track li.done::before,.track li.cur::before{background:var(--ok)}.dotn{width:28px;height:28px;border-radius:50%;background:var(--panel);border:3px solid var(--line);display:grid;place-items:center;position:relative;z-index:1;color:#fff}.track li.done .dotn,.track li.cur .dotn{background:var(--ok);border-color:var(--ok)}.track li.cur .dotn{box-shadow:0 0 0 5px color-mix(in srgb,var(--ok) 25%,transparent)}.track small{color:var(--muted)}
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}.cols2 .card{margin:0}
+.agrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;margin-bottom:16px}.atile{display:grid;gap:4px;text-align:left;align-content:start}.atile b{font:700 18px var(--disp)}
+.addrgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}.addr{border:1px solid var(--line);border-radius:10px;padding:14px;position:relative}.pill{position:absolute;right:10px;top:10px;font-size:12px;background:var(--tint);border:1px solid var(--line);padding:0 8px;border-radius:10px}
+/* dialog, menu, toast */
+dialog{border:0;border-radius:16px;padding:0;background:var(--panel);color:var(--ink);box-shadow:var(--shadow);width:min(440px,calc(100vw - 24px));max-height:calc(100vh - 32px);overflow:auto}dialog::backdrop{background:rgba(5,12,24,.6)}
+.authbox{padding:26px;display:grid;gap:12px;position:relative}.x{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:8px;background:var(--tint);display:grid;place-items:center;z-index:2}
+.rstars{border:0;padding:0;margin:0;display:flex;flex-direction:row-reverse;justify-content:flex-end;gap:4px}.rstars legend{float:left;width:100%;font-weight:600;margin-bottom:4px}.rstars input{position:absolute;opacity:0}.rstars label{width:30px;height:30px;background:var(--star-off);-webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3C/svg%3E") center/contain no-repeat;mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3C/svg%3E") center/contain no-repeat;cursor:pointer}.rstars input:checked~label,.rstars label:hover,.rstars label:hover~label{background:var(--star)}.rstars input:focus-visible+label{outline:3px solid var(--hi)}
+.scrim{position:fixed;inset:0;background:rgba(5,12,24,.55);z-index:150;opacity:0;pointer-events:none;transition:opacity .25s}.scrim.on{opacity:1;pointer-events:auto}
+.menu{position:fixed;left:0;top:0;bottom:0;width:min(340px,88vw);background:var(--panel);z-index:160;transform:translateX(-105%);transition:transform .3s cubic-bezier(.3,.7,.2,1);overflow:auto;visibility:hidden;padding-bottom:30px}.menu.on{transform:none;visibility:visible}
+.menu .mh{background:var(--nav);color:#fff;padding:calc(16px + env(safe-area-inset-top,0px)) 16px 16px;display:flex;justify-content:space-between;align-items:center;font-size:18px}.menu .mh b{display:flex;gap:8px;align-items:center}.menu .x{position:static}
+.menu h3{padding:16px 16px 6px}.menu>button{display:flex;gap:12px;align-items:center;width:100%;padding:8px 16px;text-align:left}.menu>button:hover{background:var(--tint)}.menu .mi{width:54px;aspect-ratio:4/3}
+.toast{width:max-content;position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:300;max-width:calc(100vw - 24px);font-weight:600;display:flex;gap:14px;align-items:center}.toast.on{opacity:1;transform:translate(-50%,0);pointer-events:auto}.toast button{color:var(--hi);font-weight:700;white-space:nowrap}
+footer{background:var(--nav);color:#C9D8EE;margin-top:30px;padding-bottom:20px}.toptop{display:block;width:100%;background:var(--nav2);color:#fff;padding:14px;font-weight:600}.toptop:hover{background:#1a3b6b}
+.fcols{max-width:1100px;margin:0 auto;padding:30px 16px;display:grid;grid-template-columns:repeat(4,1fr);gap:24px}.fcols h4{color:#fff;margin-bottom:8px}.fcols a{display:block;color:#C9D8EE;padding:3px 0;font-size:14px}.fbot{text-align:center;font-size:13px;padding:0 16px}
+@media (max-width:1100px){.pgrid3{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.buy{grid-column:1/-1;position:static}.home .tiles{grid-template-columns:repeat(2,minmax(0,1fr))}.rvgrid{grid-template-columns:1fr}}
+@media (max-width:900px){.menub{order:0}.logo{order:1}.acctw{order:2;margin-left:auto}.cartb{order:3}.sbar{order:10;flex-basis:100%}.deliver{order:11;flex-basis:100%;padding:0 8px 4px;gap:6px}.deliver b{font-size:13px;font-weight:600}.hdr .hrow{row-gap:6px}.slayout{grid-template-columns:1fr}.filters{position:static}.fdet summary{display:block}.cartgrid,.cogrid{grid-template-columns:1fr}.csum.sticky{position:static}.hrow{flex-wrap:wrap}.sbar{order:10;flex-basis:100%}.deliver span:last-child small{display:none}.ordb{display:none}.fcols{grid-template-columns:1fr 1fr}.trust{grid-template-columns:1fr 1fr}.cols2{grid-template-columns:1fr}.gal,.buy{position:static}}
+@media (max-width:640px){.hrow{padding:6px 8px;gap:4px}.lx{display:none}.logo i{display:none}.logo{font-size:19px;padding-left:40px}.hbtn{padding:4px 6px}.acctw .hbtn b{font-size:12px}.galmain{align-self:stretch}.cc{left:19px}h1{font-size:23px}.pgrid3{grid-template-columns:1fr}.gal{flex-direction:column-reverse}.thumbs{grid-auto-flow:column;justify-content:start}.home .tiles{grid-template-columns:1fr;margin-top:-90px}.citem{grid-template-columns:96px minmax(0,1fr)}.cprice{grid-column:2;text-align:left}.two{grid-template-columns:1fr}.psub,.naform{padding-left:0}.hero{height:380px;min-height:380px}.slide{flex-direction:column;justify-content:center;align-items:flex-start;padding:20px 24px 120px}.sart{display:none}.car{display:none}.logo{font-size:20px}.hbtn small{display:none}.acctw .hbtn b{font-size:13px}.fbi{width:140px}.scroller .pcard{flex-basis:180px}.track li small{display:none}.ohead{gap:14px}.oid{margin-left:0;text-align:left}.dots{bottom:100px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important;scroll-behavior:auto!important}}
+
+</style>
+</head>
+<body>
+<a class="skip" href="#app">Skip to main content</a>
+<header class="hdr">
+ <div class="hrow">
+  <button class="hbtn menub" type="button" data-act="menu" aria-label="Open menu"><span id="mIc"></span></button>
+  <a class="logo" href="#/" data-go="home" aria-label="BuildGrid.shop home"><span class="mk" id="mk"></span><b>BuildGrid</b><i>.shop</i></a>
+  <button class="deliver" type="button" data-act="pin" aria-label="Choose delivery location"><span id="pIc"></span><span><small>Deliver to</small><b id="dTo"></b></span></button>
+  <form id="sform" class="sbar" role="search"><select id="scat" aria-label="Search category"></select><input id="q" type="search" placeholder="Search cement, TMT bars, tiles, paint" aria-label="Search BuildGrid" autocomplete="off"><button class="sgo" type="submit" aria-label="Search"><span id="sIc"></span></button><div id="sugg" role="listbox" hidden></div></form>
+  <div class="acctw"><button class="hbtn" type="button" data-act="acct" aria-haspopup="true"><small>Hello, <span id="aName"></span></small><b>Account<span class="lx"> &amp; lists</span></b></button><div id="acctMenu" class="pop" hidden></div></div>
+  <a class="hbtn ordb" href="#/orders" data-go="orders"><small>Returns</small><b>&amp; Orders</b></a>
+  <a class="hbtn cartb" href="#/cart" data-go="cart" aria-label="Cart"><span id="cIc"></span><span class="cc" id="cCount">0</span><b>Cart</b></a>
+ </div>
+ <nav class="sub" id="subnav" aria-label="Departments"></nav>
+</header>
+<main id="app" tabindex="-1"></main>
+<footer id="foot"></footer>
+<div class="scrim" id="scrim" data-act="closemenu"></div>
+<aside id="menu" class="menu" aria-label="Categories"></aside>
+<dialog id="dlg"></dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+/* ---------- storage (falls back to memory if the viewer blocks it) ---------- */
+function pickStore(name){
+ try{const st=window[name];st.setItem("__bg","1");st.removeItem("__bg");st.real=true;return st}catch(e){}
+ const m={};return {real:false,getItem:k=>(k in m?m[k]:null),setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}};
+}
+const LS=pickStore("localStorage"),KEY="buildgrid_shop_v1";
+const fresh=()=>({v:1,users:[],session:null,carts:{},wish:{},orders:[],addr:{},recent:[],reviews:{},helpful:{},pin:"560001",coupon:null});
+let DB;try{DB=JSON.parse(LS.getItem(KEY));if(!DB||DB.v!==1)DB=fresh()}catch(e){DB=fresh()}
+const save=()=>{try{LS.setItem(KEY,JSON.stringify(DB))}catch(e){}};
+
+/* ---------- helpers ---------- */
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fmt=n=>Math.round(n).toLocaleString("en-IN"),inr=n=>"₹"+fmt(n);
+const reduce=matchMedia("(prefers-reduced-motion: reduce)").matches;
+const ICON={
+ search:'<circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/>',cart:'<path d="M3 4h2.5l2 11h10l2-8H7"/><circle cx="9" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>',
+ heart:'<path d="M12 20s-7.5-4.6-9.2-9.3C1.7 7.6 3.7 4.5 7 4.5c2 0 3.5 1.1 5 3 1.5-1.9 3-3 5-3 3.3 0 5.3 3.1 4.2 6.2C19.5 15.4 12 20 12 20z"/>',
+ menu:'<path d="M4 6h16M4 12h16M4 18h16"/>',pin:'<path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',
+ user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4.4 3.6-7 8-7s8 2.6 8 7"/>',check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',minus:'<path d="M5 12h14"/>',left:'<path d="M15 6l-6 6 6 6"/>',right:'<path d="M9 6l6 6-6 6"/>',
+ trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',truck:'<path d="M2 6h11v10H2zM13 9h5l3 3v4h-8"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',
+ shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',
+ back:'<path d="M3 12a9 9 0 109-9"/><path d="M3 4v5h5"/>',bolt:'<path d="M13 3L5 13h6l-1 8 8-10h-6z"/>',box:'<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/>',
+ tag:'<path d="M3 12V4h8l10 10-8 8z"/><circle cx="8" cy="8" r="1.4"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+};
+const ic=(n,s=20)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]||ICON.box}</svg>`;
+const stars=r=>`<span class="stars" style="--p:${(r/5*100).toFixed(0)}%" role="img" aria-label="${r} out of 5 stars"></span>`;
+const K256=[0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2];
+function sha256(msg){
+ const bin=unescape(encodeURIComponent(msg)),l=bin.length,buf=new Uint8Array(((l+9+63)>>6)<<6);
+ for(let i=0;i<l;i++)buf[i]=bin.charCodeAt(i);buf[l]=0x80;
+ const dv=new DataView(buf.buffer);dv.setUint32(buf.length-4,(l*8)>>>0);dv.setUint32(buf.length-8,Math.floor(l*8/4294967296));
+ let H=[0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19];const w=new Uint32Array(64);
+ for(let o=0;o<buf.length;o+=64){
+  for(let i=0;i<16;i++)w[i]=dv.getUint32(o+i*4);
+  for(let i=16;i<64;i++){const a=w[i-15],b=w[i-2];w[i]=(w[i-16]+(((a>>>7)|(a<<25))^((a>>>18)|(a<<14))^(a>>>3))+w[i-7]+(((b>>>17)|(b<<15))^((b>>>19)|(b<<13))^(b>>>10)))>>>0}
+  let [a,b,c,d,e,f,g,h]=H;
+  for(let i=0;i<64;i++){
+   const t1=(h+(((e>>>6)|(e<<26))^((e>>>11)|(e<<21))^((e>>>25)|(e<<7)))+((e&f)^(~e&g))+K256[i]+w[i])>>>0;
+   const t2=((((a>>>2)|(a<<30))^((a>>>13)|(a<<19))^((a>>>22)|(a<<10)))+((a&b)^(a&c)^(b&c)))>>>0;
+   h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+  }
+  H=[H[0]+a,H[1]+b,H[2]+c,H[3]+d,H[4]+e,H[5]+f,H[6]+g,H[7]+h].map(x=>x>>>0);
+ }
+ return H.map(x=>x.toString(16).padStart(8,"0")).join("");
+}
+
+const hashPw=(pw,salt)=>{let h=salt+pw;for(let i=0;i<1500;i++)h=sha256(h+salt+pw);return h};
+const newSalt=()=>{try{return [...crypto.getRandomValues(new Uint8Array(10))].map(b=>b.toString(16).padStart(2,"0")).join("")}catch(e){return String(Math.random()).slice(2)}};
+/* ---------- product art ---------- */
+const brickArt=(f,w=30,h=13)=>{let s='<clipPath id="bc"><rect x="12" y="10" width="96" height="60" rx="5"/></clipPath><g clip-path="url(#bc)">';for(let r=0;r<4;r++)for(let c=-1;c<4;c++){s+=`<rect x="${(r%2?-15:0)+c*(w+3)+16}" y="${12+r*(h+2)}" width="${w}" height="${h}" rx="2" fill="${f}"/>`}return s+"</g>"};
+const ART={
+ "Cement":'<ellipse cx="60" cy="72" rx="34" ry="4" fill="#0003"/><rect x="36" y="12" width="48" height="58" rx="6" fill="#8793A8"/><rect x="36" y="12" width="48" height="13" rx="6" fill="#6C7890"/><rect x="43" y="33" width="34" height="20" rx="3" fill="#FFC72C"/><text x="60" y="47" text-anchor="middle" font-family="Arial" font-size="12" font-weight="800" fill="#0B1F3A">OPC</text>',
+ "Steel":'<g stroke-linecap="round"><path d="M14 22h92M10 34h96M16 46h92M12 58h92" stroke="#51607A" stroke-width="7"/><path d="M14 22h92M10 34h96M16 46h92M12 58h92" stroke="#B3BFD3" stroke-width="2" stroke-dasharray="2 5"/></g>',
+ "Sand":'<path d="M6 68L46 26Q60 12 74 26L114 68z" fill="#E2B04A"/><path d="M60 14L114 68H72z" fill="#C98F2B"/><path d="M6 68h108" stroke="#0003"/>',
+ "Bricks":brickArt("#C2553A"),
+ "Blocks":'<rect x="16" y="14" width="42" height="26" rx="3" fill="#E3E8EF"/><rect x="62" y="14" width="42" height="26" rx="3" fill="#D2D9E3"/><rect x="38" y="44" width="42" height="26" rx="3" fill="#DDE3EC"/><g fill="#9AA6B8"><circle cx="28" cy="24" r="2"/><circle cx="44" cy="32" r="2"/><circle cx="74" cy="22" r="2"/><circle cx="92" cy="31" r="2"/><circle cx="52" cy="54" r="2"/><circle cx="68" cy="60" r="2"/></g>',
+ "Ready mix":'<rect x="10" y="52" width="100" height="8" rx="2" fill="#34475F"/><path d="M12 50L17 22Q34 10 54 22L68 50z" fill="#C7D0DE"/><path d="M22 20l6 30M34 15l5 35M46 17l4 33" stroke="#8793A8" stroke-width="2"/><path d="M72 50V30h18l14 12v8z" fill="#FFC72C"/><rect x="80" y="34" width="10" height="9" fill="#13243D"/><g fill="#0B1F3A" stroke="#8793A8" stroke-width="2"><circle cx="28" cy="62" r="7"/><circle cx="56" cy="62" r="7"/><circle cx="94" cy="62" r="7"/></g>',
+ "Tiles":'<g><rect x="20" y="10" width="38" height="28" rx="3" fill="#2F8F96"/><rect x="62" y="10" width="38" height="28" rx="3" fill="#47A9AF"/><rect x="20" y="42" width="38" height="28" rx="3" fill="#47A9AF"/><rect x="62" y="42" width="38" height="28" rx="3" fill="#2F8F96"/><path d="M26 34L46 14M68 34l20-20M26 66l20-20M68 66l20-20" stroke="#fff" stroke-opacity=".35" stroke-width="3"/></g>',
+ "Plumbing":'<path d="M14 56H60Q78 56 78 38V16" fill="none" stroke="#2F6FD6" stroke-width="14"/><path d="M14 56H60Q78 56 78 38V16" fill="none" stroke="#8CB8FF" stroke-width="3"/><rect x="8" y="47" width="9" height="18" rx="2" fill="#1E4FA8"/><rect x="69" y="8" width="18" height="8" rx="2" fill="#1E4FA8"/>',
+ "Electrical":'<circle cx="56" cy="40" r="29" fill="none" stroke="#D8362B" stroke-width="8"/><circle cx="56" cy="40" r="19" fill="none" stroke="#EE6A5F" stroke-width="5"/><circle cx="56" cy="40" r="10" fill="#13243D"/><path d="M84 40h24" stroke="#D8362B" stroke-width="5" stroke-linecap="round"/><path d="M84 46h24" stroke="#FFC72C" stroke-width="5" stroke-linecap="round"/>',
+ "Paint":'<path d="M28 30L34 68H86L92 30z" fill="#7A47C8"/><ellipse cx="60" cy="30" rx="32" ry="7" fill="#B190EA"/><path d="M32 28Q60 -8 88 28" fill="none" stroke="#51607A" stroke-width="3"/><rect x="40" y="42" width="40" height="14" rx="2" fill="#FFC72C"/>',
+ "Doors and windows":'<rect x="36" y="6" width="48" height="68" rx="3" fill="#8A5A2B"/><rect x="42" y="12" width="15" height="24" fill="#A87440"/><rect x="63" y="12" width="15" height="24" fill="#A87440"/><rect x="42" y="42" width="36" height="26" fill="#A87440"/><circle cx="77" cy="40" r="2.5" fill="#FFC72C"/>',
+ "Safety":'<path d="M22 54Q22 18 60 18Q98 18 98 54z" fill="#FFC72C"/><rect x="16" y="54" width="88" height="9" rx="4.5" fill="#E0A800"/><rect x="53" y="18" width="14" height="36" fill="#E0A800"/>'
+};
+const HUE={"Cement":"#8793A8","Steel":"#51607A","Sand":"#E2B04A","Bricks":"#C2553A","Blocks":"#9AA6B8","Ready mix":"#4B5563","Tiles":"#2F8F96","Plumbing":"#2F6FD6","Electrical":"#D8362B","Paint":"#7A47C8","Doors and windows":"#8A5A2B","Safety":"#FFC72C"};
+const art=c=>`<svg viewBox="0 0 120 80" aria-hidden="true">${ART[c]||ART.Cement}</svg>`;
+const CATS=Object.keys(ART);
+
+
+
+/* ---------- catalogue ---------- */
+const RAW={
+"Cement":[
+ ["UltraBuild OPC 53 Grade Cement, 50 kg Bag","UltraBuild",460,390,"50 kg bag",4.6,12840,420,1,["Grade: OPC 53","Initial setting time: 30 minutes","Best for: slabs, columns and beams"]],
+ ["Rajdhani PPC Cement, 50 kg Bag","Rajdhani",430,365,"50 kg bag",4.4,8210,600,1,["Type: Portland Pozzolana Cement","Best for: plastering and masonry","Standard: IS 1489"]],
+ ["Konark White Cement, 5 kg Pack","Konark",520,430,"5 kg pack",4.3,2210,90,2,["Type: White cement","Use: wall putty, grouting and finishing","Moisture-proof pack: yes"]],
+ ["RapidSet Fast-Setting Cement, 25 kg","RapidSet",980,820,"25 kg bag",4.2,640,14,2,["Type: Rapid hardening","Initial set: about 10 minutes","Use: repairs and anchoring"]]],
+"Steel":[
+ ["TMT Fe500D Bar 12 mm, 12 m Length","Karnataka Steel Hub",810,724,"12 m bar",4.7,9320,800,2,["Grade: Fe500D","Weight: about 10.7 kg per bar","Standard: IS 1786"]],
+ ["TMT Fe550D Bar 16 mm, 12 m Length","Sai Metals",1490,1342,"12 m bar",4.5,4120,500,2,["Grade: Fe550D","Weight: about 18.9 kg per bar","Corrosion-resistant coating"]],
+ ["Binding Wire 18 Gauge, 20 kg Coil","Sai Metals",1650,1380,"20 kg coil",4.3,1870,250,1,["Gauge: 18","Annealed, soft and easy to tie","Use: rebar tying"]],
+ ["MS Angle 40×40×5 mm, 6 m Length","Karnataka Steel Hub",1980,1760,"6 m length",4.2,760,120,3,["Size: 40×40×5 mm","Material: mild steel","Use: frames, grills and supports"]]],
+"Sand":[
+ ["Washed River Sand, 1 Tonne","Cauvery Aggregates",2200,1850,"1 tonne",4.2,3150,300,2,["Washed and screened","Use: concrete and masonry","Zone: II"]],
+ ["M-Sand for Plastering, 1 Tonne","Granite Works",1900,1650,"1 tonne",4.5,2940,400,2,["Manufactured sand","Use: plaster and block work","Silt content: under 2%"]],
+ ["20 mm Stone Aggregate, 1 Tonne","Granite Works",1650,1450,"1 tonne",4.4,2210,500,2,["Size: 20 mm","Crushed angular stone","Use: RCC and PCC"]],
+ ["Fine Plastering Sand, 50 kg Bag","Cauvery Aggregates",160,120,"50 kg bag",4.1,980,900,1,["Bagged for easy carry","Fine grade","Use: finishing coats"]]],
+"Bricks":[
+ ["Red Clay Bricks, Pack of 100","Anekal Brick Works",1100,900,"pack of 100",4.3,5400,200,2,["Size: 9×4×3 inch","Compressive strength: 35 kg/cm²","Colour: classic red"]],
+ ["Fly Ash Bricks, Pack of 100","GreenKiln",880,700,"pack of 100",4.4,4880,350,2,["Size: 9×4×3 inch","Eco-friendly, lower weight","Water absorption: under 12%"]],
+ ["Wirecut Bricks, Pack of 100","Anekal Brick Works",1500,1250,"pack of 100",4.5,2310,120,3,["Machine cut, uniform edges","Use: exposed brickwork","Strength: 75 kg/cm²"]],
+ ["Perforated Bricks, Pack of 50","GreenKiln",950,790,"pack of 50",4.2,640,70,3,["Lightweight with cavities","Good thermal insulation","Use: partition walls"]]],
+"Blocks":[
+ ["AAC Block 600×200×200 mm, Pack of 10","Ecoblock India",690,580,"pack of 10",4.6,3760,260,2,["Size: 600×200×200 mm","Density: 600 kg/m³","Fire resistant and lightweight"]],
+ ["Solid Concrete Block 8 inch, Pack of 10","Maruthi Blocks",560,460,"pack of 10",4.1,1420,180,2,["Size: 400×200×200 mm","Load bearing","Use: boundary and structural walls"]],
+ ["Hollow Concrete Block 6 inch, Pack of 10","Maruthi Blocks",470,390,"pack of 10",4.2,1010,150,2,["Size: 400×150×200 mm","Hollow core for easy reinforcement","Use: partition walls"]],
+ ["Lightweight Cellular Block 4 inch, Pack of 20","Ecoblock India",1240,1050,"pack of 20",4.4,520,60,3,["Size: 600×100×200 mm","Sound insulating","Use: interior partitions"]]],
+"Ready mix":[
+ ["RMC M25 Concrete with Pump, 1 cu m","RapidMix",6600,5900,"1 cu m",4.5,1210,40,3,["Grade: M25","Includes pump delivery","Slump: 100 to 120 mm"]],
+ ["RMC M30 Concrete, 1 cu m","Nandi Ready Mix",7000,6350,"1 cu m",4.4,830,30,3,["Grade: M30","Transit mixer delivery","Use: beams, slabs and columns"]],
+ ["Dry Mortar Plaster Mix, 40 kg","Nandi Ready Mix",460,380,"40 kg bag",4.3,1560,500,2,["Ready to mix with water","Consistent quality","Coverage: about 10 sq ft at 12 mm"]],
+ ["Non-Shrink Grout, 25 kg","RapidMix",1700,1450,"25 kg bag",4.4,430,90,3,["Flowable and non-shrink","Use: base plates and anchor bolts","Strength: 50 MPa at 28 days"]]],
+"Tiles":[
+ ["Vitrified Floor Tile 600×600 mm, Box of 4","Tilora",1480,1270,"box of 4",4.4,6120,300,3,["Size: 600×600 mm","Coverage: about 15.5 sq ft per box","Finish: glossy"]],
+ ["Anti-Skid Floor Tile 300×300 mm, Box of 11","Orienta Tiles",1090,899,"box of 11",4.2,1980,210,3,["Size: 300×300 mm","Coverage: about 11.8 sq ft per box","Use: bathrooms and balconies"]],
+ ["Glossy Wall Tile 300×450 mm, Box of 6","Tilora",1190,990,"box of 6",4.3,2230,160,3,["Size: 300×450 mm","Coverage: about 8.7 sq ft per box","Use: kitchens and bathrooms"]],
+ ["Tile Adhesive, 20 kg Bag","Tilora",640,520,"20 kg bag",4.4,3340,400,1,["Polymer modified","Coverage: about 25 sq ft","Use: floor and wall tiles"]]],
+"Plumbing":[
+ ["CPVC Pipe 1 inch, 3 m Length","Aqua Fittings",210,168,"3 m length",4.3,2760,500,1,["Size: 1 inch","Hot and cold water","Standard: ASTM D2846"]],
+ ["Water Storage Tank 1000 L","Aquanova",8400,6900,"1000 L tank",4.5,2870,50,3,["Capacity: 1000 litres","Triple-layer, UV protected","Warranty: 10 years"]],
+ ["PVC Ball Valve 1/2 inch","Aqua Fittings",190,145,"piece",4.3,3210,600,1,["Size: 1/2 inch","Quarter-turn handle","Use: water lines"]],
+ ["Wall Mixer with Overhead Shower, Chrome","Aquanova",4690,3490,"set",4.2,1120,40,3,["Finish: chrome","Includes overhead shower","Ceramic disc cartridge"]]],
+"Electrical":[
+ ["FR Copper Wire 2.5 sq mm, 90 m Coil","Voltline",3100,2450,"90 m coil",4.6,7210,200,2,["Size: 2.5 sq mm","Flame retardant, copper conductor","Standard: IS 694"]],
+ ["Modular Switch Plate, 6 Module","Ancora",260,185,"piece",4.3,4890,700,1,["Modules: 6","Fire-retardant polycarbonate","Colour: white"]],
+ ["MCB 32 A Double Pole","Voltline",720,520,"piece",4.4,2670,320,1,["Rating: 32 A, double pole","Breaking capacity: 10 kA","DIN rail mounting"]],
+ ["LED Batten 20 W, Pack of 2","Lumos",898,598,"pack of 2",4.1,5120,450,1,["Power: 20 W each","Colour temperature: 6500 K","Life: 25,000 hours"]]],
+"Paint":[
+ ["Exterior Emulsion Paint, 20 L","ColourCraft",7400,5800,"20 L bucket",4.5,4210,120,2,["Finish: matt, weatherproof","Coverage: about 120 sq ft per litre","Warranty: 7 years"]],
+ ["Interior Emulsion Paint, 10 L","ColourCraft",3900,2980,"10 L bucket",4.4,3780,160,2,["Finish: soft sheen","Low odour, washable","Coverage: about 110 sq ft per litre"]],
+ ["Wall Putty, 40 kg","WallMaster",1550,1250,"40 kg bag",4.3,6300,500,1,["Type: white cement based","Coverage: about 20 sq ft per kg","Use: before primer"]],
+ ["Wall Primer, 20 L","WallMaster",2700,2150,"20 L bucket",4.3,2480,140,2,["Type: water based","Seals pores and improves adhesion","Dry time: 4 hours"]]],
+"Doors and windows":[
+ ["Flush Door, Teak Finish 2100×900 mm","TimberTrail",11200,8900,"piece",4.2,1640,40,4,["Size: 2100×900 mm","Core: solid block board","Finish: teak veneer"]],
+ ["UPVC Window 4×4 ft with Mesh","WinCraft",9400,7400,"piece",4.4,1280,35,5,["Size: 4×4 ft","Sliding, with mosquito mesh","Lead-free UPVC"]],
+ ["Mortise Door Lock Set, Stainless Steel","Securo",2490,1850,"set",4.3,3050,180,2,["Material: stainless steel","Includes 3 keys","Finish: satin"]],
+ ["Stainless Steel Door Handle, Pair","Securo",1190,899,"pair",4.2,2210,260,2,["Material: SS 304","Length: 12 inch","Finish: brushed"]]],
+"Safety":[
+ ["Safety Helmet, ISI Marked","SiteSafe",420,260,"piece",4.4,9870,900,1,["Standard: IS 2925","Adjustable ratchet","Colour: yellow"]],
+ ["Full Body Safety Harness","SiteSafe",2100,1450,"piece",4.5,2640,150,2,["Includes shock absorber lanyard","Adjustable straps","Rated for 140 kg"]],
+ ["Steel Toe Safety Shoes","SiteSafe",1490,899,"pair",4.3,5420,300,2,["Steel toe cap","Slip-resistant sole","Sizes: 6 to 11"]],
+ ["Hi-Vis Reflective Vest, Pack of 5","SiteSafe",650,499,"pack of 5",4.2,3210,600,1,["Reflective tape","Free size with zip","Colour: orange"]]]
+};
+const PRODUCTS=[];
+for(const [cat,rows] of Object.entries(RAW))rows.forEach(r=>PRODUCTS.push({id:PRODUCTS.length,cat,name:r[0],brand:r[1],mrp:r[2],price:r[3],unit:r[4],rating:r[5],reviews:r[6],stock:r[7],days:r[8],specs:r[9],off:Math.round((1-r[3]/r[2])*100)}));
+CATS.forEach(c=>{const l=PRODUCTS.filter(p=>p.cat===c).sort((a,b)=>b.reviews-a.reviews);if(l[0])l[0].best=true});
+const P=id=>PRODUCTS[+id];
+const POOL=["Bharat Build Mart","Metro Supplies","Southern Traders","Prime Materials","Vijay Hardware","KBR Distributors"];
+const sellers=p=>[{n:p.brand+" Official",price:p.price,d:p.days,v:true,r:p.rating},{n:POOL[p.id%6],price:Math.round(p.price*1.03),d:p.days,v:true,r:+(p.rating-.2).toFixed(1)},{n:POOL[(p.id+3)%6],price:Math.round(p.price*.97),d:p.days+2,v:false,r:+(p.rating-.5).toFixed(1)}];
+const BULK=[[10,3],[50,6],[200,10]];
+const unitPrice=(p,s,q)=>{const t=[...BULK].reverse().find(b=>q>=b[0]);return Math.round(sellers(p)[s].price*(1-(t?t[1]:0)/100))};
+
+/* ---------- delivery ---------- */
+const CITIES={"560":"Bengaluru","400":"Mumbai","110":"Delhi","500":"Hyderabad","411":"Pune","600":"Chennai","700":"Kolkata","380":"Ahmedabad","302":"Jaipur"};
+const cityOf=pin=>CITIES[String(pin).slice(0,3)]||"your area";
+const zone=()=>CITIES[DB.pin.slice(0,3)]?0:1;
+function etaDate(days){const d=new Date();d.setDate(d.getDate()+days+zone());return d}
+function etaText(days){const d=etaDate(days),diff=days+zone();const w=diff<=1?"Tomorrow":d.toLocaleDateString("en-IN",{weekday:"long"});return `${w}, ${d.toLocaleDateString("en-IN",{day:"numeric",month:"short"})}`}
+
+/* ---------- state ---------- */
+const state={s:{q:"",cat:"All",sort:"rel",page:1,brands:[],price:"",rating:0,fast:false,deal:false},sel:{},buy:null,co:{addr:null,pay:"upi",err:{}},slide:0,pend:null};
+const user=()=>DB.session?DB.users.find(u=>u.email===DB.session):null;
+const owner=()=>DB.session||"guest";
+const cart=()=>DB.carts[owner()]||(DB.carts[owner()]=[]);
+const wish=()=>DB.wish[owner()]||(DB.wish[owner()]=[]);
+const addrs=()=>DB.addr[owner()]||(DB.addr[owner()]=[]);
+const cartCount=()=>cart().filter(x=>!x.saved).reduce((a,b)=>a+b.q,0);
+function mkLines(src){return src.filter(x=>!x.saved).map(x=>{const p=P(x.id),u=unitPrice(p,x.s,x.q);return {...x,p,u,total:u*x.q,bulk:u<sellers(p)[x.s].price}})}
+function couponCheck(code,sub){
+ const c=String(code||"").trim().toUpperCase();
+ if(c==="BUILD10")return sub<2000?{ok:false,msg:"BUILD10 needs an order of ₹2,000 or more"}:{ok:true,msg:"BUILD10 applied: 10% off, up to ₹5,000",disc:Math.min(5000,Math.round(sub*.1))};
+ if(c==="FIRST250"){if(DB.orders.some(o=>o.user===DB.session))return {ok:false,msg:"FIRST250 is for your first order only"};return sub<1500?{ok:false,msg:"FIRST250 needs an order of ₹1,500 or more"}:{ok:true,msg:"FIRST250 applied: ₹250 off",disc:250}}
+ if(c==="FREESHIP")return sub<500?{ok:false,msg:"FREESHIP needs an order of ₹500 or more"}:{ok:true,msg:"FREESHIP applied: free delivery",disc:0,free:true};
+ return {ok:false,msg:"That code is not valid"};
+}
+function calc(ls,code){
+ const sub=ls.reduce((a,l)=>a+l.total,0);let ship=!sub?0:sub>=5000?0:199,disc=0,msg="",ok=false;
+ if(code){const c=couponCheck(code,sub);ok=c.ok;msg=c.msg;disc=c.disc||0;if(c.free)ship=0}
+ return {sub,ship,disc,total:sub-disc+ship,gst:(sub-disc)*18/118,code:ok?String(code).toUpperCase():null,msg,items:ls.reduce((a,l)=>a+l.q,0)};
+}
+const dealPct=p=>p.off;
+const recentList=()=>DB.recent.map(P).filter(Boolean);
+function pushRecent(id){DB.recent=[+id,...DB.recent.filter(x=>x!==+id)].slice(0,12);save()}
+let tT;function toast(m,act,fn){const t=$("#toast");t.innerHTML=`<span>${esc(m)}</span>${act?`<button type="button">${act}</button>`:""}`;if(act)t.querySelector("button").onclick=fn;t.classList.add("on");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("on"),3200)}
+const dlg=$("#dlg");
+function openD(html){dlg.innerHTML=html;if(!dlg.open){dlg.showModal?dlg.showModal():dlg.setAttribute("open","")}}
+function closeD(){dlg.close?dlg.close():dlg.removeAttribute("open")}
+
+/* ---------- reviews ---------- */
+function rng(seed){return()=>{seed|=0;seed=(seed+0x6d2b79f5)|0;let t=Math.imul(seed^(seed>>>15),1|seed);t=(t+Math.imul(t^(t>>>7),61|t))^t;return((t^(t>>>14))>>>0)/4294967296}}
+const RNAMES=["Rohit S.","Anita K.","Vikram P.","Deepa R.","Mohammed A.","Sunita M.","Karthik N.","Priyanka T.","Harish B.","Lakshmi V.","Ajay D.","Farhan Q."];
+const RPOS=[["Exactly as described","Quality is good and it arrived on time. Used it on our site and had no complaints."],["Good value for money","Compared prices with local dealers and this was cheaper even with delivery."],["Packed well","Delivery was on schedule and the packaging was intact. Will order again."],["Solid quality","Used it for our house construction and the mason was happy with it."]];
+const RMID=[["Good, but delivery was late","The product is fine. The truck arrived a day later than promised."],["Okay for the price","Does the job. Packaging could be better."]];
+const RNEG=[["Some pieces damaged","A few units were damaged in transit. A replacement was arranged but took time."]];
+function genReviews(p){const r=rng(p.id*7919+13),out=[];for(let i=0;i<6;i++){const x=r(),pool=x<.72?RPOS:x<.92?RMID:RNEG,st=pool===RPOS?(r()<.65?5:4):pool===RMID?3:2,t=pool[Math.floor(r()*pool.length)];out.push({name:RNAMES[Math.floor(r()*RNAMES.length)],stars:st,title:t[0],body:t[1],t:Date.now()-Math.floor(r()*120+2)*864e5,gen:true})}return out}
+const reviewsFor=p=>[...(DB.reviews[p.id]||[]),...genReviews(p)];
+function hist(r){const p1=Math.round((5-r)*4),p2=Math.round((5-r)*2.5),p3=Math.round((5-r)*7),p4=Math.round(18+(4.5-r)*10);return [100-p1-p2-p3-p4,p4,p3,p2,p1]}
+
+/* ---------- cards ---------- */
+const deliv=p=>`<div class="deliv">${p.days+zone()<=1?`<span class="fast">${ic("bolt",12)}Fast</span> `:""}FREE delivery <b>${etaText(p.days)}</b></div>`;
+function pcard(p){
+ const w=wish().includes(p.id);
+ return `<article class="card pcard"><button class="heart ${w?"on":""}" type="button" data-act="wish" data-id="${p.id}" aria-pressed="${w}" aria-label="${w?"Remove from":"Add to"} wish list">${ic("heart",20)}</button>
+ <a class="pimg" href="#/product/${p.id}" data-go="product/${p.id}" style="--h:${HUE[p.cat]}" aria-label="${esc(p.name)}">${art(p.cat)}${p.off>=20?`<span class="tagdeal">-${p.off}%</span>`:""}${p.best?`<span class="tagbest">Best seller</span>`:""}</a>
+ <div class="pinfo"><a class="ptitle" href="#/product/${p.id}" data-go="product/${p.id}">${esc(p.name)}</a>
+ <div class="rate">${stars(p.rating)}<span>${fmt(p.reviews)}</span></div>
+ <div><span class="price"><sup>₹</sup>${fmt(p.price)}</span> <span class="mrp"><s>${inr(p.mrp)}</s></span> <span class="offt">${p.off}% off</span></div>
+ ${deliv(p)}${p.stock<=15?`<div class="low">Only ${p.stock} left in stock</div>`:""}
+ <button class="btn yellow sm" type="button" data-act="add" data-id="${p.id}">Add to cart</button></div></article>`;
+}
+const rowSec=(title,list,extra="",id="")=>`<section class="card rowsec"><div class="rowhead"><h2>${title}</h2>${extra}</div><div class="scroller" ${id?`id="${id}"`:""}>${list.map(pcard).join("")}</div><button class="sc l" type="button" data-act="scroll" data-d="-1" aria-label="Scroll left">${ic("left")}</button><button class="sc r" type="button" data-act="scroll" data-d="1" aria-label="Scroll right">${ic("right")}</button></section>`;
+const nf=()=>`<div class="wrap"><section class="card pad center"><h1>We couldn’t find that page</h1><p class="muted">The item may have been removed.</p><button class="btn yellow" data-go="home">Back to home</button></section></div>`;
+const authPrompt=(t)=>`<div class="wrap"><section class="card pad center"><h1>${t}</h1><p class="muted">Sign in to continue.</p><button class="btn yellow" type="button" data-act="auth" data-m="login">Sign in</button> <button class="btn line" type="button" data-act="auth" data-m="register">Create account</button></section></div>`;
+
+/* ---------- home ---------- */
+const SLIDES=[
+ {a:"#0B1F3A",b:"#1D4FBF",h:"Build bigger. Pay less.",p:"Up to 30% off cement, steel and sand. Free delivery to site on orders above ₹5,000.",cta:"Shop cement and steel",cat:"Cement",art:["Cement","Steel"]},
+ {a:"#3B1B6B",b:"#7A47C8",h:"Fresh coat, fresh start.",p:"Emulsions, putty and primer from ColourCraft and WallMaster. Mix and save on every bucket.",cta:"Shop paint",cat:"Paint",art:["Paint","Tiles"]},
+ {a:"#0E5A52",b:"#1AA39A",h:"Buy more, save more.",p:"Order 10+ units for 3% off, 50+ for 6% and 200+ for 10%. Applied automatically at checkout.",cta:"See today’s deals",deal:true,art:["Bricks","Blocks"]},
+ {a:"#7A3A06",b:"#E8841A",h:"Safety first on every site.",p:"ISI helmets, harnesses and steel toe shoes, with next-day delivery in major cities.",cta:"Shop safety gear",cat:"Safety",art:["Safety","Electrical"]}
+];
+function carousel(){return `<section class="hero" aria-roledescription="carousel" aria-label="Featured offers"><div class="slides" id="slides">${SLIDES.map((s,i)=>`<div class="slide" style="--a:${s.a};--b:${s.b}" role="group" aria-label="${i+1} of ${SLIDES.length}" ${i?'aria-hidden="true"':""}><div class="stxt"><h1>${s.h}</h1><p>${s.p}</p><button class="btn yellow" type="button" data-act="slidego" data-i="${i}" ${i?'tabindex="-1"':""}>${s.cta}</button></div><div class="sart"><span class="sa0">${art(s.art[0])}</span><span class="sa1">${art(s.art[1])}</span></div></div>`).join("")}</div>
+ <button class="car prev" type="button" data-act="slide" data-d="-1" aria-label="Previous slide">${ic("left",26)}</button><button class="car next" type="button" data-act="slide" data-d="1" aria-label="Next slide">${ic("right",26)}</button>
+ <div class="dots">${SLIDES.map((s,i)=>`<button type="button" data-act="slide" data-i="${i}" aria-label="Slide ${i+1}" aria-current="${i===0}"></button>`).join("")}</div></section>`}
+const deals=()=>PRODUCTS.filter(p=>p.off>=15).sort((a,b)=>b.off-a.off);
+const mini=(list,badge)=>`<div class="mini4">${list.map(x=>`<a href="${x.href}" data-go="${x.go}" style="--h:${x.h}"><span class="mi">${x.art}</span><span>${x.t}</span></a>`).join("")}</div>`;
+const VIEWS_home=()=>{
+ const u=user(),dl=deals(),rec=recentList();
+ const catTiles=["Cement","Steel","Tiles","Paint"].map(c=>({href:"#/search",go:"cat/"+c,h:HUE[c],art:art(c),t:c}));
+ const dealTiles=dl.slice(0,4).map(p=>({href:"#/product/"+p.id,go:"product/"+p.id,h:HUE[p.cat],art:art(p.cat),t:`-${p.off}% ${p.cat}`}));
+ return `${carousel()}<div class="wrap home"><div class="tiles">
+  <section class="card tile"><h2>Shop by category</h2>${mini(catTiles)}<a class="more" href="#/search" data-go="cat/All">Shop all categories</a></section>
+  <section class="card tile"><h2>Today’s deals</h2>${mini(dealTiles)}<a class="more" href="#/search" data-go="deals">See all deals</a></section>
+  <section class="card tile"><h2>Bulk saver</h2><p class="muted">Order more of the same item and the price drops automatically.</p><table class="bt"><tr><th>Quantity</th><th>You save</th></tr>${BULK.map(b=>`<tr><td>${b[0]}+ units</td><td><b>${b[1]}%</b></td></tr>`).join("")}</table><a class="more" href="#/search" data-go="cat/All">Start saving</a></section>
+  <section class="card tile signin">${u?`<h2>Hi, ${esc(u.name.split(" ")[0])}</h2><p class="muted">Pick up where you left off.</p><button class="btn yellow" type="button" data-go="orders">Your orders</button><button class="btn line" type="button" data-go="cart">View cart (${cartCount()})</button>`:`<h2>Sign in for the best experience</h2><p class="muted">Save your cart, track orders and check out faster.</p><button class="btn yellow" type="button" data-act="auth" data-m="login">Sign in securely</button><button class="btn line" type="button" data-act="auth" data-m="register">Create an account</button>`}</section></div>
+  ${rowSec("Today’s deals",dl.slice(0,10),`<span class="cd">${ic("clock",16)}Ends in <b id="cd">--:--:--</b></span>`)}
+  ${rowSec("Best sellers in cement, steel and sand",PRODUCTS.filter(p=>["Cement","Steel","Sand"].includes(p.cat)).sort((a,b)=>b.reviews-a.reviews).slice(0,10))}
+  ${rowSec("Finishing touches: tiles, paint, doors and fittings",PRODUCTS.filter(p=>["Tiles","Paint","Doors and windows","Plumbing","Electrical"].includes(p.cat)).sort((a,b)=>b.reviews-a.reviews).slice(0,10))}
+  ${rec.length?rowSec("Recently viewed by you",rec):""}
+  <section class="card trust"><div>${ic("truck",26)}<b>Delivery to site</b><span>Free above ₹5,000, trucks tracked to your door</span></div><div>${ic("shield",26)}<b>Genuine materials</b><span>Verified sellers, ISI and BIS standards</span></div><div>${ic("back",26)}<b>7-day replacement</b><span>For damaged or wrong items</span></div><div>${ic("lock",26)}<b>Secure payments</b><span>UPI, cards, net banking and COD</span></div></section></div>`;
+};
+
+/* ---------- search ---------- */
+const PRICES=[["","Any price"],["0-500","Under ₹500"],["500-2000","₹500 – ₹2,000"],["2000-10000","₹2,000 – ₹10,000"],["10000-","Over ₹10,000"]];
+function searchData(){
+ const S=state.s,toks=S.q.toLowerCase().split(/\s+/).filter(Boolean);
+ let base=PRODUCTS.filter(p=>{const h=(p.name+" "+p.brand+" "+p.cat+" "+p.specs.join(" ")).toLowerCase();return toks.every(t=>h.includes(t))});
+ if(S.deal)base=base.filter(p=>p.off>=15);
+ const catC={};base.forEach(p=>catC[p.cat]=(catC[p.cat]||0)+1);
+ let l=S.cat==="All"?base:base.filter(p=>p.cat===S.cat);
+ const brC={};l.forEach(p=>brC[p.brand]=(brC[p.brand]||0)+1);
+ if(S.brands.length)l=l.filter(p=>S.brands.includes(p.brand));
+ if(S.price){const [a,b]=S.price.split("-");l=l.filter(p=>p.price>=+a&&(b===""||p.price<+b))}
+ if(S.rating)l=l.filter(p=>p.rating>=S.rating);
+ if(S.fast)l=l.filter(p=>p.days+zone()<=1);
+ const so={rel:(a,b)=>b.reviews-a.reviews,low:(a,b)=>a.price-b.price,high:(a,b)=>b.price-a.price,rating:(a,b)=>b.rating-a.rating||b.reviews-a.reviews,deal:(a,b)=>b.off-a.off}[S.sort];
+ l=[...l].sort(so);
+ return {l,catC,brC,total:base.length};
+}
+function searchBody(){
+ const S=state.s,d=searchData(),per=12,pages=Math.max(1,Math.ceil(d.l.length/per));S.page=Math.min(S.page,pages);
+ const from=(S.page-1)*per,list=d.l.slice(from,from+per);
+ const title=S.deal?"Today’s deals":S.q?`Results for “${esc(S.q)}”`:S.cat!=="All"?S.cat:"All products";
+ const active=S.brands.length||S.price||S.rating||S.fast||S.cat!=="All";
+ const filters=`<div class="fgroup"><h3>Category</h3><ul class="flist"><li><button type="button" class="fl ${S.cat==="All"?"on":""}" data-act="fcat" data-c="All">All categories <span>${d.total}</span></button></li>${CATS.filter(c=>d.catC[c]).map(c=>`<li><button type="button" class="fl ${S.cat===c?"on":""}" data-act="fcat" data-c="${c}">${c} <span>${d.catC[c]}</span></button></li>`).join("")}</ul></div>
+ <div class="fgroup"><h3>Customer reviews</h3>${[4,3].map(r=>`<button type="button" class="fl ${S.rating===r?"on":""}" data-act="frate" data-r="${r}">${stars(r)} &amp; up</button>`).join("")}</div>
+ ${Object.keys(d.brC).length>1?`<div class="fgroup"><h3>Brand</h3>${Object.keys(d.brC).sort().map(b=>`<label class="chk"><input type="checkbox" data-f="brand" value="${esc(b)}" ${S.brands.includes(b)?"checked":""}> ${esc(b)} <span>${d.brC[b]}</span></label>`).join("")}</div>`:""}
+ <div class="fgroup"><h3>Price</h3>${PRICES.map(([v,l])=>`<label class="chk"><input type="radio" name="price" data-f="price" value="${v}" ${S.price===v?"checked":""}> ${l}</label>`).join("")}</div>
+ <div class="fgroup"><h3>Delivery</h3><label class="chk"><input type="checkbox" data-f="fast" ${S.fast?"checked":""}> ${ic("bolt",13)} Fast: delivery by tomorrow</label></div>
+ <div class="fgroup"><h3>Deals</h3><label class="chk"><input type="checkbox" data-f="deal" ${S.deal?"checked":""}> Today’s deals (15%+ off)</label></div>${active?`<button class="btn line sm" type="button" data-act="fclear">Clear all filters</button>`:""}`;
+ const pg=pages>1?`<nav class="pager" aria-label="Pagination"><button class="btn line sm" type="button" data-act="page" data-p="${S.page-1}" ${S.page<=1?"disabled":""}>Previous</button>${Array.from({length:pages},(_,i)=>`<button class="btn line sm ${S.page===i+1?"cur":""}" type="button" data-act="page" data-p="${i+1}" ${S.page===i+1?'aria-current="page"':""}>${i+1}</button>`).join("")}<button class="btn line sm" type="button" data-act="page" data-p="${S.page+1}" ${S.page>=pages?"disabled":""}>Next</button></nav>`:"";
+ return `<div class="shead"><div><h1>${title}</h1><p class="muted" aria-live="polite">${d.l.length?`${from+1}–${from+list.length} of ${d.l.length} results`:"No results"}</p></div><label class="sortl">Sort by <select id="sort" class="field"><option value="rel" ${S.sort==="rel"?"selected":""}>Featured</option><option value="low" ${S.sort==="low"?"selected":""}>Price: low to high</option><option value="high" ${S.sort==="high"?"selected":""}>Price: high to low</option><option value="rating" ${S.sort==="rating"?"selected":""}>Avg. customer review</option><option value="deal" ${S.sort==="deal"?"selected":""}>Biggest discount</option></select></label></div>
+ <div class="slayout"><aside class="card filters"><details class="fdet" ${innerWidth>900?"open":""}><summary>Filters${active?" (on)":""}</summary>${filters}</details></aside>
+ <div>${list.length?`<div class="pgrid">${list.map(pcard).join("")}</div>${pg}`:`<section class="card pad center"><h2>No results found</h2><p class="muted">Try fewer filters or a different word, such as “cement”, “TMT” or “tiles”.</p>${active?`<button class="btn yellow" type="button" data-act="fclear">Clear filters</button>`:""}</section>`}</div></div>`;
+}
+const VIEWS_search=()=>`<div class="wrap"><div id="srch">${searchBody()}</div></div>`;
+const renderSearch=()=>{const f=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.f;$("#srch").innerHTML=searchBody();if(f){const e=$(`[data-f="${f}"]`);e&&e.focus&&0}};
+function openSearch(o={}){Object.assign(state.s,{q:"",cat:"All",sort:"rel",page:1,brands:[],price:"",rating:0,fast:false,deal:false},o);go("search")}
+
+/* ---------- product ---------- */
+const PAIR={Cement:["Sand","Steel"],Steel:["Cement","Bricks"],Sand:["Cement","Bricks"],Bricks:["Cement","Sand"],Blocks:["Cement","Ready mix"],"Ready mix":["Steel","Sand"],Tiles:["Paint","Cement"],Plumbing:["Electrical","Paint"],Electrical:["Plumbing","Safety"],Paint:["Tiles","Doors and windows"],"Doors and windows":["Paint","Safety"],Safety:["Steel","Cement"]};
+const topRated=c=>PRODUCTS.filter(p=>p.cat===c).sort((a,b)=>b.rating-a.rating||b.reviews-a.reviews)[0];
+const getQty=id=>Math.max(1,state.q&&state.q[id]||1);
+function galleryMain(p,i){
+ if(i===1)return `<svg viewBox="0 0 360 260" class="gspec" role="img" aria-label="Key specifications"><rect width="360" height="260" fill="#0B1F3A"/><path d="M0 40H360M0 80H360M0 120H360M0 160H360M0 200H360M0 240H360M40 0V260M80 0V260M120 0V260M160 0V260M200 0V260M240 0V260M280 0V260M320 0V260" stroke="#fff" stroke-opacity=".06"/><text x="24" y="42" fill="#FFC72C" font-family="Arial" font-weight="700" font-size="14">KEY SPECIFICATIONS</text>${p.specs.map((s,k)=>`<text x="24" y="${86+k*46}" fill="#fff" font-family="Arial" font-size="15">${esc(s.length>38?s.slice(0,37)+"…":s)}</text>`).join("")}<text x="24" y="238" fill="#9FB6D6" font-family="Arial" font-size="12">${esc(p.brand)} · ${esc(p.unit)}</text></svg>`;
+ if(i===2)return `<div class="gscene"><svg viewBox="0 0 360 260" role="img" aria-label="${esc(p.cat)} on a construction site"><rect width="360" height="260" fill="#102B52"/><circle cx="300" cy="50" r="22" fill="#FFC72C"/><rect y="200" width="360" height="60" fill="#091A33"/><rect y="200" width="360" height="3" fill="#FFC72C"/><path d="M40 200V70M52 200V70M40 80L52 104M52 80L40 104M40 110L52 134M52 110L40 134M40 140L52 164M52 140L40 164M20 70H150" stroke="#FFC72C" stroke-width="2" fill="none"/><rect x="190" y="110" width="110" height="90" fill="#C4CEDB"/><rect x="190" y="110" width="110" height="8" fill="#7E8CA3"/></svg><span class="gart">${art(p.cat)}</span></div>`;
+ return `<div class="gmain" style="--h:${HUE[p.cat]}">${art(p.cat)}</div>`;
+}
+function buyBox(p){
+ const si=state.sel[p.id]||0,sl=sellers(p),c=sl[si],q=getQty(p.id),u=unitPrice(p,si,q),w=wish().includes(p.id);
+ const tier=[...BULK].reverse().find(b=>q>=b[0]);
+ return `<div class="pr big"><span class="price"><sup>₹</sup><span id="bpv">${fmt(u)}</span></span><span class="mrp">per ${esc(p.unit)}</span></div>
+ <div class="muted" id="bnote">${tier?`Bulk price applied: ${tier[1]}% off`:"Inclusive of all taxes"}</div>
+ <div class="dl">${deliv({...p,days:c.d})}<button class="lnk" type="button" data-act="pin">${ic("pin",14)} Deliver to ${esc(cityOf(DB.pin))} ${esc(DB.pin)}</button></div>
+ <div class="${p.stock<=15?"low":"instock"}">${p.stock<=15?`Only ${p.stock} left in stock, order soon`:"In stock"}</div>
+ <label class="qrow">Quantity <span class="stp"><button type="button" data-act="bq" data-d="-1" aria-label="Fewer">${ic("minus",14)}</button><input id="bq" type="number" min="1" max="${p.stock}" value="${q}" aria-label="Quantity"><button type="button" data-act="bq" data-d="1" aria-label="More">${ic("plus",14)}</button></span></label>
+ <button class="btn yellow wide" type="button" data-act="add" data-id="${p.id}" data-q="1">Add to cart</button><button class="btn orange wide" type="button" data-act="buynow" data-id="${p.id}">Buy now</button>
+ <dl class="seller"><dt>Sold by</dt><dd>${esc(c.n)}${c.v?` <span class="vf">${ic("check",12)}Verified</span>`:""}</dd><dt>Payment</dt><dd>${ic("lock",12)} Secure transaction</dd><dt>Returns</dt><dd>7-day replacement for damaged items</dd></dl>
+ <button class="btn line wide" type="button" data-act="wish" data-id="${p.id}" aria-pressed="${w}">${ic("heart",16)} ${w?"In your wish list":"Add to wish list"}</button>`;
+}
+const VIEWS_product=id=>{
+ const p=P(id);if(!p)return nf();pushRecent(p.id);
+ const si=state.sel[p.id]||0,sl=sellers(p),rv=reviewsFor(p),hs=hist(p.rating),simil=PRODUCTS.filter(x=>x.cat===p.cat&&x.id!==p.id).concat(PRODUCTS.filter(x=>x.cat!==p.cat&&x.id!==p.id).sort((a,b)=>b.reviews-a.reviews)).slice(0,10);
+ const fbt=[p,...PAIR[p.cat].map(topRated)].filter(Boolean);
+ state.fbt=fbt.map(x=>x.id);
+ const tot=fbt.reduce((a,x)=>a+x.price,0);
+ const specRows=[...p.specs.map(s=>s.split(": ")),["Brand",p.brand],["Pack",p.unit],["Category",p.cat],["Country of origin","India"]];
+ return `<div class="wrap"><nav class="crumb" aria-label="Breadcrumb"><a href="#/search" data-go="cat/All">All products</a> › <a href="#/search" data-go="cat/${p.cat}">${p.cat}</a></nav>
+ <div class="pgrid3"><section class="gal" aria-label="Product images"><div class="thumbs">${[0,1,2].map(i=>`<button type="button" data-act="img" data-i="${i}" aria-label="Image ${i+1}" aria-current="${i===0}" class="${i===0?"on":""}">${i===0?`<span style="--h:${HUE[p.cat]}">${art(p.cat)}</span>`:i===1?`<span class="tspec">Specs</span>`:`<span class="tspec">On site</span>`}</button>`).join("")}</div><div id="gal" class="galmain">${galleryMain(p,0)}</div></section>
+ <section class="info"><a class="brand" href="#/search" data-go="brand/${esc(p.brand)}">Visit the ${esc(p.brand)} store</a><h1>${esc(p.name)}</h1>
+ <div class="rate big"><b>${p.rating}</b>${stars(p.rating)}<a href="#reviews" data-act="toreviews">${fmt(p.reviews)} ratings</a>${p.best?`<span class="tagbest inl">Best seller in ${p.cat}</span>`:""}</div><hr>
+ <div class="ipr"><span class="off" id="ioff">-${Math.round((1-sl[si].price/p.mrp)*100)}%</span> <span class="price big"><sup>₹</sup><span id="ip">${fmt(sl[si].price)}</span></span></div><div class="mrp">M.R.P.: <s>${inr(p.mrp)}</s> <span class="muted">Inclusive of all taxes</span></div>
+ <div class="bulk"><b>${ic("tag",15)} Buy more, save more</b><div class="bulkrow">${BULK.map(b=>`<span><b>${b[0]}+</b> units<br>${b[1]}% off</span>`).join("")}</div></div>
+ <h3>About this item</h3><ul class="about">${p.specs.map(s=>`<li>${esc(s)}</li>`).join("")}<li>Sold per ${esc(p.unit)}. GST invoice available for business purchases.</li><li>Delivered to your site by BuildGrid logistics with live tracking.</li></ul></section>
+ <aside class="card buy" id="buy" aria-label="Buy box">${buyBox(p)}</aside></div>
+ <section class="card pad sellers"><h2>Other sellers on BuildGrid</h2><div class="tw"><table><thead><tr><th></th><th>Seller</th><th class="n">Price</th><th>Delivery</th><th>Rating</th></tr></thead><tbody id="sbody">${sl.map((s,i)=>`<tr><td><input type="radio" name="seller" data-act="seller" data-i="${i}" ${i===si?"checked":""} aria-label="Choose ${esc(s.n)}"></td><td>${esc(s.n)} ${s.v?`<span class="vf">${ic("check",12)}Verified</span>`:""}</td><td class="n"><b>${inr(s.price)}</b></td><td>${etaText(s.d)}</td><td>${s.r.toFixed(1)} ★</td></tr>`).join("")}</tbody></table></div></section>
+ <section class="card pad fbt"><h2>Frequently bought together</h2><div class="fbtrow">${fbt.map((x,i)=>`${i?`<span class="plus">+</span>`:""}<label class="fbi"><input type="checkbox" data-f="fbt" value="${x.id}" checked><span class="fa" style="--h:${HUE[x.cat]}">${art(x.cat)}</span><span class="ft">${i?"":"This item: "}${esc(x.name)}</span><b>${inr(x.price)}</b></label>`).join("")}<div class="fsum"><span class="muted">Total price</span><b id="ftot">${inr(tot)}</b><button class="btn yellow" type="button" data-act="addfbt">Add selected to cart</button></div></div></section>
+ <section class="card pad"><h2>Product details</h2><div class="tw"><table class="spec"><tbody>${specRows.map(r=>`<tr><th>${esc(r[0])}</th><td>${esc(r[1]||"")}</td></tr>`).join("")}</tbody></table></div></section>
+ <section class="card pad revs" id="reviews"><div class="rvgrid"><div><h2>Customer reviews</h2><div class="rate big"><b>${p.rating}</b>${stars(p.rating)}<span>out of 5</span></div><p class="muted">${fmt(p.reviews)} global ratings</p>${hs.map((v,i)=>`<div class="hrow"><span>${5-i} star</span><i><b style="width:${v}%"></b></i><span>${v}%</span></div>`).join("")}<hr><h3>Review this product</h3><p class="muted">Share your thoughts with other customers.</p><button class="btn line" type="button" data-act="review" data-id="${p.id}">Write a customer review</button></div>
+ <div class="rvlist">${rv.map((r,i)=>{const k=p.id+":"+i,n=DB.helpful[k]||0;return `<article class="rv"><div class="rvh"><span class="av">${esc(r.name[0])}</span><b>${esc(r.name)}</b></div><div class="rate">${stars(r.stars)}<b>${esc(r.title)}</b></div><small class="muted">Reviewed on ${new Date(r.t).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"})} · <span class="vf">Verified purchase</span></small><p>${esc(r.body)}</p><button class="btn line sm" type="button" data-act="helpful" data-k="${k}">${n?`${n} found this helpful`:"Helpful"}</button></article>`}).join("")}</div></div></section>
+ ${rowSec("Customers also viewed",simil)}</div>`;
+};
+function updateBuy(){
+ const m=location.hash.match(/product\/(\d+)/),p=P(m?m[1]:currentArg);if(!p)return;
+ const q=getQty(p.id),si=state.sel[p.id]||0,u=unitPrice(p,si,q),tier=[...BULK].reverse().find(b=>q>=b[0]);
+ const a=$("#bpv");if(a)a.textContent=fmt(u);const n=$("#bnote");if(n)n.textContent=tier?`Bulk price applied: ${tier[1]}% off`:"Inclusive of all taxes";
+ const ip=$("#ip");if(ip)ip.textContent=fmt(sellers(p)[si].price);const io=$("#ioff");if(io)io.textContent="-"+Math.round((1-sellers(p)[si].price/p.mrp)*100)+"%";
+}
+
+/* ---------- cart ---------- */
+const emptyCart=()=>`<div class="wrap"><section class="card pad center"><div class="bigic">${ic("cart",48)}</div><h1>Your cart is empty</h1><p class="muted">Add cement, steel, tiles and more, then come back here to check out.</p><button class="btn yellow" type="button" data-go="home">Continue shopping</button></section></div>`;
+const citem=l=>{const k=l.id+":"+l.s;return `<div class="citem"><a class="cimg" href="#/product/${l.id}" data-go="product/${l.id}" style="--h:${HUE[l.p.cat]}">${art(l.p.cat)}</a><div class="cinfo"><a class="ptitle" href="#/product/${l.id}" data-go="product/${l.id}">${esc(l.p.name)}</a><div class="instock">${l.p.stock<=15?`<span class="low">Only ${l.p.stock} left</span>`:"In stock"}</div><div class="muted">Sold by ${esc(sellers(l.p)[l.s].n)} · Delivery ${etaText(sellers(l.p)[l.s].d)}</div>${l.bulk?`<div class="bulkn">${ic("tag",13)} Bulk price applied</div>`:""}
+ <div class="cact"><span class="stp"><button type="button" data-act="cq" data-k="${k}" data-d="-1" aria-label="Fewer">${ic("minus",14)}</button><input class="cqi" data-k="${k}" type="number" min="1" max="${l.p.stock}" value="${l.q}" aria-label="Quantity"><button type="button" data-act="cq" data-k="${k}" data-d="1" aria-label="More">${ic("plus",14)}</button></span><button class="lnk" type="button" data-act="cdel" data-k="${k}">Delete</button><button class="lnk" type="button" data-act="csave" data-k="${k}">Save for later</button></div></div><div class="cprice"><b>${inr(l.total)}</b><small>${inr(l.u)} each</small></div></div>`};
+const VIEWS_cart=()=>{
+ const all=cart();if(!all.length)return emptyCart();
+ const ls=mkLines(all),saved=all.filter(x=>x.saved),t=calc(ls,DB.coupon),left=Math.max(0,5000-t.sub);
+ return `<div class="wrap"><div class="cartgrid"><section class="card pad"><div class="ph"><h1>Shopping cart</h1><span class="muted">Price</span></div>${ls.length?ls.map(citem).join(""):`<p class="muted">All items are saved for later.</p>`}<div class="csub">Subtotal (${t.items} item${t.items===1?"":"s"}): <b>${inr(t.sub)}</b></div></section>
+ <aside class="card pad csum"><div class="fship"><div class="meter"><i style="width:${Math.min(100,t.sub/5000*100)}%"></i></div><p>${left?`Add <b>${inr(left)}</b> more for <b>FREE delivery</b>`:`${ic("check",15)} Your order qualifies for <b>FREE delivery</b>`}</p></div>
+ <div class="sumrow">Items<b>${inr(t.sub)}</b></div>${t.disc?`<div class="sumrow ok">Coupon ${esc(t.code)}<b>-${inr(t.disc)}</b></div>`:""}<div class="sumrow">Delivery<b>${t.ship?inr(t.ship):"FREE"}</b></div><div class="sumrow total">Order total<b>${inr(t.total)}</b></div><div class="muted sm">Includes GST of ${inr(t.gst)}</div>
+ <form id="cpForm" class="cpn"><label class="sr" for="cpIn">Coupon code</label><input id="cpIn" class="field" placeholder="Coupon code (try BUILD10)" value="${esc(DB.coupon||"")}" autocomplete="off"><button class="btn line" type="submit">Apply</button></form>${DB.coupon?`<div class="${t.code?"cpok":"cperr"}" role="status">${esc(t.msg)} ${t.code?"":`<button class="lnk" type="button" data-act="cpclear">Remove</button>`}</div>`:""}
+ <button class="btn yellow wide" type="button" data-act="checkout" ${ls.length?"":"disabled"}>Proceed to Buy</button></aside></div>
+ ${saved.length?`<section class="card pad"><h2>Saved for later (${saved.length})</h2>${saved.map(x=>{const p=P(x.id);return `<div class="citem"><a class="cimg" href="#/product/${p.id}" data-go="product/${p.id}" style="--h:${HUE[p.cat]}">${art(p.cat)}</a><div class="cinfo"><a class="ptitle" href="#/product/${p.id}" data-go="product/${p.id}">${esc(p.name)}</a><div class="cact"><button class="lnk" type="button" data-act="cmove" data-k="${x.id}:${x.s}">Move to cart</button><button class="lnk" type="button" data-act="cdel" data-k="${x.id}:${x.s}">Delete</button></div></div><div class="cprice"><b>${inr(unitPrice(p,x.s,x.q))}</b></div></div>`}).join("")}</section>`:""}
+ ${rowSec("Pairs well with your cart",[...new Set(all.flatMap(x=>PAIR[P(x.id).cat]).map(topRated))].filter(p=>p&&!all.some(x=>x.id===p.id)).slice(0,8))}</div>`;
+};
+function addToCart(id,q=1,s){
+ const p=P(id);s=s==null?(state.sel[id]||0):s;const c=cart(),ex=c.find(x=>x.id===+id&&x.s===s&&!x.saved);
+ if(p.stock<=0){toast("This item is out of stock");return false}
+ if(ex)ex.q=Math.min(p.stock,ex.q+q);else c.push({id:+id,s,q:Math.min(p.stock,q),saved:false});
+ save();renderHeader();return true;
+}
+
+/* ---------- checkout ---------- */
+const STATES=["Karnataka","Maharashtra","Delhi","Telangana","Tamil Nadu","West Bengal","Gujarat","Rajasthan","Kerala","Uttar Pradesh"];
+const fld=(l,n,a="")=>`<label class="fl2">${l}<input class="field" name="${n}" ${a}><small class="ferr" data-e="${n}"></small></label>`;
+const addrForm=()=>`<div id="naBox" class="naform"><div class="two">${fld("Full name","na_name",'autocomplete="name"')}${fld("Mobile number","na_phone",'inputmode="numeric" maxlength="10" autocomplete="tel-national"')}</div><div class="two">${fld("Pincode","na_pin",'inputmode="numeric" maxlength="6" autocomplete="postal-code"')}${fld("Town / City","na_city",'autocomplete="address-level2"')}</div>${fld("Flat, house, building or site address","na_line",'autocomplete="street-address"')}<label class="fl2">State<select class="field" name="na_state">${STATES.map(s=>`<option>${s}</option>`).join("")}</select></label><label class="chk"><input type="checkbox" name="na_def" checked> Make this my default address</label></div>`;
+const VIEWS_checkout=()=>{
+ const u=user();if(!u){state.pend={go:"checkout"};setTimeout(()=>openAuth("login",{go:"checkout"}),0);return authPrompt("Sign in to check out")}
+ const src=state.buy?[state.buy]:cart(),ls=mkLines(src);if(!ls.length)return emptyCart();
+ const t=calc(ls,state.buy?null:DB.coupon),ad=addrs();
+ if(!state.co.addr||(state.co.addr!=="new"&&!ad.some(a=>a.id===state.co.addr)))state.co.addr=(ad.find(a=>a.def)||ad[0]||{id:"new"}).id;
+ return `<div class="wrap"><h1 class="chead">Checkout <small>(${t.items} item${t.items===1?"":"s"})</small></h1><div class="cogrid"><div>
+ <section class="card pad"><h2><span class="num">1</span> Delivery address</h2>${ad.map(a=>`<label class="radio"><input type="radio" name="addr" value="${a.id}" ${state.co.addr===a.id?"checked":""}><span><b>${esc(a.name)}</b>, ${esc(a.line)}, ${esc(a.city)}, ${esc(a.state)} ${esc(a.pin)}<br><small class="muted">Phone: ${esc(a.phone)}${a.def?" · Default":""}</small></span></label>`).join("")}<label class="radio"><input type="radio" name="addr" value="new" ${state.co.addr==="new"?"checked":""}><span><b>Add a new delivery address</b></span></label><div id="naWrap" ${state.co.addr==="new"?"":"hidden"}>${addrForm()}</div><small class="ferr" data-e="addr"></small></section>
+ <section class="card pad"><h2><span class="num">2</span> Payment method</h2>
+  <label class="radio"><input type="radio" name="pay" value="upi" checked><span><b>UPI</b> <small class="muted">Google Pay, PhonePe, Paytm and others</small></span></label><div class="psub" data-p="upi">${fld("UPI ID","upi_id",'placeholder="name@bank" autocomplete="off"')}</div>
+  <label class="radio"><input type="radio" name="pay" value="card"><span><b>Credit or debit card</b></span></label><div class="psub" data-p="card" hidden>${fld("Card number","c_no",'inputmode="numeric" maxlength="19" placeholder="1234 5678 9012 3456" autocomplete="cc-number"')}<div class="two">${fld("Expiry (MM/YY)","c_exp",'maxlength="5" placeholder="MM/YY" autocomplete="cc-exp"')}${fld("CVV","c_cvv",'inputmode="numeric" maxlength="4" type="password" autocomplete="cc-csc"')}</div>${fld("Name on card","c_name",'autocomplete="cc-name"')}</div>
+  <label class="radio"><input type="radio" name="pay" value="nb"><span><b>Net banking</b></span></label><div class="psub" data-p="nb" hidden><label class="fl2">Choose a bank<select class="field" name="nb_bank"><option value="">Select</option><option>State Bank of India</option><option>HDFC Bank</option><option>ICICI Bank</option><option>Axis Bank</option><option>Kotak Mahindra Bank</option></select><small class="ferr" data-e="nb_bank"></small></label></div>
+  <label class="radio"><input type="radio" name="pay" value="cod"><span><b>Cash on delivery</b> <small class="muted">Available up to ₹50,000</small></span></label><div class="psub" data-p="cod" hidden><small class="muted">Pay in cash or UPI to the delivery partner when your order arrives.</small></div><small class="ferr" data-e="pay"></small></section>
+ <section class="card pad"><h2><span class="num">3</span> Review items and delivery</h2>${ls.map(l=>`<div class="citem sm"><span class="cimg" style="--h:${HUE[l.p.cat]}">${art(l.p.cat)}</span><div class="cinfo"><b>${esc(l.p.name)}</b><div class="muted">Qty ${l.q} · ${inr(l.u)} each</div><div class="okt">${ic("truck",14)} Delivery by ${etaText(sellers(l.p)[l.s].d)}</div></div><div class="cprice"><b>${inr(l.total)}</b></div></div>`).join("")}</section></div>
+ <aside class="card pad csum sticky"><button class="btn yellow wide" type="button" data-act="place">Place your order</button><p class="muted sm center">By placing your order, you agree to BuildGrid’s conditions of use.</p><h3>Order summary</h3><div class="sumrow">Items<b>${inr(t.sub)}</b></div><div class="sumrow">Delivery<b>${t.ship?inr(t.ship):"FREE"}</b></div>${t.disc?`<div class="sumrow ok">Coupon ${esc(t.code)}<b>-${inr(t.disc)}</b></div>`:""}<div class="sumrow total">Order total<b>${inr(t.total)}</b></div><div class="muted sm">Includes GST of ${inr(t.gst)}</div></aside></div></div>`;
+};
+const luhn=n=>{let s=0,d=false;for(let i=n.length-1;i>=0;i--){let x=+n[i];if(d){x*=2;if(x>9)x-=9}s+=x;d=!d}return s%10===0};
+function placeOrder(){
+ const src=state.buy?[state.buy]:cart(),ls=mkLines(src);if(!ls.length){go("cart");return}
+ const t=calc(ls,state.buy?null:DB.coupon),E={},v=n=>($(`[name=${n}]`)||{value:""}).value.trim();
+ $$(".ferr").forEach(e=>e.textContent="");
+ let addr;const sel=($("input[name=addr]:checked")||{}).value;
+ if(sel==="new"||!sel){
+  const a={id:"a"+Date.now(),name:v("na_name"),phone:v("na_phone"),pin:v("na_pin"),line:v("na_line"),city:v("na_city"),state:v("na_state"),def:!!($("[name=na_def]")||{}).checked};
+  if(a.name.length<2)E.na_name="Enter the recipient’s name";if(!/^[6-9]\d{9}$/.test(a.phone))E.na_phone="Enter a valid 10-digit mobile number";
+  if(!/^\d{6}$/.test(a.pin))E.na_pin="Enter a 6-digit pincode";if(a.city.length<2)E.na_city="Enter your town or city";if(a.line.length<5)E.na_line="Enter the site or house address";
+  addr=a;
+ }else addr=addrs().find(a=>a.id===sel);
+ const pay=($("input[name=pay]:checked")||{}).value;let payLabel="";
+ if(pay==="upi"){if(!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(v("upi_id")))E.upi_id="Enter a valid UPI ID, like name@bank";payLabel="UPI"}
+ else if(pay==="card"){const n=v("c_no").replace(/\s/g,""),ex=v("c_exp").match(/^(\d{2})\/(\d{2})$/);
+  if(!/^\d{13,19}$/.test(n)||!luhn(n))E.c_no="Enter a valid card number (try 4242 4242 4242 4242)";
+  if(!ex||+ex[1]<1||+ex[1]>12||new Date(2000+ +ex[2],+ex[1],0)<new Date())E.c_exp="Enter a valid, future expiry date";
+  if(!/^\d{3,4}$/.test(v("c_cvv")))E.c_cvv="Enter the CVV";if(v("c_name").length<2)E.c_name="Enter the name on the card";payLabel="Card ending "+n.slice(-4)}
+ else if(pay==="nb"){if(!v("nb_bank"))E.nb_bank="Choose your bank";payLabel="Net banking, "+v("nb_bank")}
+ else if(pay==="cod"){if(t.total>50000)E.pay="Cash on delivery is not available above ₹50,000";payLabel="Cash on delivery"}
+ else E.pay="Choose a payment method";
+ const keys=Object.keys(E);
+ if(keys.length){keys.forEach(k=>{const e=$(`[data-e="${k}"]`);if(e)e.textContent=E[k]});const f=$(`[name=${keys[0]}]`)||$(`[data-e="${keys[0]}"]`);f&&f.scrollIntoView&&f.scrollIntoView({block:"center"});f&&f.focus&&f.focus();toast("Please fix the highlighted fields");return}
+ if(sel==="new"||!sel){const l=addrs();if(addr.def)l.forEach(x=>x.def=false);l.push(addr)}
+ let id;do{id="BG-"+(100000+Math.floor(Math.random()*899999))}while(DB.orders.some(o=>o.id===id));
+ const now=Date.now(),maxD=Math.max(...ls.map(l=>sellers(l.p)[l.s].d));
+ DB.orders.push({id,user:DB.session,created:now,items:ls.map(l=>({id:l.id,name:l.p.name,cat:l.p.cat,unit:l.u,q:l.q,total:l.total,seller:sellers(l.p)[l.s].n})),t:{sub:t.sub,ship:t.ship,disc:t.disc,total:t.total,gst:t.gst,code:t.code},addr,pay:payLabel,eta:etaDate(maxD).getTime(),stage:0,times:[now],cancelled:false});
+ ls.forEach(l=>{const p=P(l.id);p.stock=Math.max(0,p.stock-l.q)});
+ if(!state.buy){DB.carts[owner()]=cart().filter(x=>x.saved);DB.coupon=null}
+ state.buy=null;state.co.addr=null;save();renderHeader();go("thanks/"+id);
+}
+const VIEWS_thanks=id=>{const o=DB.orders.find(x=>x.id===id);if(!o)return nf();return `<div class="wrap"><section class="card pad thanks"><div class="tick">${ic("check",34)}</div><h1>Order placed, thank you!</h1><p>Confirmation #<b>${o.id}</b> · Estimated delivery <b>${new Date(o.eta).toLocaleDateString("en-IN",{weekday:"long",day:"numeric",month:"long"})}</b></p><p class="muted">Paid with ${esc(o.pay)}. We will update you as your order is packed and shipped.</p><div class="cta"><button class="btn yellow" type="button" data-go="order/${o.id}">Track your order</button><button class="btn line" type="button" data-go="home">Continue shopping</button></div></section>${orderCard(o,true)}</div>`};
+
+/* ---------- orders ---------- */
+const STAGES=["Ordered","Packed","Shipped","Out for delivery","Delivered"];
+const myOrders=()=>DB.orders.filter(o=>o.user===DB.session).sort((a,b)=>b.created-a.created);
+const dShort=t=>new Date(t).toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
+const stLabel=o=>o.cancelled?"Cancelled":STAGES[o.stage];
+function orderCard(o,brief){
+ return `<section class="card ord"><div class="ohead"><div><small>ORDER PLACED</small><br>${dShort(o.created)}</div><div><small>TOTAL</small><br>${inr(o.t.total)}</div><div><small>SHIP TO</small><br>${esc(o.addr.name)}</div><div class="oid"><small>ORDER # ${o.id}</small><br>${brief?"":`<a href="#/order/${o.id}" data-go="order/${o.id}">View order details</a>`}</div></div>
+ <div class="obody"><h2 class="ostat ${o.cancelled?"bad":o.stage===4?"ok":""}">${o.cancelled?"Cancelled":o.stage===4?"Delivered":"Arriving "+dShort(o.eta)}</h2><p class="muted">${stLabel(o)}</p>${o.items.map(i=>`<div class="citem sm"><a class="cimg" href="#/product/${i.id}" data-go="product/${i.id}" style="--h:${HUE[i.cat]}">${art(i.cat)}</a><div class="cinfo"><a class="ptitle" href="#/product/${i.id}" data-go="product/${i.id}">${esc(i.name)}</a><div class="muted">Qty ${i.q} · Sold by ${esc(i.seller)}</div><div class="cact"><button class="btn yellow sm" type="button" data-act="reorder" data-id="${i.id}" data-q="${i.q}">Buy it again</button>${o.stage===4?`<button class="btn line sm" type="button" data-act="review" data-id="${i.id}">Write a review</button>`:""}</div></div><div class="cprice"><b>${inr(i.total)}</b></div></div>`).join("")}${brief?"":`<button class="btn line" type="button" data-go="order/${o.id}">Track package</button>`}</div></section>`;
+}
+const VIEWS_orders=()=>{if(!user())return authPrompt("Sign in to see your orders");const l=myOrders();return `<div class="wrap"><h1 class="chead">Your orders</h1>${l.length?l.map(o=>orderCard(o)).join(""):`<section class="card pad center"><div class="bigic">${ic("box",48)}</div><h2>You have no orders yet</h2><p class="muted">When you place an order it will show up here.</p><button class="btn yellow" type="button" data-go="home">Start shopping</button></section>`}</div>`};
+const VIEWS_order=id=>{
+ if(!user())return authPrompt("Sign in to track your order");const o=myOrders().find(x=>x.id===id);if(!o)return nf();
+ return `<div class="wrap"><nav class="crumb"><a href="#/orders" data-go="orders">Your orders</a> › Order ${o.id}</nav><h1 class="chead">Order details</h1>
+ <section class="card pad"><h2>${o.cancelled?"This order was cancelled":o.stage===4?"Delivered":"Arriving "+dShort(o.eta)}</h2>${o.cancelled?"":`<ol class="track">${STAGES.map((s,i)=>`<li class="${i<o.stage?"done":i===o.stage?"cur":""}"><span class="dotn">${i<=o.stage?ic("check",13):""}</span><b>${s}</b><small>${o.times[i]?new Date(o.times[i]).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}):""}</small></li>`).join("")}</ol><div class="cta">${o.stage<4?`<button class="btn line" type="button" data-act="simulate" data-id="${o.id}">Simulate next update (demo)</button>`:""}${o.stage<2?`<button class="btn line" type="button" data-act="cancel" data-id="${o.id}">Cancel order</button>`:""}</div>`}</section>
+ <div class="cols2"><section class="card pad"><h3>Shipping address</h3><p>${esc(o.addr.name)}<br>${esc(o.addr.line)}<br>${esc(o.addr.city)}, ${esc(o.addr.state)} ${esc(o.addr.pin)}<br>Phone: ${esc(o.addr.phone)}</p><h3>Payment method</h3><p>${esc(o.pay)}</p></section>
+ <section class="card pad csum"><h3>Order summary</h3><div class="sumrow">Items<b>${inr(o.t.sub)}</b></div><div class="sumrow">Delivery<b>${o.t.ship?inr(o.t.ship):"FREE"}</b></div>${o.t.disc?`<div class="sumrow ok">Coupon ${esc(o.t.code)}<b>-${inr(o.t.disc)}</b></div>`:""}<div class="sumrow total">Grand total<b>${inr(o.t.total)}</b></div><div class="muted sm">Includes GST of ${inr(o.t.gst)}</div></section></div>${orderCard(o,true)}</div>`;
+};
+
+/* ---------- wishlist and account ---------- */
+const VIEWS_wishlist=()=>{const l=wish().map(P).filter(Boolean);return `<div class="wrap"><h1 class="chead">Your wish list</h1>${l.length?`<div class="pgrid">${l.map(pcard).join("")}</div>`:`<section class="card pad center"><div class="bigic">${ic("heart",48)}</div><h2>Your wish list is empty</h2><p class="muted">Tap the heart on any product to save it here.</p><button class="btn yellow" type="button" data-go="home">Browse products</button></section>`}</div>`};
+const VIEWS_account=()=>{
+ const u=user();if(!u)return authPrompt("Sign in to manage your account");const ad=addrs();
+ return `<div class="wrap"><h1 class="chead">Your account</h1><div class="agrid">
+ <button class="card pad atile" type="button" data-go="orders"><b>Your orders</b><span class="muted">${myOrders().length} order${myOrders().length===1?"":"s"}, tracking and re-orders</span></button>
+ <button class="card pad atile" type="button" data-go="wishlist"><b>Your wish list</b><span class="muted">${wish().length} saved item${wish().length===1?"":"s"}</span></button>
+ <section class="card pad atile"><b>Login and security</b><span class="muted">${esc(u.name)}<br>${esc(u.email)}</span></section></div>
+ <section class="card pad"><div class="ph"><h2>Your addresses</h2><button class="btn line sm" type="button" data-act="addaddr">${ic("plus",14)} Add address</button></div>${ad.length?`<div class="addrgrid">${ad.map(a=>`<div class="addr">${a.def?`<span class="pill">Default</span>`:""}<b>${esc(a.name)}</b><br>${esc(a.line)}<br>${esc(a.city)}, ${esc(a.state)} ${esc(a.pin)}<br>Phone: ${esc(a.phone)}<div class="cact">${a.def?"":`<button class="lnk" type="button" data-act="adef" data-id="${a.id}">Set as default</button>`}<button class="lnk" type="button" data-act="adel" data-id="${a.id}">Remove</button></div></div>`).join("")}</div>`:`<p class="muted">No saved addresses yet. You can add one here or at checkout.</p>`}</section>
+ <button class="btn line" type="button" data-act="logout">Sign out</button></div>`;
+};
+
+/* ---------- auth ---------- */
+function openAuth(mode="login",then=null){
+ state.pend=then;const reg=mode==="register";
+ openD(`<div class="authbox"><button class="x" type="button" data-act="dclose" aria-label="Close">${ic("x",18)}</button><h2>${reg?"Create account":"Sign in"}</h2>
+ <form id="authForm" data-m="${mode}" novalidate>${reg?fld("Your name","a_name",'autocomplete="name"'):""}${fld("Email","a_email",'type="email" autocomplete="email"')}${fld("Password"+(reg?" (at least 8 characters)":""),"a_pw",`type="password" autocomplete="${reg?"new-password":"current-password"}"`)}<small class="ferr" id="aerr" role="alert"></small><button class="btn yellow wide" type="submit">${reg?"Create your account":"Sign in"}</button></form>
+ <p class="muted sm">${reg?`Already have an account? <button class="lnk" type="button" data-act="auth" data-m="login">Sign in</button>`:`New to BuildGrid? <button class="lnk" type="button" data-act="auth" data-m="register">Create your account</button>`}</p><hr><button class="btn line wide" type="button" data-act="demo">Continue with a demo account</button><p class="muted sm center">Your account is stored only in this browser.</p></div>`);
+}
+function startSession(email){
+ const g=DB.carts.guest||[];DB.session=email;const c=cart();
+ g.forEach(x=>{const ex=c.find(y=>y.id===x.id&&y.s===x.s&&y.saved===x.saved);if(ex)ex.q=Math.min(P(x.id).stock,ex.q+x.q);else c.push(x)});
+ DB.carts.guest=[];save();closeD();renderHeader();
+ const pn=state.pend;state.pend=null;
+ if(pn&&pn.go)go(pn.go);else show(curPath);
+}
+function authSubmit(f){
+ const m=f.dataset.m,v=n=>f.querySelector(`[name=${n}]`).value.trim(),err=t=>{$("#aerr").textContent=t},email=v("a_email").toLowerCase(),pw=f.querySelector("[name=a_pw]").value;
+ if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))return err("Enter a valid email address");
+ if(m==="register"){
+  if(v("a_name").length<2)return err("Enter your name");if(pw.length<8)return err("Password must be at least 8 characters");
+  if(DB.users.some(u=>u.email===email))return err("An account with this email already exists");
+  const salt=newSalt();DB.users.push({email,name:v("a_name"),salt,hash:hashPw(pw,salt),created:Date.now()});startSession(email);toast("Welcome to BuildGrid, "+v("a_name").split(" ")[0]);
+ }else{
+  const u=DB.users.find(x=>x.email===email);if(!u||hashPw(pw,u.salt)!==u.hash)return err("Email or password is incorrect");
+  startSession(email);toast("Signed in");
+ }
+}
+function demoLogin(){
+ const email="demo@buildgrid.shop";
+ if(!DB.users.some(u=>u.email===email)){const salt=newSalt();DB.users.push({email,name:"Demo Builder",salt,hash:hashPw("demo1234",salt),created:Date.now()});DB.addr[email]=[{id:"a1",name:"Demo Builder",phone:"9876543210",pin:"560001",line:"Plot 14, Whitefield Main Road",city:"Bengaluru",state:"Karnataka",def:true}]}
+ startSession(email);toast("Signed in as the demo account");
+}
+
+/* ---------- header, menu, suggestions ---------- */
+function renderHeader(){
+ $("#cCount").textContent=cartCount();$("#dTo").textContent=cityOf(DB.pin)+" "+DB.pin;
+ const u=user();$("#aName").textContent=u?u.name.split(" ")[0]:"sign in";
+ $("#acctMenu").innerHTML=u?`<b>Hello, ${esc(u.name)}</b><button type="button" data-go="account">Your account</button><button type="button" data-go="orders">Your orders</button><button type="button" data-go="wishlist">Your wish list (${wish().length})</button><button type="button" data-act="logout">Sign out</button>`:`<button class="btn yellow wide" type="button" data-act="auth" data-m="login">Sign in</button><small>New customer? <button class="lnk" type="button" data-act="auth" data-m="register">Start here</button></small><button type="button" data-go="orders">Your orders</button><button type="button" data-go="wishlist">Your wish list</button>`;
+}
+function openMenu(on){$("#menu").classList.toggle("on",on);$("#scrim").classList.toggle("on",on);if(on)$("#menu button,#menu a").focus()}
+function suggest(q){
+ const box=$("#sugg");q=q.trim().toLowerCase();if(!q){box.hidden=true;return}
+ const prods=PRODUCTS.filter(p=>(p.name+" "+p.brand).toLowerCase().includes(q)).slice(0,5).map(p=>({t:p.name,go:"product/"+p.id,k:"p"}));
+ const cats=CATS.filter(c=>c.toLowerCase().includes(q)).slice(0,2).map(c=>({t:c,s:"in categories",go:"cat/"+c,k:"c"}));
+ const l=[...cats,...prods];if(!l.length){box.hidden=true;return}
+ box.innerHTML=l.map((x,i)=>`<button type="button" role="option" data-go="${esc(x.go)}" data-i="${i}" aria-selected="false">${ic("search",14)}<span>${esc(x.t)}</span>${x.s?`<small>${x.s}</small>`:""}</button>`).join("");box.hidden=false;
+}
+
+/* ---------- router ---------- */
+const VIEWS={home:VIEWS_home,search:VIEWS_search,product:VIEWS_product,cart:VIEWS_cart,checkout:VIEWS_checkout,thanks:VIEWS_thanks,orders:VIEWS_orders,order:VIEWS_order,wishlist:VIEWS_wishlist,account:VIEWS_account};
+const TITLES={home:"BuildGrid.shop: building materials online",search:"Search",product:"Product",cart:"Shopping cart",checkout:"Checkout",thanks:"Order placed",orders:"Your orders",order:"Order details",wishlist:"Your wish list",account:"Your account"};
+let curPath="",currentArg=null,timers=[],skipRender=false;
+state.q={};
+function setSlide(i){const n=SLIDES.length;state.slide=(i+n)%n;const s=$("#slides");if(!s)return;s.style.transform=`translateX(-${state.slide*100}%)`;$$(".dots button").forEach((b,k)=>b.setAttribute("aria-current",k===state.slide));$$(".slide").forEach((sl,k)=>{sl.setAttribute("aria-hidden",k!==state.slide);$$("button",sl).forEach(b=>b.tabIndex=k===state.slide?0:-1)})}
+function tickCd(){const e=$("#cd");if(!e)return;const n=new Date(),end=new Date(n);end.setHours(24,0,0,0);const s=Math.floor((end-n)/1000);e.textContent=[Math.floor(s/3600),Math.floor(s%3600/60),s%60].map(x=>String(x).padStart(2,"0")).join(":")}
+const AFTER={home(){state.slide=0;if(!reduce)timers.push(setInterval(()=>{if(!$(".hero:hover")&&!$(".hero:focus-within"))setSlide(state.slide+1)},6000));tickCd();timers.push(setInterval(tickCd,1000))}};
+function show(path){
+ timers.forEach(clearInterval);timers=[];
+ const [v,...rest]=path.split("/"),a=rest.length?decodeURIComponent(rest.join("/")):null,view=VIEWS[v]?v:"home";
+ curPath=path;currentArg=a;
+ $("#app").innerHTML=VIEWS[view](a);
+ AFTER[view]&&AFTER[view](a);
+ renderHeader();window.scrollTo(0,0);document.title=(view==="product"&&P(a)?P(a).name.slice(0,60):TITLES[view])+" | BuildGrid.shop";
+ $("#sugg").hidden=true;$("#acctMenu").hidden=true;openMenu(false);
+}
+function go(path){
+ if(path.startsWith("cat/")){openSearch({cat:path.slice(4)});return}
+ if(path==="deals"){openSearch({deal:true});return}
+ if(path.startsWith("brand/")){openSearch({q:path.slice(6)});return}
+ const h="#/"+path;try{if(location.hash!==h)location.hash=h}catch(e){}
+ show(path);
+}
+window.addEventListener("hashchange",()=>{const p=(location.hash||"").replace(/^#\/?/,"")||"home";if(p!==curPath)show(p)});
+
+/* ---------- actions ---------- */
+const lineOf=k=>{const [id,s]=k.split(":").map(Number);return cart().find(x=>x.id===id&&x.s===s)};
+const rerender=()=>{const y=scrollY;show(curPath);scrollTo(0,y)};
+const ACT={
+ dclose(){closeD()},
+ auth(t){openAuth(t.dataset.m,state.pend)},demo(){demoLogin()},
+ logout(){DB.session=null;state.buy=null;save();$("#acctMenu").hidden=true;toast("You have signed out");if(["orders","order","account","checkout","thanks"].includes(curPath.split("/")[0]))go("home");else{renderHeader();show(curPath)}},
+ acct(){$("#acctMenu").hidden=!$("#acctMenu").hidden},menu(){openMenu(true)},closemenu(){openMenu(false)},
+ pin(){openD(`<form id="pinForm" class="authbox"><button class="x" type="button" data-act="dclose" aria-label="Close">${ic("x",18)}</button><h2>Choose your location</h2><p class="muted">Delivery dates and options depend on your pincode.</p>${fld("Pincode","pin",`inputmode="numeric" maxlength="6" value="${DB.pin}"`)}<button class="btn yellow wide" type="submit">Apply</button></form>`)},
+ scroll(t){const s=t.parentElement.querySelector(".scroller");s.scrollBy({left:t.dataset.d*s.clientWidth*.85,behavior:reduce?"auto":"smooth"})},
+ slide(t){t.dataset.i!=null?setSlide(+t.dataset.i):setSlide(state.slide+ +t.dataset.d)},
+ slidego(t){const s=SLIDES[+t.dataset.i];s.deal?openSearch({deal:true}):openSearch({cat:s.cat})},
+ add(t){const id=+t.dataset.id,q=t.closest("#buy")?getQty(id):1,p=P(id);if(addToCart(id,q))toast(`Added to cart: ${p.name.length>46?p.name.slice(0,45)+"…":p.name}`,"Go to cart",()=>go("cart"))},
+ buynow(t){const id=+t.dataset.id;state.buy={id,s:state.sel[id]||0,q:getQty(id)};if(!user())openAuth("login",{go:"checkout"});else go("checkout")},
+ checkout(){state.buy=null;if(!cart().some(x=>!x.saved))return;if(!user())openAuth("login",{go:"checkout"});else go("checkout")},
+ wish(t){const id=+t.dataset.id,w=wish(),i=w.indexOf(id);i>=0?w.splice(i,1):w.push(id);save();const on=i<0;
+  $$(`[data-act=wish][data-id="${id}"]`).forEach(b=>{b.setAttribute("aria-pressed",on);b.classList.toggle("on",on);if(b.classList.contains("btn"))b.innerHTML=`${ic("heart",16)} ${on?"In your wish list":"Add to wish list"}`});
+  if(curPath==="wishlist")rerender();toast(on?"Saved to your wish list":"Removed from wish list");renderHeader()},
+ bq(t){const id=+currentArg,p=P(id),q=Math.max(1,Math.min(p.stock,getQty(id)+ +t.dataset.d));state.q[id]=q;$("#bq").value=q;updateBuy()},
+ seller(t){const id=+currentArg,p=P(id);state.sel[id]=+t.dataset.i;$("#buy").innerHTML=buyBox(p);updateBuy()},
+ img(t){const p=P(currentArg),i=+t.dataset.i;$("#gal").innerHTML=galleryMain(p,i);$$(".thumbs button").forEach(b=>{b.classList.toggle("on",b===t);b.setAttribute("aria-current",b===t)})},
+ addfbt(){const ids=$$("[data-f=fbt]:checked").map(x=>+x.value);if(!ids.length){toast("Select at least one item");return}ids.forEach(id=>addToCart(id,1));toast(`${ids.length} item${ids.length>1?"s":""} added to cart`,"Go to cart",()=>go("cart"))},
+ toreviews(t,e){e.preventDefault();const r=$("#reviews");r&&r.scrollIntoView({behavior:reduce?"auto":"smooth"})},
+ helpful(t){const k=t.dataset.k;DB.helpful[k]=(DB.helpful[k]||0)+1;save();t.textContent=DB.helpful[k]+" found this helpful";t.disabled=true},
+ review(t){
+  if(!user()){openAuth("login");return}const p=P(t.dataset.id);
+  openD(`<form id="rvForm" class="authbox" data-id="${p.id}"><button class="x" type="button" data-act="dclose" aria-label="Close">${ic("x",18)}</button><h2>Write a review</h2><p class="muted">${esc(p.name)}</p><fieldset class="rstars"><legend>Overall rating</legend>${[5,4,3,2,1].map(n=>`<input type="radio" name="rs" id="rs${n}" value="${n}" ${n===5?"checked":""}><label for="rs${n}" title="${n} star${n>1?"s":""}"><span class="sr">${n} stars</span></label>`).join("")}</fieldset>${fld("Headline","rv_t",'maxlength="80" placeholder="What matters most?"')}<label class="fl2">Your review<textarea class="field" name="rv_b" rows="4" maxlength="600" placeholder="What did you like or dislike?"></textarea><small class="ferr" data-e="rv_b"></small></label><button class="btn yellow wide" type="submit">Submit</button></form>`)},
+ cq(t){const l=lineOf(t.dataset.k),p=P(l.id);l.q=Math.max(1,Math.min(p.stock,l.q+ +t.dataset.d));save();rerender();renderHeader()},
+ cdel(t){const l=lineOf(t.dataset.k);cart().splice(cart().indexOf(l),1);save();rerender();renderHeader();toast("Item removed")},
+ csave(t){lineOf(t.dataset.k).saved=true;save();rerender();renderHeader();toast("Saved for later")},
+ cmove(t){lineOf(t.dataset.k).saved=false;save();rerender();renderHeader()},
+ cpclear(){DB.coupon=null;save();rerender()},
+ place(){placeOrder()},
+ reorder(t){const id=+t.dataset.id;if(addToCart(id,+t.dataset.q||1,0))toast("Added to cart","Go to cart",()=>go("cart"))},
+ simulate(t){const o=DB.orders.find(x=>x.id===t.dataset.id);if(o&&o.stage<4){o.stage++;o.times[o.stage]=Date.now();save();rerender();toast("Order status: "+STAGES[o.stage])}},
+ cancel(t){const o=DB.orders.find(x=>x.id===t.dataset.id);if(o&&o.stage<2){o.cancelled=true;o.items.forEach(i=>{P(i.id).stock+=i.q});save();rerender();toast("Order cancelled. Refund initiated.")}},
+ fcat(t){state.s.cat=t.dataset.c;state.s.brands=[];state.s.page=1;renderSearch()},
+ frate(t){state.s.rating=state.s.rating===+t.dataset.r?0:+t.dataset.r;state.s.page=1;renderSearch()},
+ fclear(){Object.assign(state.s,{cat:"All",brands:[],price:"",rating:0,fast:false,deal:false,page:1});renderSearch()},
+ page(t){state.s.page=+t.dataset.p;renderSearch();scrollTo({top:0})},
+ addaddr(){openD(`<form id="adForm" class="authbox"><button class="x" type="button" data-act="dclose" aria-label="Close">${ic("x",18)}</button><h2>Add an address</h2>${addrForm()}<button class="btn yellow wide" type="submit">Save address</button></form>`)},
+ adef(t){addrs().forEach(a=>a.def=a.id===t.dataset.id);save();rerender()},
+ adel(t){const l=addrs(),i=l.findIndex(a=>a.id===t.dataset.id);l.splice(i,1);save();rerender()}
+};
+document.addEventListener("click",e=>{
+ const g=e.target.closest("[data-go]");
+ if(g){e.preventDefault();go(g.dataset.go);return}
+ const t=e.target.closest("[data-act]");
+ if(t&&ACT[t.dataset.act]){ACT[t.dataset.act](t,e);return}
+ if(e.target===dlg)closeD();
+ if(!e.target.closest("#acctMenu")&&!e.target.closest("[data-act=acct]"))$("#acctMenu").hidden=true;
+ if(!e.target.closest("#sform"))$("#sugg").hidden=true;
+});
+function readAddr(box){const v=n=>(box.querySelector(`[name=${n}]`)||{value:""}).value.trim();return {id:"a"+Date.now(),name:v("na_name"),phone:v("na_phone"),pin:v("na_pin"),line:v("na_line"),city:v("na_city"),state:v("na_state"),def:!!(box.querySelector("[name=na_def]")||{}).checked}}
+function validAddr(a){const E={};if(a.name.length<2)E.na_name="Enter the recipient’s name";if(!/^[6-9]\d{9}$/.test(a.phone))E.na_phone="Enter a valid 10-digit mobile number";if(!/^\d{6}$/.test(a.pin))E.na_pin="Enter a 6-digit pincode";if(a.city.length<2)E.na_city="Enter your town or city";if(a.line.length<5)E.na_line="Enter the site or house address";return E}
+document.addEventListener("submit",e=>{
+ const f=e.target;if(!f.id)return;e.preventDefault();
+ if(f.id==="sform"){openSearch({q:$("#q").value.trim(),cat:$("#scat").value});$("#q").blur();return}
+ if(f.id==="authForm")return authSubmit(f);
+ if(f.id==="cpForm"){const c=$("#cpIn").value.trim();if(!c){DB.coupon=null}else DB.coupon=c.toUpperCase();save();rerender();return}
+ if(f.id==="pinForm"){const v=f.querySelector("[name=pin]").value.trim();if(!/^\d{6}$/.test(v)){f.querySelector("[data-e=pin]").textContent="Enter a valid 6-digit pincode";return}DB.pin=v;save();closeD();renderHeader();show(curPath);toast("Delivering to "+cityOf(v)+" "+v);return}
+ if(f.id==="rvForm"){const b=f.querySelector("[name=rv_b]").value.trim(),t=f.querySelector("[name=rv_t]").value.trim();if(b.length<5){f.querySelector("[data-e=rv_b]").textContent="Please write a few words";return}
+  const id=f.dataset.id;(DB.reviews[id]=DB.reviews[id]||[]).unshift({name:user().name.split(" ")[0]+" "+(user().name.split(" ")[1]||" ")[0]+".",stars:+f.querySelector("[name=rs]:checked").value,title:t||"My review",body:b,t:Date.now()});save();closeD();if(curPath.startsWith("product/"))rerender();toast("Thanks for your review");return}
+ if(f.id==="adForm"){const a=readAddr(f),E=validAddr(a);$$(".ferr",f).forEach(x=>x.textContent="");const k=Object.keys(E);if(k.length){k.forEach(n=>{const x=f.querySelector(`[data-e="${n}"]`);if(x)x.textContent=E[n]});return}const l=addrs();if(a.def)l.forEach(x=>x.def=false);l.push(a);save();closeD();rerender();toast("Address saved")}
+});
+document.addEventListener("input",e=>{
+ const t=e.target;
+ if(t.closest&&t.closest(".fl2")){const er=t.closest(".fl2").querySelector(".ferr");if(er)er.textContent=""}
+ if(t.id==="q")suggest(t.value);
+ else if(t.id==="bq"){const p=P(currentArg),n=Math.max(1,Math.min(p.stock,+t.value||1));state.q[p.id]=n;updateBuy()}
+});
+document.addEventListener("change",e=>{
+ const t=e.target;
+ if(t.id==="sort"){state.s.sort=t.value;state.s.page=1;renderSearch()}
+ else if(t.dataset&&t.dataset.f==="brand"){const b=state.s.brands;t.checked?b.push(t.value):b.splice(b.indexOf(t.value),1);state.s.page=1;renderSearch()}
+ else if(t.dataset&&t.dataset.f==="price"){state.s.price=t.value;state.s.page=1;renderSearch()}
+ else if(t.dataset&&t.dataset.f==="fast"){state.s.fast=t.checked;state.s.page=1;renderSearch()}
+ else if(t.dataset&&t.dataset.f==="deal"){state.s.deal=t.checked;state.s.page=1;renderSearch()}
+ else if(t.dataset&&t.dataset.f==="fbt"){const ids=$$("[data-f=fbt]:checked").map(x=>+x.value);$("#ftot").textContent=inr(ids.reduce((a,id)=>a+P(id).price,0))}
+ else if(t.classList&&t.classList.contains("cqi")){const l=lineOf(t.dataset.k),p=P(l.id);l.q=Math.max(1,Math.min(p.stock,Math.round(+t.value)||1));save();rerender();renderHeader()}
+ else if(t.name==="pay"){$$(".psub").forEach(s=>s.hidden=s.dataset.p!==t.value)}
+ else if(t.name==="addr"){state.co.addr=t.value;$("#naWrap").hidden=t.value!=="new"}
+});
+document.addEventListener("keydown",e=>{
+ if(e.key==="Escape"){openMenu(false);$("#sugg").hidden=true;$("#acctMenu").hidden=true}
+ const sg=$("#sugg");
+ if(!sg.hidden&&(e.key==="ArrowDown"||e.key==="ArrowUp")&&document.activeElement===$("#q")||(!sg.hidden&&sg.contains(document.activeElement)&&(e.key==="ArrowDown"||e.key==="ArrowUp"))){
+  e.preventDefault();const items=$$("button",sg),i=items.indexOf(document.activeElement),n=e.key==="ArrowDown"?i+1:i-1;
+  if(n<0||n>=items.length){$("#q").focus()}else items[n].focus();
+ }
+});
+
+/* ---------- init ---------- */
+$("#mk").innerHTML=ic("box",22);
+$("#sIc").innerHTML=ic("search",22);$("#mIc").innerHTML=ic("menu",22);$("#cIc").innerHTML=ic("cart",30);$("#pIc").innerHTML=ic("pin",18);
+$("#scat").innerHTML=`<option>All</option>`+CATS.map(c=>`<option>${c}</option>`).join("");
+$("#menu").innerHTML=`<div class="mh"><b>${ic("user",20)} Hello, shop with us</b><button class="x" type="button" data-act="closemenu" aria-label="Close menu">${ic("x",18)}</button></div><h3>Shop by category</h3>${CATS.map(c=>`<button type="button" data-go="cat/${c}"><span class="mi" style="--h:${HUE[c]}">${art(c)}</span>${c}</button>`).join("")}<h3>Programs and features</h3><button type="button" data-go="deals">Today’s deals</button><button type="button" data-go="orders">Your orders</button><button type="button" data-go="wishlist">Your wish list</button><button type="button" data-go="account">Your account</button>`;
+$("#subnav").innerHTML=`<button type="button" data-act="menu">${ic("menu",18)} All</button><button type="button" data-go="deals">Today’s deals</button>${["Cement","Steel","Sand","Bricks","Tiles","Paint","Plumbing","Electrical","Safety"].map(c=>`<button type="button" data-go="cat/${c}">${c}</button>`).join("")}<button type="button" data-go="orders">Your orders</button>`;
+$("#foot").innerHTML=`<button class="toptop" type="button" onclick="scrollTo({top:0})">Back to top</button><div class="fcols"><div><h4>Get to know us</h4><a href="#/" data-go="home">About BuildGrid</a><a href="#/" data-go="home">Careers</a><a href="#/" data-go="home">Press</a></div><div><h4>Sell with us</h4><a href="#/" data-go="home">Become a seller</a><a href="#/" data-go="home">Advertise</a><a href="#/" data-go="home">Bulk and business accounts</a></div><div><h4>Payment</h4><a href="#/" data-go="home">UPI and cards</a><a href="#/" data-go="home">Net banking</a><a href="#/" data-go="home">Cash on delivery</a></div><div><h4>Help</h4><a href="#/orders" data-go="orders">Your orders</a><a href="#/" data-go="home">Returns and replacements</a><a href="#/" data-go="home">Delivery information</a></div></div><div class="fbot">© 2026 BuildGrid.shop · Demo store with sample products, prices and sellers${LS.real?"":" · Browser storage is blocked here, so data lasts until you close the page"}</div>`;
+renderHeader();
+{const p=(location.hash||"").replace(/^#\/?/,"")||"home";show(p)}
+
+
+</script>
+</body>
+</html>

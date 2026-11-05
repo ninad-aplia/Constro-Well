@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BuildGrid delivery workflow demo</title>
+<meta name="theme-color" content="#0B1F3A">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23FFC72C'/%3E%3Cpath d='M6 26V14l10-8 10 8v12h-6v-8h-8v8z' fill='%231F1700'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EAEDF1;--panel:#fff;--tint:#F3F5F8;--ink:#0F1B2D;--ink2:#3B4A60;--muted:#5D6B80;--line:#D5DBE3;--nav:#0B1F3A;--nav2:#12305A;--hi:#FFC72C;--hi2:#F5B800;--hi-ink:#1F1700;
+ --c-cust:#147A45;--c-vend:#B8480E;--c-drv:#0E7A70;--c-adm:#1D4FBF;--ok:#147A45;--warn:#945400;--bad:#B42318;--shadow:0 10px 30px rgba(11,31,58,.18);
+ --disp:"Bricolage Grotesque","Arial Narrow",Arial,sans-serif;--body:"Figtree",system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color-scheme:light}
+@media (prefers-color-scheme: dark){:root{--bg:#081120;--panel:#0F1D33;--tint:#13243D;--ink:#EAF0FA;--ink2:#C3CFE2;--muted:#93A3BC;--line:#22344F;--nav:#050C18;--nav2:#0B1A30;--c-cust:#4CC78A;--c-vend:#FF9055;--c-drv:#3FD0C0;--c-adm:#86AEFF;--ok:#4CC78A;--warn:#F0B74A;--bad:#FF8A7A;--shadow:0 10px 30px rgba(0,0,0,.5);color-scheme:dark}}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 15px/1.5 var(--body);padding-bottom:env(safe-area-inset-bottom,0px)}
+h1,h2,h3,h4,p{margin:0}h1,h2,h3{font-family:var(--disp);letter-spacing:-.015em;line-height:1.12}h1{font-size:clamp(26px,3.4vw,38px);font-weight:700}h2{font-size:20px;font-weight:700}h3{font-size:16px;font-weight:650}
+button,input,select,textarea{font:inherit;color:inherit}button{cursor:pointer;background:none;border:0;padding:0}
+:focus-visible{outline:3px solid var(--hi);outline-offset:2px;border-radius:6px}.hdr :focus-visible{outline-color:#fff}
+[hidden]{display:none!important}.muted{color:var(--muted)}.sm{font-size:13px}.ic{flex:none}
+.hdr{background:var(--nav);color:#fff;position:sticky;top:0;z-index:50;padding-top:env(safe-area-inset-top,0px)}
+.hrow{max-width:1400px;margin:0 auto;padding:10px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.logo{display:flex;align-items:center;gap:10px;font:700 20px var(--disp);letter-spacing:-.02em}.mk{width:32px;height:32px;border-radius:9px;background:var(--hi);color:var(--hi-ink);display:grid;place-items:center}
+.logo small{display:block;font:500 12px var(--body);color:#9FB6D6;letter-spacing:0}
+.clock{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:rgba(255,255,255,.08);border-radius:12px;padding:6px 8px 6px 12px}
+.clock b{font-variant-numeric:tabular-nums;font-size:14px}.clock small{color:#9FB6D6;font-size:12px;display:block;line-height:1.1}
+.cbtn{background:rgba(255,255,255,.14);color:#fff;border-radius:8px;padding:5px 10px;font-weight:600;font-size:13px}.cbtn:hover{background:rgba(255,255,255,.25)}.cbtn.hi{background:var(--hi);color:var(--hi-ink)}
+.tabs{max-width:1400px;margin:0 auto;padding:0 12px;display:flex;gap:4px;overflow-x:auto;scrollbar-width:none}
+.tab{color:#C9D8EE;padding:10px 16px;font-weight:650;border-radius:10px 10px 0 0;display:flex;align-items:center;gap:8px;white-space:nowrap;border-bottom:3px solid transparent}
+.tab:hover{background:rgba(255,255,255,.07);color:#fff}.tab[aria-selected=true]{color:#fff;background:var(--bg);color:var(--ink);border-bottom-color:var(--hi)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--c)}.badge{background:var(--bad);color:#fff;border-radius:10px;font-size:11px;padding:0 6px;font-weight:700}
+main{max-width:1400px;margin:0 auto;padding:18px 16px 70px;outline:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px}.pad{padding:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:0 16px;border-radius:10px;font-weight:650;border:1px solid transparent;white-space:nowrap}
+.btn.yellow{background:var(--hi);color:var(--hi-ink)}.btn.yellow:hover{background:var(--hi2)}.btn.line{background:var(--panel);border-color:var(--line)}.btn.line:hover{background:var(--tint)}
+.btn.dark{background:var(--nav);color:#fff}.btn.red{background:var(--bad);color:#fff}.btn.sm{min-height:34px;padding:0 12px;font-size:13px}.btn[disabled]{opacity:.45;cursor:default}.btn.wide{width:100%}
+.hint{display:flex;gap:12px;align-items:center;background:color-mix(in srgb,var(--hi) 22%,var(--panel));border:1px solid color-mix(in srgb,var(--hi) 60%,var(--line));border-radius:12px;padding:12px 14px;margin-bottom:16px}.hint b{font-weight:700}.hint .btn{margin-left:auto}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:2px 10px;border-radius:20px;font-size:12px;font-weight:700;border:1px solid var(--line);background:var(--tint);color:var(--ink2);white-space:nowrap}
+.pill.ok{color:var(--ok);border-color:color-mix(in srgb,var(--ok) 45%,transparent);background:color-mix(in srgb,var(--ok) 10%,transparent)}
+.pill.warn{color:var(--warn);border-color:color-mix(in srgb,var(--warn) 45%,transparent);background:color-mix(in srgb,var(--warn) 12%,transparent)}
+.pill.bad{color:var(--bad);border-color:color-mix(in srgb,var(--bad) 45%,transparent);background:color-mix(in srgb,var(--bad) 10%,transparent)}
+.pill.info{color:var(--c-adm);border-color:color-mix(in srgb,var(--c-adm) 45%,transparent);background:color-mix(in srgb,var(--c-adm) 10%,transparent)}
+.grid{display:grid;gap:14px}.g2{grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr))}.g4{grid-template-columns:repeat(auto-fit,minmax(200px,1fr))}
+.ph{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.kpi b{display:block;font:700 28px/1 var(--disp);letter-spacing:-.02em}.kpi span{color:var(--muted);font-size:13px}
+.field,select.field,textarea.field{width:100%;height:40px;border:1px solid var(--line);border-radius:8px;background:var(--panel);padding:0 10px;min-width:0}textarea.field{height:auto;padding:10px}
+.fl2{display:grid;gap:4px;font-weight:600;font-size:14px}.ferr{color:var(--bad);font-size:13px;font-weight:500}.ferr:empty{display:none}.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+/* flow tab */
+.flow{counter-reset:s;display:grid;gap:0;margin:16px 0}
+.fs{display:grid;grid-template-columns:44px 1fr;gap:14px;position:relative;padding-bottom:18px}
+.fs::before{content:"";position:absolute;left:21px;top:44px;bottom:0;width:2px;background:var(--line)}.fs:last-child::before{display:none}
+.fn{width:44px;height:44px;border-radius:50%;background:var(--nav);color:var(--hi);display:grid;place-items:center;font:700 18px var(--disp)}
+.fs h3{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.who{font-size:12px;font-weight:700;color:var(--c);border:1px solid color-mix(in srgb,var(--c) 50%,transparent);border-radius:20px;padding:0 9px;background:color-mix(in srgb,var(--c) 10%,transparent)}
+table{border-collapse:collapse;width:100%}th{text-align:left;padding:9px 10px;color:var(--muted);font-weight:600;font-size:13px;border-bottom:1px solid var(--line);white-space:nowrap}td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}.tw{overflow-x:auto}tbody tr:last-child td{border-bottom:0}.n{text-align:right}
+.states{display:flex;flex-wrap:wrap;gap:8px;align-items:center}.states .arr{color:var(--muted)}
+/* shipment card + stepper */
+.ship{padding:0;overflow:hidden}.sh{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;padding:16px 18px;border-bottom:1px solid var(--line);flex-wrap:wrap}.sh h3{margin-bottom:2px}.sb{padding:16px 18px;display:grid;gap:14px}
+.steps{list-style:none;margin:0;padding:0;display:flex}.steps li{flex:1;display:grid;justify-items:center;gap:4px;text-align:center;font-size:12px;color:var(--muted);position:relative;min-width:0}
+.steps li::before{content:"";position:absolute;top:12px;left:-50%;right:50%;height:4px;background:var(--line)}.steps li:first-child::before{display:none}
+.steps li.done::before,.steps li.cur::before{background:var(--ok)}.steps .d{width:26px;height:26px;border-radius:50%;background:var(--panel);border:3px solid var(--line);display:grid;place-items:center;position:relative;z-index:1;color:#fff}
+.steps li.done .d,.steps li.cur .d{background:var(--ok);border-color:var(--ok)}.steps li.cur .d{box-shadow:0 0 0 5px color-mix(in srgb,var(--ok) 25%,transparent)}.steps li.cur,.steps li.done{color:var(--ink)}.steps li.cur{font-weight:700}
+.steps li.bad.cur .d{background:var(--bad);border-color:var(--bad);box-shadow:0 0 0 5px color-mix(in srgb,var(--bad) 25%,transparent)}
+.info{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}.info div small{display:block;color:var(--muted);font-size:12px;font-weight:600}
+.otp{display:flex;gap:8px;align-items:center}.otp span{width:44px;height:54px;border-radius:10px;background:var(--nav);color:var(--hi);display:grid;place-items:center;font:700 28px var(--disp)}
+.docs{display:flex;gap:6px;flex-wrap:wrap}.doc{display:inline-flex;gap:5px;align-items:center;border:1px solid var(--line);background:var(--tint);border-radius:8px;padding:2px 9px;font-size:12px;font-weight:600}
+.note{border-radius:10px;padding:10px 12px;font-size:14px;display:flex;gap:10px;align-items:flex-start}.note.warn{background:color-mix(in srgb,var(--warn) 12%,transparent);border:1px solid color-mix(in srgb,var(--warn) 40%,transparent)}.note.bad{background:color-mix(in srgb,var(--bad) 10%,transparent);border:1px solid color-mix(in srgb,var(--bad) 40%,transparent)}.note.ok{background:color-mix(in srgb,var(--ok) 10%,transparent);border:1px solid color-mix(in srgb,var(--ok) 40%,transparent)}.note.info{background:color-mix(in srgb,var(--c-adm) 10%,transparent);border:1px solid color-mix(in srgb,var(--c-adm) 35%,transparent)}
+.acts{display:flex;gap:8px;flex-wrap:wrap}
+details.log summary{cursor:pointer;font-weight:650;color:var(--ink2)}.log ol{list-style:none;margin:10px 0 0;padding:0}.log li{display:grid;grid-template-columns:110px 1fr;gap:8px;padding:5px 0;border-bottom:1px dashed var(--line);font-size:13px}.log li small{color:var(--muted)}.log li b{font-weight:650}
+.split{display:grid;grid-template-columns:260px minmax(0,1fr);gap:16px;align-items:start}
+.olist{display:grid;gap:8px}.oi{text-align:left;border:1px solid var(--line);border-radius:12px;padding:12px;background:var(--panel);display:grid;gap:3px}.oi[aria-pressed=true]{border-color:var(--ink);background:var(--tint)}.oi:hover{border-color:var(--ink2)}
+/* vendor board */
+.board{display:grid;grid-template-columns:repeat(5,minmax(230px,1fr));gap:12px;overflow-x:auto;padding-bottom:8px;align-items:start}
+.col{background:var(--tint);border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:10px;align-content:start;min-height:120px}.col h3{font-size:14px;display:flex;justify-content:space-between}.col h3 span{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:0 8px;font-size:12px}
+.vc{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:12px;display:grid;gap:7px}.vc b{font-weight:650}.vc .acts{margin-top:2px}
+.score{display:flex;gap:18px;align-items:center;flex-wrap:wrap}.ring{width:86px;height:86px;border-radius:50%;display:grid;place-items:center;background:conic-gradient(var(--c) calc(var(--p)*1%),var(--line) 0);position:relative}.ring::after{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--panel)}.ring b{position:relative;z-index:1;font:700 26px var(--disp)}
+.mbar{height:8px;border-radius:4px;background:var(--line);overflow:hidden;min-width:70px}.mbar i{display:block;height:100%;background:var(--c-adm)}
+/* driver phone */
+.phonewrap{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:20px;align-items:start}
+.phone{width:340px;max-width:100%;margin:0 auto;border-radius:36px;background:#0B1F3A;padding:12px;box-shadow:var(--shadow)}.screen{background:var(--panel);border-radius:26px;overflow:hidden;min-height:560px;display:flex;flex-direction:column}
+.screen .top{background:var(--nav);color:#fff;padding:16px 16px 12px}.screen .top small{color:#9FB6D6}.screen .body{padding:14px;display:grid;gap:12px;align-content:start;flex:1}
+.stop{display:flex;gap:10px;align-items:flex-start}.stop i{width:12px;height:12px;border-radius:50%;background:var(--hi2);margin-top:5px;flex:none;box-shadow:0 0 0 4px color-mix(in srgb,var(--hi) 35%,transparent)}.stop.a i{background:var(--c-drv);box-shadow:0 0 0 4px color-mix(in srgb,var(--c-drv) 25%,transparent)}
+.otpin{display:flex;gap:8px;justify-content:center}.otpin input{width:52px;height:60px;text-align:center;font:700 28px var(--disp);border:2px solid var(--line);border-radius:10px;background:var(--panel)}.otpin input:focus{border-color:var(--hi2);outline:0}
+.chk{display:flex;gap:10px;align-items:center;border:1px dashed var(--line);border-radius:10px;padding:10px 12px;width:100%;text-align:left}.chk.on{border-style:solid;border-color:var(--ok);background:color-mix(in srgb,var(--ok) 8%,transparent)}
+.shipmini{border:1px solid var(--line);border-radius:10px;padding:10px 12px;text-align:left;display:grid;gap:2px;background:var(--panel);width:100%}.shipmini[aria-pressed=true]{border-color:var(--ink);background:var(--tint)}
+/* admin */
+.sec{margin-top:20px}.qrow{display:grid;grid-template-columns:1fr auto;gap:10px;padding:12px 0;border-bottom:1px solid var(--line);align-items:center}.qrow:last-child{border-bottom:0}.qrow .acts{justify-content:flex-end}
+dialog{border:0;border-radius:16px;padding:0;background:var(--panel);color:var(--ink);box-shadow:var(--shadow);width:min(520px,calc(100vw - 24px));max-height:calc(100vh - 32px);overflow:auto}dialog::backdrop{background:rgba(5,12,24,.6)}
+.dform{padding:22px;display:grid;gap:12px;position:relative}.x{position:absolute;right:12px;top:12px;width:34px;height:34px;border-radius:8px;background:var(--tint);display:grid;place-items:center}
+.radio{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}.radio:has(input:checked){border-color:var(--ink);background:var(--tint)}.radio input{margin-top:4px;accent-color:var(--nav)}
+.toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom,0px));transform:translate(-50%,30px);background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:12px;opacity:0;pointer-events:none;transition:.25s;z-index:300;max-width:calc(100vw - 24px);width:max-content;font-weight:600}.toast.on{opacity:1;transform:translate(-50%,0)}
+.empty{color:var(--muted);padding:10px 2px}
+@media (max-width:900px){.split{grid-template-columns:1fr}.phonewrap{grid-template-columns:1fr}.clock{margin-left:0;width:100%}}
+@media (max-width:560px){.two{grid-template-columns:1fr}.steps li{font-size:10.5px}.log li{grid-template-columns:1fr}.hint{flex-wrap:wrap}.hint .btn{margin-left:0}.sh{padding:14px}.sb{padding:14px}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<header class="hdr">
+ <div class="hrow">
+  <div class="logo"><span class="mk" id="mk"></span><span>BuildGrid<small>Vendor-fulfilled delivery, demo</small></span></div>
+  <div class="clock" role="group" aria-label="Demo clock"><div><small>Demo time</small><b id="clk"></b></div><button class="cbtn" type="button" data-act="adv" data-h="1">+1 h</button><button class="cbtn" type="button" data-act="adv" data-h="4">+4 h</button><button class="cbtn hi" type="button" data-act="adv" data-h="24">+24 h</button><button class="cbtn" type="button" data-act="reset">Reset demo</button></div>
+ </div>
+ <div class="tabs" role="tablist" id="tabs"></div>
+</header>
+<main id="main" tabindex="-1"></main>
+<dialog id="dlg"></dialog>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<script>
+"use strict";
+/* ---------- storage ---------- */
+function pickStore(){try{const s=window.localStorage;s.setItem("__t","1");s.removeItem("__t");s.real=true;return s}catch(e){const m={};return {real:false,getItem:k=>(k in m?m[k]:null),setItem:(k,v)=>{m[k]=String(v)},removeItem:k=>{delete m[k]}}}}
+const LS=pickStore(),KEY="buildgrid_delivery_demo_v1";
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s==null?"":s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const inr=n=>"₹"+Math.round(n).toLocaleString("en-IN");
+const ICON={check:'<path d="M5 12.5l4.5 4.5L19 7.5"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',box:'<path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/>',truck:'<path d="M2 6h11v10H2zM13 9h5l3 3v4h-8"/><circle cx="7" cy="18" r="1.8"/><circle cx="17" cy="18" r="1.8"/>',doc:'<path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/>',clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/>',alert:'<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',cam:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',pin:'<path d="M12 21s7-6 7-11a7 7 0 10-14 0c0 5 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/>',shield:'<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"/><path d="M9 12l2 2 4-4"/>',plus:'<path d="M12 5v14M5 12h14"/>',arrow:'<path d="M5 12h14M13 6l6 6-6 6"/>'};
+const ic=(n,s=18)=>`<svg class="ic" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[n]||ICON.box}</svg>`;
+let tT;function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(tT);tT=setTimeout(()=>t.classList.remove("on"),3200)}
+const dlg=$("#dlg");const openD=h=>{dlg.innerHTML=h;if(!dlg.open)dlg.showModal?dlg.showModal():dlg.setAttribute("open","")};const closeD=()=>{dlg.close?dlg.close():dlg.removeAttribute("open")};
+
+/* ---------- business rules ---------- */
+const H=3600000,COMM=.05,LATE_PEN=.02,ACCEPT_H=4,DISPATCH_H=24,REVIEW_H=24,EWAY_MIN=50000,FREE_DELIV=5000,DELIV_FEE=199;
+const CAT=[
+ {n:"OPC 53 Cement, 50 kg bag",v:"UltraBuild Co.",p:390,u:"bag",w:50,bulk:false},
+ {n:"TMT Fe500D 12 mm bar",v:"Karnataka Steel Hub",p:724,u:"bar",w:10.7,bulk:true},
+ {n:"M-Sand for plastering, 1 tonne",v:"Granite Works",p:1650,u:"tonne",w:1000,bulk:true},
+ {n:"Vitrified tile 600×600, box of 4",v:"Tilora",p:1270,u:"box",w:28,bulk:false},
+ {n:"AAC block 600×200×200, pack of 10",v:"Ecoblock India",p:580,u:"pack",w:60,bulk:false},
+ {n:"RMC M25 concrete with pump, 1 cu m",v:"RapidMix",p:5900,u:"cu m",w:2400,bulk:true}
+];
+const VENDORS=[...new Set(CAT.map(c=>c.v))];
+const SLOTS=["Today, 2 to 6 pm","Tomorrow, 8 am to 12","Tomorrow, 2 to 6 pm"];
+const STEPS=["Awaiting vendor","Accepted","Packed","Dispatched","Delivered","Review window","Paid out"];
+const ST={awaiting:["Awaiting vendor","warn"],accepted:["Accepted","info"],packed:["Packed","info"],dispatched:["Dispatched","info"],failed:["Failed attempt","bad"],review:["Delivered, in review","ok"],disputed:["Disputed, payout frozen","bad"],settled:["Paid out","ok"],rejected:["Rejected by vendor","bad"],timeout:["Vendor did not respond","bad"],cancelled:["Cancelled","bad"],refunded:["Refunded","bad"]};
+const stepIdx=s=>({awaiting:0,timeout:0,rejected:0,cancelled:0,accepted:1,packed:2,dispatched:3,failed:3,review:5,disputed:5,refunded:5,settled:7})[s.status];
+
+/* ---------- state ---------- */
+let S,ui={tab:"flow",order:null,vendor:VENDORS[0],drv:null,drvOtp:["","","",""],drvPhoto:false,drvQty:null};
+const save=()=>{try{LS.setItem(KEY,JSON.stringify(S))}catch(e){}};
+const T=()=>S.clock;
+const fmtT=t=>new Date(t).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"});
+function left(t){const d=t-T(),a=Math.abs(d),h=Math.floor(a/H),m=Math.floor(a%H/60000);const s=(h?h+"h ":"")+m+"m";return d>=0?s+" left":"overdue by "+s}
+function ev(s,who,msg,t){s.events.push({t:t==null?T():t,who,msg})}
+const val=s=>s.item.p*s.qty,deliv=s=>val(s)>=FREE_DELIV?0:DELIV_FEE,total=s=>val(s)+deliv(s),weight=s=>Math.round(s.item.w*s.qty);
+const needEway=s=>val(s)>=EWAY_MIN,needWeigh=s=>s.item.bulk;
+function mkShip(o){
+ const c=CAT[o.ci],s={id:"SH-"+(++S.seq),order:o.order,vendor:c.v,item:c,qty:o.qty,status:o.status||"awaiting",created:T()-(o.age||0)*H,acceptBy:null,dispatchBy:null,slot:null,vehicle:"",driver:"",phone:"",docs:{},otp:null,otpTries:0,deliveredAt:null,deliveredQty:null,reviewEnds:null,issue:null,fin:null,events:[]};
+ S.vendors[c.v].offered++;return s;
+}
+function seed(){
+ const now=Date.now();S={v:1,clock:now,seq:0,orderSeq:50233,orders:{},ships:[],vendors:{}};
+ const stat=[[120,116,114,109,112,3],[88,80,78,66,76,6],[64,52,50,38,48,7],[72,68,66,63,64,2],[95,91,90,87,88,3],[40,33,32,28,30,4]];
+ VENDORS.forEach((v,i)=>{const a=stat[i];S.vendors[v]={offered:a[0],accepted:a[1],dispatched:a[2],ontime:a[3],delivered:a[4],issues:a[5]}});
+ const O=(id,city,ago)=>S.orders[id]={id,customer:"Rahul Menon",city,pin:city==="Bengaluru"?"560066":"411057",created:now-ago*H};
+ const add=(o,ci,qty,status,ago,fn)=>{const s=mkShip({order:o,ci,qty,status,age:ago});S.vendors[CAT[ci].v].offered--;ev(s,"Customer","Order paid, "+inr(total(s))+" held in escrow",now-ago*H);fn&&fn(s);S.ships.push(s);return s};
+ O("BG-50231","Bengaluru",5);O("BG-50228","Bengaluru",34);O("BG-50226","Pune",60);O("BG-50233","Bengaluru",2);O("BG-50222","Bengaluru",120);O("BG-50232","Bengaluru",28);
+ add("BG-50231",0,100,"dispatched",5,s=>{ev(s,"Vendor","Accepted",now-4.6*H);s.dispatchBy=now+19*H;s.slot="Today, 2 to 6 pm";s.vehicle="KA01AB4521";s.driver="Ramesh Kumar";s.phone="9845012345";s.docs={challan:"challan-"+s.id+".pdf",invoice:"invoice-"+s.id+".pdf"};s.otp="4821";ev(s,"Vendor","Dispatched with vehicle KA01AB4521",now-1*H)});
+ add("BG-50231",3,20,"awaiting",1,s=>{s.acceptBy=now+3.2*H});
+ add("BG-50228",1,120,"review",34,s=>{s.slot="Yesterday, 2 to 6 pm";s.vehicle="KA05MH7788";s.driver="Imtiyaz Khan";s.phone="9886011122";s.docs={challan:"challan-"+s.id+".pdf",invoice:"invoice-"+s.id+".pdf",eway:"271004918374",weigh:"WB-20817"};s.otp="7305";s.deliveredAt=now-6*H;s.deliveredQty=120;s.reviewEnds=now+18*H;ev(s,"Vendor","Accepted",now-32*H);ev(s,"Vendor","Dispatched with vehicle KA05MH7788",now-12*H);ev(s,"Driver","Delivered 120 bar with OTP and photo proof",now-6*H);ev(s,"System","24-hour review window opened",now-6*H)});
+ add("BG-50226",2,5,"disputed",60,s=>{s.slot="Yesterday, 8 am to 12";s.vehicle="MH12QR3345";s.driver="Santosh Pawar";s.phone="9822044455";s.docs={challan:"challan-"+s.id+".pdf",invoice:"invoice-"+s.id+".pdf",weigh:"WB-11932"};s.otp="1190";s.deliveredAt=now-9*H;s.deliveredQty=4;s.reviewEnds=now+15*H;s.issue={type:"Short quantity",note:"Driver recorded 4 of 5 tonnes at drop-off.",claim:1650,auto:true,at:now-9*H};ev(s,"Vendor","Dispatched with vehicle MH12QR3345",now-20*H);ev(s,"Driver","Delivered 4 of 5 tonne, shortfall recorded",now-9*H);ev(s,"System","Shortfall of 1 tonne opened a dispute, payout frozen",now-9*H)});
+ add("BG-50233",5,3,"rejected",2,s=>{s.issue={type:"Rejected by vendor",note:"Plant fully booked this week.",at:now-1.5*H};ev(s,"Vendor","Rejected: plant fully booked this week",now-1.5*H)});
+ add("BG-50222",4,40,"settled",120,s=>{s.slot="Last Monday";s.vehicle="KA03CD9012";s.driver="Naveen R";s.phone="9900112233";s.docs={challan:"challan-"+s.id+".pdf",invoice:"invoice-"+s.id+".pdf"};s.otp="6612";s.deliveredAt=now-90*H;s.deliveredQty=40;ev(s,"Driver","Delivered 40 pack with OTP and photo proof",now-90*H);s.fin=payFor(s,0,0,false);s.fin.at=now-66*H;s.status="settled";ev(s,"System","Review window closed with no issues, payout released",now-66*H)});
+ add("BG-50232",4,30,"accepted",28,s=>{s.dispatchBy=now-2*H;ev(s,"Vendor","Accepted",now-26*H)});
+ ui.order=S.ships[0].order;save();
+}
+function payFor(s,refund,penaltyPct,late){
+ const v=val(s),d=deliv(s),tot=v+d,r=Math.min(refund,tot);
+ const keepV=Math.max(0,v-(r>0?Math.min(r,v):0)),comm=Math.round(keepV*COMM),pen=late?Math.round(keepV*LATE_PEN):0;
+ const dPay=r>=tot?0:d,vendor=Math.max(0,keepV+dPay-comm-pen);
+ return {vendor,commission:r>=tot?0:comm,penalty:r>=tot?0:pen,refund:r,gross:tot};
+}
+function load(){try{const o=JSON.parse(LS.getItem(KEY));if(o&&o.v===1&&o.ships){S=o;return true}}catch(e){}return false}
+if(!load())seed();
+
+/* ---------- actions ---------- */
+function late(s){return ["accepted","packed"].includes(s.status)&&s.dispatchBy&&T()>=s.dispatchBy}
+function settle(s,note,refund=0,opts={}){
+ const wasLate=!!s.wasLate;s.fin=payFor(s,refund,0,wasLate);s.fin.at=T();
+ s.status=refund>=total(s)?"refunded":"settled";
+ if(opts.issueAgainstVendor)S.vendors[s.vendor].issues++;
+ ev(s,opts.who||"System",note);
+}
+function runTimers(){
+ let n=0;
+ S.ships.forEach(s=>{
+  if(s.status==="awaiting"&&s.acceptBy&&T()>=s.acceptBy){s.status="timeout";ev(s,"System","Vendor did not accept within "+ACCEPT_H+" hours, sent to admin to reassign");n++}
+  if(s.status==="review"&&T()>=s.reviewEnds){settle(s,"Review window closed with no issues, payout "+inr(payFor(s,0,0,!!s.wasLate).vendor)+" released to "+s.vendor);n++}
+  if(late(s)&&!s.wasLate){s.wasLate=true;ev(s,"System","Dispatch deadline missed, a "+LATE_PEN*100+"% late penalty will apply");n++}
+ });
+ return n;
+}
+const A={
+ place(){
+  const a=Math.floor(Math.random()*CAT.length);let b=(a+1+Math.floor(Math.random()*(CAT.length-1)))%CAT.length;
+  const id="BG-"+(++S.orderSeq);S.orders[id]={id,customer:"Rahul Menon",city:"Bengaluru",pin:"560066",created:T()};
+  [a,b].forEach(ci=>{const c=CAT[ci],qty=c.bulk?(c.w>=1000?2+Math.floor(Math.random()*5):20+Math.floor(Math.random()*80)):10+Math.floor(Math.random()*90);const s=mkShip({order:id,ci,qty});s.acceptBy=T()+ACCEPT_H*H;ev(s,"Customer","Order paid, "+inr(total(s))+" held in escrow");S.ships.push(s)});
+  ui.order=id;save();render();toast("Order "+id+" paid into escrow and split into 2 shipments");
+ },
+ accept(id){const s=ship(id);s.status="accepted";s.acceptBy=null;s.dispatchBy=T()+DISPATCH_H*H;S.vendors[s.vendor].accepted++;ev(s,"Vendor","Accepted, must dispatch within "+DISPATCH_H+" hours");save();render();toast("Accepted. Dispatch by "+fmtT(s.dispatchBy))},
+ packed(id){const s=ship(id);s.status="packed";ev(s,"Vendor","Packed and ready for pickup");save();render()},
+ cancel(id){const s=ship(id);settle(s,"Cancelled by customer before vendor accepted, full refund of "+inr(total(s)),total(s),{who:"Customer"});s.status="cancelled";save();render();toast("Cancelled. "+inr(total(s))+" refunded")},
+ confirm(id){const s=ship(id);settle(s,"Customer confirmed quantity and quality, payout released to "+s.vendor,0,{who:"Customer"});save();render();toast("Thanks. Payout released to the vendor")},
+ resched(id){const s=ship(id);s.status="dispatched";s.slot=SLOTS[1];ev(s,"Vendor","Rescheduled for "+s.slot);save();render();toast("Rescheduled for "+s.slot)}
+};
+const ship=id=>S.ships.find(x=>x.id===id);
+function doDispatch(s,f){
+ const E={},v=n=>f.querySelector(`[name=${n}]`).value.trim();
+ const veh=v("veh").toUpperCase().replace(/[\s-]/g,""),ph=v("ph").replace(/\s/g,"");
+ if(!/^[A-Z]{2}\d{2}[A-Z]{1,3}\d{4}$/.test(veh))E.veh="Enter a valid vehicle number, like KA01AB4521";
+ if(v("dn").length<2)E.dn="Enter the driver’s name";
+ if(!/^[6-9]\d{9}$/.test(ph))E.ph="Enter a valid 10-digit mobile number";
+ if(!f.querySelector("[name=challan]").checked)E.challan="Attach the delivery challan";
+ if(!f.querySelector("[name=invoice]").checked)E.invoice="Attach the GST invoice";
+ if(needEway(s)&&!/^\d{12}$/.test(v("eway")))E.eway="Orders of ₹50,000 or more need a 12-digit e-way bill number";
+ if(needWeigh(s)&&v("wb").length<3)E.wb="Bulk goods need a weighbridge slip number";
+ $$(".ferr",f).forEach(e=>e.textContent="");const k=Object.keys(E);
+ if(k.length){k.forEach(n=>{const e=f.querySelector(`[data-e=${n}]`);if(e)e.textContent=E[n]});return false}
+ s.vehicle=veh;s.driver=v("dn");s.phone=ph;s.slot=v("slot");s.docs={challan:"challan-"+s.id+".pdf",invoice:"invoice-"+s.id+".pdf"};
+ if(needEway(s))s.docs.eway=v("eway");if(needWeigh(s))s.docs.weigh=v("wb");
+ s.otp=String(1000+Math.floor(Math.random()*9000));s.otpTries=0;s.status="dispatched";
+ const lateD=!!s.wasLate;S.vendors[s.vendor].dispatched++;if(!lateD)S.vendors[s.vendor].ontime++;
+ ev(s,"Vendor","Dispatched with vehicle "+veh+(lateD?" (late)":"")+", customer OTP generated");
+ save();closeD();render();toast("Dispatched. The customer has received a delivery OTP");return true;
+}
+function doDeliver(s){
+ const otp=ui.drvOtp.join(""),q=+ui.drvQty;
+ if(otp.length<4){toast("Enter the 4-digit OTP from the customer");return}
+ if(otp!==s.otp){s.otpTries++;if(s.otpTries>=3){s.status="failed";ev(s,"Driver","OTP failed 3 times, marked as failed attempt");ui.drvOtp=["","","",""];save();render();toast("3 wrong OTPs. Marked as a failed attempt");return}ui.drvOtp=["","","",""];save();render();toast("OTP does not match. "+(3-s.otpTries)+" tries left");return}
+ if(!ui.drvPhoto){toast("Take a photo of the unloaded goods first");return}
+ if(!(q>=0&&q<=s.qty)){toast("Enter a quantity between 0 and "+s.qty);return}
+ s.deliveredAt=T();s.deliveredQty=q;S.vendors[s.vendor].delivered++;
+ if(q<s.qty){const claim=(s.qty-q)*s.item.p;s.status="disputed";s.issue={type:"Short quantity",note:"Driver recorded "+q+" of "+s.qty+" "+s.item.u+" at drop-off.",claim,auto:true,at:T()};ev(s,"Driver","Delivered "+q+" of "+s.qty+" "+s.item.u+", shortfall recorded");ev(s,"System","Shortfall opened a dispute of "+inr(claim)+", payout frozen")}
+ else{s.status="review";s.reviewEnds=T()+REVIEW_H*H;ev(s,"Driver","Delivered "+q+" "+s.item.u+" with OTP and photo proof");ev(s,"System","24-hour review window opened")}
+ ui.drvOtp=["","","",""];ui.drvPhoto=false;ui.drvQty=null;save();render();toast(q<s.qty?"Delivered short. Dispute opened automatically":"Delivered. Review window started")
+}
+function resolve(s,mode,amt){
+ const tot=total(s);
+ if(mode==="full"){settle(s,"Admin refunded the customer in full ("+inr(tot)+"), vendor payout cancelled",tot,{who:"Admin",issueAgainstVendor:true})}
+ else if(mode==="part"){settle(s,"Admin refunded "+inr(amt)+" for the "+s.issue.type.toLowerCase()+", remaining payout released to "+s.vendor,amt,{who:"Admin",issueAgainstVendor:true})}
+ else{settle(s,"Admin rejected the claim, payout released to "+s.vendor,0,{who:"Admin"})}
+ save();closeD();render();toast("Dispute resolved")
+}
+const score=v=>{const x=S.vendors[v],acc=x.accepted/x.offered,on=x.ontime/Math.max(1,x.dispatched),iss=1-x.issues/Math.max(1,x.delivered);return Math.max(0,Math.min(100,Math.round(100*(.3*acc+.4*on+.3*iss))))};
+const tier=n=>n>=90?["Boosted in search","ok"]:n>=80?["Normal","info"]:["Reduced visibility","bad"];
+
+/* ---------- views ---------- */
+const TABS=[["flow","How it works","--c-adm"],["customer","Customer","--c-cust"],["vendor","Vendor","--c-vend"],["driver","Driver","--c-drv"],["admin","Admin","--c-adm"]];
+const WHO={Customer:"--c-cust",Vendor:"--c-vend",Driver:"--c-drv",Admin:"--c-adm",System:"--muted"};
+const pill=s=>{const m=ST[s.status];return `<span class="pill ${m[1]}">${m[0]}</span>`};
+function exceptions(){return {dis:S.ships.filter(s=>s.status==="disputed"),rej:S.ships.filter(s=>["rejected","timeout"].includes(s.status)),late:S.ships.filter(late),fail:S.ships.filter(s=>s.status==="failed")}}
+const exCount=()=>{const e=exceptions();return e.dis.length+e.rej.length+e.late.length+e.fail.length};
+function hint(){
+ const t=ui.tab;let txt="",go=null,label="";
+ const dis=S.ships.find(s=>s.status==="dispatched"),rev=S.ships.find(s=>s.status==="review"),aw=S.ships.find(s=>s.status==="awaiting");
+ if(t==="customer"){if(dis){txt=`<b>Your ${esc(dis.item.n)} is on the way.</b> Share OTP <b>${dis.otp}</b> with the driver only when you have checked the goods.`;go="driver";label="Open driver app"}else if(rev){txt=`<b>Check your delivery from ${esc(rev.vendor)}.</b> Confirm it is correct, or report a problem before the review window closes.`}else txt="<b>Nothing to do right now.</b> Place a sample order to start, or fast-forward the clock."}
+ if(t==="vendor"){const mine=S.ships.filter(s=>s.vendor===ui.vendor);const a=mine.find(s=>s.status==="awaiting"),b=mine.find(s=>["accepted","packed"].includes(s.status));if(a)txt=`<b>New order waiting.</b> Accept within ${left(a.acceptBy)}, or it goes to admin to reassign.`;else if(b)txt=`<b>Ready to dispatch.</b> Add vehicle, driver and documents to release the OTP to the customer.`;else{txt="<b>Nothing waiting for this vendor.</b> Place a sample order as the customer, or choose another vendor.";go="customer";label="Go to customer"}}
+ if(t==="driver"){if(dis)txt=`<b>Delivery in progress.</b> Ask the customer for their OTP, take a photo of the unloaded goods and confirm the quantity.`;else{txt="<b>No deliveries on the road.</b> A vendor must dispatch a shipment first.";go="vendor";label="Go to vendor"}}
+ if(t==="admin"){const n=exCount();txt=n?`<b>${n} exception${n>1?"s":""} need attention.</b> Resolve disputes, reassign rejected orders and chase late dispatches.`:"<b>All clear.</b> No open exceptions."}
+ if(t==="flow")return "";
+ return `<div class="hint" role="status">${ic("alert",20)}<div>${txt}</div>${go?`<button class="btn dark sm" type="button" data-act="tab" data-t="${go}">${label}</button>`:""}</div>`;
+}
+function stepper(s){
+ const cur=stepIdx(s),bad=["rejected","timeout","cancelled","failed","disputed","refunded"].includes(s.status);
+ return `<ol class="steps" aria-label="Shipment progress">${STEPS.map((n,i)=>`<li class="${i<cur?"done":i===cur&&cur<7?"cur"+(bad?" bad":""):""}"><span class="d">${i<cur||cur===7?ic("check",13):""}</span>${n}</li>`).join("")}</ol>`;
+}
+function eventLog(s){return `<details class="log"><summary>Activity log (${s.events.length})</summary><ol>${[...s.events].sort((a,b)=>b.t-a.t).map(e=>`<li><small>${fmtT(e.t)}</small><span><b style="color:var(${WHO[e.who]||"--ink"})">${esc(e.who)}</b>: ${esc(e.msg)}</span></li>`).join("")}</ol></details>`}
+function docsHTML(s){const d=s.docs,l=[];if(d.challan)l.push("Delivery challan");if(d.invoice)l.push("GST invoice");if(d.eway)l.push("E-way bill "+d.eway);if(d.weigh)l.push("Weighbridge slip "+d.weigh);return l.length?`<div class="docs">${l.map(x=>`<span class="doc">${ic("doc",13)}${esc(x)}</span>`).join("")}</div>`:`<span class="muted">Not uploaded yet</span>`}
+function payoutBox(s){const p=payFor(s,0,0,!!s.wasLate);return `<div class="note info">${ic("lock",18)}<div><b>${inr(total(s))} is held in escrow.</b> On release: vendor receives <b>${inr(p.vendor)}</b> (items ${inr(val(s))} + delivery ${deliv(s)?inr(deliv(s)):"free"} − ${COMM*100}% commission ${inr(p.commission)}${p.penalty?` − late penalty ${inr(p.penalty)}`:""}).</div></div>`}
+
+function custShip(s){
+ const a=[];
+ if(s.status==="awaiting")a.push(`<button class="btn line sm" type="button" data-act="cancel" data-id="${s.id}">Cancel order</button>`);
+ if(s.status==="review")a.push(`<button class="btn yellow sm" type="button" data-act="confirm" data-id="${s.id}">Everything is correct, release payment</button>`,`<button class="btn line sm" type="button" data-act="report" data-id="${s.id}">Report a problem</button>`);
+ let body="";
+ if(s.status==="awaiting")body=`<div class="note warn">${ic("clock",18)}<div>Waiting for ${esc(s.vendor)} to accept. They have <b>${left(s.acceptBy)}</b>. If they don’t, we reassign or refund you.</div></div>`;
+ if(["accepted","packed"].includes(s.status))body=`<div class="note info">${ic("box",18)}<div>${esc(s.vendor)} accepted and must dispatch by <b>${fmtT(s.dispatchBy)}</b>.${late(s)?` <b style="color:var(--bad)">Late: ${left(s.dispatchBy)}.</b>`:""}</div></div>`;
+ if(["dispatched","failed"].includes(s.status))body=`<div class="info"><div><small>Delivery slot</small>${esc(s.slot)}</div><div><small>Vehicle</small>${esc(s.vehicle)}</div><div><small>Driver</small>${esc(s.driver)}<br><span class="muted sm">${esc(s.phone)}</span></div><div><small>Your delivery OTP</small><div class="otp" aria-label="OTP ${s.otp.split("").join(" ")}">${s.otp.split("").map(d=>`<span>${d}</span>`).join("")}</div></div></div><div class="note warn">${ic("lock",18)}<div>Give this code to the driver <b>only after</b> you have checked the goods. It confirms delivery.${s.status==="failed"?" <b>The last attempt failed, the vendor will reschedule.</b>":""}</div></div>`;
+ if(s.status==="review")body=`<div class="info"><div><small>Delivered</small>${fmtT(s.deliveredAt)}</div><div><small>Quantity recorded</small>${s.deliveredQty} of ${s.qty} ${esc(s.item.u)}</div><div><small>Review window</small><b>${left(s.reviewEnds)}</b></div></div>`;
+ if(s.status==="disputed")body=`<div class="note bad">${ic("alert",18)}<div><b>${esc(s.issue.type)}.</b> ${esc(s.issue.note)} Claim ${inr(s.issue.claim||total(s))}. The vendor’s payout is frozen while an admin reviews.</div></div>`;
+ if(["settled","refunded","cancelled"].includes(s.status))body=`<div class="note ${s.status==="settled"?"ok":"bad"}">${ic("shield",18)}<div>${s.fin.refund?`Refunded <b>${inr(s.fin.refund)}</b> to you. `:""}${s.fin.vendor?`Paid <b>${inr(s.fin.vendor)}</b> to ${esc(s.vendor)}.`:""}</div></div>`;
+ if(["rejected","timeout"].includes(s.status))body=`<div class="note bad">${ic("alert",18)}<div>${s.status==="rejected"?esc(s.vendor)+" could not take this order. ":esc(s.vendor)+" did not respond. "}We are finding another vendor or will refund you in full.</div></div>`;
+ return `<article class="card ship" id="${s.id}"><div class="sh"><div><h3>${esc(s.item.n)}</h3><div class="muted sm">${s.qty} ${esc(s.item.u)} · Sold and delivered by <b>${esc(s.vendor)}</b> · ${weight(s)} kg</div></div><div style="text-align:right">${pill(s)}<div><b>${inr(total(s))}</b> <span class="muted sm">${deliv(s)?"incl. delivery":"free delivery"}</span></div></div></div>
+ <div class="sb">${stepper(s)}${body}${["awaiting","accepted","packed","dispatched","failed"].includes(s.status)?payoutBox(s):""}<div><div class="muted sm" style="margin-bottom:4px">Documents</div>${docsHTML(s)}</div>${a.length?`<div class="acts">${a.join("")}</div>`:""}${eventLog(s)}</div></article>`;
+}
+function viewCustomer(){
+ const os=Object.values(S.orders).sort((a,b)=>b.created-a.created);if(!S.orders[ui.order])ui.order=os[0].id;
+ const o=S.orders[ui.order],ships=S.ships.filter(s=>s.order===o.id);
+ const ot=ships.reduce((a,s)=>a+total(s),0);
+ return `${hint()}<div class="split"><aside><div class="ph"><h2>Your orders</h2></div><div class="olist">${os.map(x=>{const sh=S.ships.filter(s=>s.order===x.id);return `<button class="oi" type="button" data-act="order" data-id="${x.id}" aria-pressed="${x.id===o.id}"><b>${x.id}</b><span class="muted sm">${sh.length} shipment${sh.length>1?"s":""} · ${inr(sh.reduce((a,s)=>a+total(s),0))}</span><span class="sm">${sh.map(s=>`<span class="pill ${ST[s.status][1]}" style="margin:2px 2px 0 0">${ST[s.status][0]}</span>`).join("")}</span></button>`}).join("")}</div><button class="btn yellow wide" style="margin-top:12px" type="button" data-act="place">${ic("plus",16)} Place a sample order</button><p class="muted sm" style="margin-top:8px">Creates a paid order with items from two vendors. Each vendor’s items become their own shipment.</p></aside>
+ <section><div class="ph"><div><h1>Order ${o.id}</h1><p class="muted">Deliver to ${esc(o.customer)}, ${esc(o.city)} ${esc(o.pin)} · ${inr(ot)} paid into escrow</p></div></div><div class="grid">${ships.map(custShip).join("")}</div></section></div>`;
+}
+function vcard(s){
+ const a=[];let extra="";
+ if(s.status==="awaiting")a.push(`<button class="btn yellow sm" type="button" data-act="accept" data-id="${s.id}">Accept</button>`,`<button class="btn line sm" type="button" data-act="reject" data-id="${s.id}">Reject</button>`),extra=`<span class="pill warn">${ic("clock",12)} ${left(s.acceptBy)}</span>`;
+ if(s.status==="accepted")a.push(`<button class="btn line sm" type="button" data-act="packed" data-id="${s.id}">Mark packed</button>`,`<button class="btn yellow sm" type="button" data-act="dispatch" data-id="${s.id}">Dispatch</button>`),extra=`<span class="pill ${late(s)?"bad":"info"}">Dispatch by ${fmtT(s.dispatchBy)}${late(s)?" · "+left(s.dispatchBy):""}</span>`;
+ if(s.status==="packed")a.push(`<button class="btn yellow sm" type="button" data-act="dispatch" data-id="${s.id}">Dispatch</button>`),extra=`<span class="pill ${late(s)?"bad":"info"}">Packed · dispatch by ${fmtT(s.dispatchBy)}${late(s)?" · "+left(s.dispatchBy):""}</span>`;
+ if(s.status==="dispatched")extra=`<span class="pill info">${ic("truck",12)} ${esc(s.vehicle)} · ${esc(s.slot)}</span>`;
+ if(s.status==="failed"){a.push(`<button class="btn yellow sm" type="button" data-act="resched" data-id="${s.id}">Reschedule delivery</button>`);extra=`<span class="pill bad">${esc(s.issue&&s.issue.note||"Failed attempt")}</span>`}
+ if(s.status==="review")extra=`<span class="pill ok">Payout in ${left(s.reviewEnds)}</span>`;
+ if(s.status==="disputed")extra=`<span class="pill bad">Payout frozen: ${esc(s.issue.type)}</span>`;
+ if(s.status==="settled")extra=`<span class="pill ok">Received ${inr(s.fin.vendor)}</span>`;
+ return `<div class="vc"><div><b>${esc(s.item.n)}</b><div class="muted sm">${s.id} · ${s.order}</div></div><div class="sm">${s.qty} ${esc(s.item.u)} · ${weight(s)} kg · <b>${inr(total(s))}</b></div>${extra?`<div>${extra}</div>`:""}${a.length?`<div class="acts">${a.join("")}</div>`:""}</div>`;
+}
+function viewVendor(){
+ const mine=S.ships.filter(s=>s.vendor===ui.vendor),x=S.vendors[ui.vendor],sc=score(ui.vendor),ti=tier(sc);
+ const cols=[["New orders",["awaiting"]],["To dispatch",["accepted","packed"]],["On the road",["dispatched","failed"]],["Delivered, in review",["review","disputed"]],["Paid",["settled"]]];
+ const m=(l,v)=>`<div><small class="muted">${l}</small><div class="mbar" style="--c:var(--c-adm)"><i style="width:${Math.round(v*100)}%"></i></div><b>${Math.round(v*100)}%</b></div>`;
+ return `${hint()}<div class="ph"><div><h1>Vendor dispatch board</h1><p class="muted">Accept, dispatch and get paid on proof of delivery.</p></div><label class="fl2" style="min-width:220px">Signed in as<select class="field" id="vsel">${VENDORS.map(v=>`<option ${v===ui.vendor?"selected":""}>${esc(v)}</option>`).join("")}</select></label></div>
+ <section class="card pad" style="margin-bottom:16px"><div class="score"><div class="ring" style="--p:${sc};--c:var(${sc>=90?"--ok":sc>=80?"--c-adm":"--bad"})"><b>${sc}</b></div><div style="flex:1;min-width:240px"><h3>Your delivery score <span class="pill ${ti[1]}">${ti[0]}</span></h3><p class="muted sm">Acceptance 30% · On-time dispatch 40% · Issue-free deliveries 30%. High scores rank higher in search, low scores reduce visibility.</p></div>
+ <div class="info" style="flex:2;min-width:280px">${m("Acceptance",x.accepted/x.offered)}${m("On-time dispatch",x.ontime/Math.max(1,x.dispatched))}${m("Issue-free",1-x.issues/Math.max(1,x.delivered))}</div></div></section>
+ <div class="board">${cols.map(([t,st])=>{const l=mine.filter(s=>st.includes(s.status));return `<div class="col"><h3>${t}<span>${l.length}</span></h3>${l.length?l.map(vcard).join(""):`<div class="empty sm">Empty</div>`}</div>`}).join("")}</div>`;
+}
+function viewDriver(){
+ const list=S.ships.filter(s=>["dispatched","failed"].includes(s.status));
+ if(!list.some(s=>s.id===ui.drv))ui.drv=list[0]&&list[0].id;
+ const s=list.find(x=>x.id===ui.drv);if(s&&ui.drvQty==null)ui.drvQty=s.qty;
+ const o=s&&S.orders[s.order];
+ const scr=!s?`<div class="body"><div class="empty center" style="text-align:center;padding:40px 10px">${ic("truck",36)}<p><b>No deliveries assigned</b></p><p class="sm">When a vendor dispatches a shipment with your phone number, it appears here.</p></div></div>`:
+ `<div class="top"><small>Delivery ${s.id}</small><h3 style="margin-top:2px">${esc(s.item.n)}</h3><small>${s.qty} ${esc(s.item.u)} · ${weight(s)} kg · ${esc(s.vehicle)}</small></div>
+  <div class="body"><div class="stop"><i></i><div><b>Pickup: ${esc(s.vendor)}</b><div class="muted sm">Loaded and dispatched</div></div></div><div class="stop a"><i></i><div><b>Drop-off: ${esc(o.customer)}</b><div class="muted sm">${esc(o.city)} ${esc(o.pin)} · ${esc(s.slot)}</div></div></div>
+  <div class="docs">${Object.entries(s.docs).map(([k,v])=>`<span class="doc">${ic("doc",12)}${{challan:"Challan",invoice:"Invoice",eway:"E-way "+v,weigh:"Weighbridge "+v}[k]}</span>`).join("")}</div><hr style="border:0;border-top:1px solid var(--line);width:100%;margin:2px 0">
+  ${s.status==="failed"?`<div class="note bad">${ic("alert",18)}<div>Marked as failed attempt. The vendor will reschedule.</div></div>`:`
+  <div><b>1. Ask the customer for their OTP</b><div class="otpin" style="margin-top:8px">${[0,1,2,3].map(i=>`<input inputmode="numeric" maxlength="1" data-otp="${i}" value="${esc(ui.drvOtp[i])}" aria-label="OTP digit ${i+1}">`).join("")}</div>${s.otpTries?`<div class="ferr" style="text-align:center;margin-top:4px">${3-s.otpTries} tries left</div>`:""}</div>
+  <div><b>2. Photo of the unloaded goods</b><button class="chk ${ui.drvPhoto?"on":""}" type="button" data-act="photo" style="margin-top:6px">${ic(ui.drvPhoto?"check":"cam",18)}<span>${ui.drvPhoto?"Photo attached (demo)":"Take a photo (demo)"}</span></button></div>
+  <label class="fl2"><span>3. Quantity delivered (${esc(s.item.u)})</span><input class="field" id="dq" type="number" min="0" max="${s.qty}" value="${ui.drvQty}"></label>
+  <button class="btn yellow wide" type="button" data-act="deliver">Confirm delivery</button><button class="btn line wide" type="button" data-act="failatt">Customer not available</button>`}</div>`;
+ return `${hint()}<div class="ph"><div><h1>Driver app</h1><p class="muted">What the driver sees at drop-off. Delivery only counts when the OTP matches and a photo is attached.</p></div></div>
+ <div class="phonewrap"><section><h2 style="margin-bottom:10px">Assigned deliveries</h2><div class="grid">${list.length?list.map(x=>`<button class="shipmini" type="button" data-act="drvsel" data-id="${x.id}" aria-pressed="${x.id===ui.drv}"><b>${esc(x.item.n)}</b><span class="muted sm">${x.id} · ${x.qty} ${esc(x.item.u)} · ${esc(S.orders[x.order].city)}</span>${pill(x)}</button>`).join(""):`<div class="empty">No deliveries on the road.</div>`}</div>
+ <div class="card pad" style="margin-top:16px"><h3>Rules the app enforces</h3><ul class="sm" style="padding-left:18px;margin:8px 0 0"><li>Three wrong OTPs mark the delivery as a failed attempt.</li><li>The photo and the quantity are stored as proof.</li><li>If the quantity is less than ordered, a dispute opens and the vendor’s payout freezes automatically.</li></ul></div></section>
+ <div class="phone"><div class="screen">${scr}</div></div></div>`;
+}
+function viewAdmin(){
+ const e=exceptions(),fin=S.ships.reduce((a,s)=>{if(s.fin){a.vend+=s.fin.vendor;a.comm+=s.fin.commission;a.ref+=s.fin.refund}else a.held+=total(s);return a},{held:0,vend:0,comm:0,ref:0});
+ const row=(s,acts,note)=>`<div class="qrow"><div><b>${esc(s.item.n)}</b> <span class="muted sm">${s.id} · ${s.order} · ${esc(s.vendor)} · ${inr(total(s))}</span><div class="sm">${note}</div></div><div class="acts">${acts}</div></div>`;
+ const rank=[...VENDORS].sort((a,b)=>score(b)-score(a));
+ const log=S.ships.flatMap(s=>s.events.map(x=>({...x,id:s.id}))).sort((a,b)=>b.t-a.t).slice(0,12);
+ return `${hint()}<div class="ph"><div><h1>Admin exceptions</h1><p class="muted">Everything that did not follow the happy path lands here, with money frozen until it is resolved.</p></div></div>
+ <div class="grid g4"><div class="card pad kpi"><span>Held in escrow</span><b>${inr(fin.held)}</b></div><div class="card pad kpi"><span>Paid to vendors</span><b>${inr(fin.vend)}</b></div><div class="card pad kpi"><span>Platform commission</span><b>${inr(fin.comm)}</b></div><div class="card pad kpi"><span>Refunded to customers</span><b>${inr(fin.ref)}</b></div></div>
+ <div class="grid g2 sec"><section class="card pad"><div class="ph"><h2>Disputes</h2><span class="pill ${e.dis.length?"bad":"ok"}">${e.dis.length} open</span></div>${e.dis.length?e.dis.map(s=>row(s,`<button class="btn yellow sm" type="button" data-act="resolve" data-id="${s.id}">Resolve</button>`,`<span class="pill bad">${esc(s.issue.type)}</span> ${esc(s.issue.note)} Claim ${inr(s.issue.claim||total(s))}.`)).join(""):`<p class="empty">No open disputes.</p>`}</section>
+ <section class="card pad"><div class="ph"><h2>Rejected or no response</h2><span class="pill ${e.rej.length?"bad":"ok"}">${e.rej.length} open</span></div>${e.rej.length?e.rej.map(s=>row(s,`<button class="btn yellow sm" type="button" data-act="reassign" data-id="${s.id}">Reassign</button><button class="btn line sm" type="button" data-act="refundall" data-id="${s.id}">Refund</button>`,s.status==="rejected"?esc(s.issue.note):"No response within "+ACCEPT_H+" hours.")).join(""):`<p class="empty">Nothing to reassign.</p>`}</section>
+ <section class="card pad"><div class="ph"><h2>Late dispatch</h2><span class="pill ${e.late.length?"warn":"ok"}">${e.late.length} open</span></div>${e.late.length?e.late.map(s=>row(s,`<button class="btn line sm" type="button" data-act="nudge" data-id="${s.id}">Send reminder</button>`,`Deadline was ${fmtT(s.dispatchBy)} (${left(s.dispatchBy)}). A ${LATE_PEN*100}% penalty applies to the payout.`)).join(""):`<p class="empty">All vendors are dispatching on time.</p>`}</section>
+ <section class="card pad"><div class="ph"><h2>Failed delivery attempts</h2><span class="pill ${e.fail.length?"warn":"ok"}">${e.fail.length} open</span></div>${e.fail.length?e.fail.map(s=>row(s,`<button class="btn line sm" type="button" data-act="nudge" data-id="${s.id}">Contact vendor</button>`,esc(s.issue&&s.issue.note||"Failed attempt")+" The vendor must reschedule.")).join(""):`<p class="empty">No failed attempts.</p>`}</section></div>
+ <section class="card pad sec"><div class="ph"><h2>Vendor scorecards</h2><span class="muted sm">Score = 30% acceptance + 40% on-time dispatch + 30% issue-free deliveries</span></div><div class="tw"><table><thead><tr><th>Vendor</th><th>Score</th><th class="n">Accepted</th><th class="n">On-time</th><th class="n">Issues</th><th>Search ranking</th></tr></thead><tbody>${rank.map(v=>{const x=S.vendors[v],sc=score(v),t=tier(sc);return `<tr><td><b>${esc(v)}</b></td><td><div style="display:flex;gap:8px;align-items:center"><div class="mbar" style="width:90px;--c:var(--c-adm)"><i style="width:${sc}%"></i></div><b>${sc}</b></div></td><td class="n">${Math.round(x.accepted/x.offered*100)}%</td><td class="n">${Math.round(x.ontime/Math.max(1,x.dispatched)*100)}%</td><td class="n">${x.issues}</td><td><span class="pill ${t[1]}">${t[0]}</span></td></tr>`}).join("")}</tbody></table></div></section>
+ <section class="card pad sec"><h2 style="margin-bottom:8px">Recent activity</h2><div class="log"><ol>${log.map(x=>`<li><small>${fmtT(x.t)}</small><span><b style="color:var(${WHO[x.who]||"--ink"})">${esc(x.who)}</b> · ${x.id}: ${esc(x.msg)}</span></li>`).join("")}</ol></div></section>`;
+}
+function viewFlow(){
+ const steps=[["Order paid into escrow","Customer","--c-cust","The customer pays. The money is held, not sent to the vendor."],["Split by vendor","System","--muted","Each vendor’s items become one shipment with its own pickup, weight and promised date."],["Vendor accepts within 4 hours","Vendor","--c-vend","If they reject or stay silent, the shipment goes to admin to reassign or refund."],["Vendor schedules dispatch","Vendor","--c-vend","Slot, vehicle number and driver phone are entered. Stock is already reserved."],["Dispatch documents are mandatory","Vendor","--c-vend","Challan and GST invoice always. E-way bill for goods of ₹50,000 or more. Weighbridge slip for bulk goods. No documents, no dispatch."],["Customer gets tracking and an OTP","System","--muted","The customer sees vehicle, driver and slot, and receives a 4-digit delivery code."],["Delivery proof","Driver","--c-drv","The driver collects the OTP, uploads a photo and records the quantity. A short quantity opens a dispute by itself."],["Review window, 24 hours","Customer","--c-cust","The customer confirms, or reports damage or shortage. A report freezes the payout."],["Payment released","System","--muted","With no issue, the vendor is paid, minus commission and any late penalty."]];
+ return `<div class="ph" style="align-items:flex-start"><div><h1>From paid order to released payment</h1><p class="muted" style="max-width:62ch;margin-top:6px">A vendor-fulfilled delivery workflow: your vendors use their own trucks, and the platform controls the process, the proof and the money. Everything below is live. Switch tabs and play each role.</p></div><button class="btn yellow" type="button" data-act="tab" data-t="customer">Start the demo ${ic("arrow",16)}</button></div>
+ <div class="grid g2"><section class="card pad"><h2>The nine steps</h2><div class="flow">${steps.map((s,i)=>`<div class="fs"><div class="fn">${i+1}</div><div><h3>${s[0]} <span class="who" style="--c:var(${s[2]})">${s[1]}</span></h3><p class="muted sm" style="margin-top:3px">${s[3]}</p></div></div>`).join("")}</div></section>
+ <div class="grid" style="align-content:start"><section class="card pad"><h2>Try it in four minutes</h2><ol style="padding-left:20px;margin:10px 0 0;display:grid;gap:8px"><li><b>Customer:</b> place a sample order. It splits into two shipments.</li><li><b>Vendor:</b> accept one. Try dispatching with missing documents to see the checks, then dispatch properly.</li><li><b>Driver:</b> enter a wrong OTP, then the right one from the customer tab. Try delivering fewer items than ordered.</li><li><b>Fast-forward 24 h</b> with the clock buttons and watch payment release, or open the <b>Admin</b> tab to resolve the dispute.</li></ol></section>
+ <section class="card pad"><h2>Rules</h2><div class="tw"><table><tbody><tr><td><b>Accept window</b></td><td>${ACCEPT_H} hours, then reassign or refund</td></tr><tr><td><b>Dispatch deadline</b></td><td>${DISPATCH_H} hours after accepting, late = ${LATE_PEN*100}% penalty</td></tr><tr><td><b>Delivery charge</b></td><td>Free from ${inr(FREE_DELIV)}, otherwise ${inr(DELIV_FEE)}</td></tr><tr><td><b>E-way bill</b></td><td>Required from ${inr(EWAY_MIN)}</td></tr><tr><td><b>Review window</b></td><td>${REVIEW_H} hours after delivery</td></tr><tr><td><b>Commission</b></td><td>${COMM*100}% of item value</td></tr></tbody></table></div></section>
+ <section class="card pad"><h2>Shipment states</h2><div class="states" style="margin-top:10px"><span class="pill warn">Awaiting vendor</span><span class="arr">→</span><span class="pill info">Accepted</span><span class="arr">→</span><span class="pill info">Packed</span><span class="arr">→</span><span class="pill info">Dispatched</span><span class="arr">→</span><span class="pill ok">Delivered, in review</span><span class="arr">→</span><span class="pill ok">Paid out</span></div><p class="muted sm" style="margin:12px 0 6px">Side branches</p><div class="states"><span class="pill bad">Rejected</span><span class="pill bad">No response</span><span class="pill bad">Failed attempt</span><span class="pill bad">Disputed</span><span class="pill bad">Refunded</span><span class="pill bad">Cancelled</span></div></section></div></div>`;
+}
+const VIEWS={flow:viewFlow,customer:viewCustomer,vendor:viewVendor,driver:viewDriver,admin:viewAdmin};
+
+/* ---------- render ---------- */
+function render(){
+ runTimers();save();
+ $("#clk").textContent=fmtT(T());
+ const n=exCount();
+ $("#tabs").innerHTML=TABS.map(([id,l,c])=>`<button class="tab" role="tab" type="button" data-act="tab" data-t="${id}" aria-selected="${ui.tab===id}" style="--c:var(${c})"><span class="dot"></span>${l}${id==="admin"&&n?`<span class="badge">${n}</span>`:""}</button>`).join("");
+ const keep=document.activeElement&&document.activeElement.dataset&&document.activeElement.dataset.otp;
+ $("#main").innerHTML=VIEWS[ui.tab]();
+ if(keep!=null){const i=$(`[data-otp="${keep}"]`);i&&i.focus()}
+}
+
+/* ---------- dialogs ---------- */
+const fld=(l,n,a="")=>`<label class="fl2">${l}<input class="field" name="${n}" ${a}><span class="ferr" data-e="${n}"></span></label>`;
+const chk=(l,n,ck)=>`<label class="radio"><input type="checkbox" name="${n}" ${ck?"checked":""}><span>${l}<span class="ferr" data-e="${n}" style="display:block"></span></span></label>`;
+function dDispatch(s){
+ openD(`<form id="fDisp" class="dform" data-id="${s.id}"><button class="x" type="button" data-act="dclose" aria-label="Close">${ic("x",16)}</button><h2>Dispatch ${s.id}</h2><p class="muted sm">${esc(s.item.n)} · ${s.qty} ${esc(s.item.u)} · ${weight(s)} kg · ${inr(total(s))}</p>
+ <label class="fl2">Delivery slot<select class="field" name="slot">${SLOTS.map(x=>`<option>${x}</option>`).join("")}</select></label>
+ <div class="two">${fld("Vehicle number","veh",'placeholder="KA01AB4521" autocomplete="off"')}${fld("Driver mobile","ph",'inputmode="numeric" maxlength="10" placeholder="98450 12345"')}</div>${fld("Driver name","dn")}
+ ${chk("Attach delivery challan (demo file)","challan")}${chk("Attach GST invoice (demo file)","invoice")}
+ ${needEway(s)?fld("E-way bill number (required from ₹50,000)","eway",'inputmode="numeric" maxlength="12" placeholder="12 digits"'):""}${needWeigh(s)?fld("Weighbridge slip number (required for bulk goods)","wb",'placeholder="WB-20817"'):""}
+ ${s.wasLate?`<div class="note warn">${ic("alert",18)}<div>This dispatch is late, so a ${LATE_PEN*100}% penalty will be deducted from your payout.</div></div>`:""}
+ <button class="btn yellow wide" type="submit">Dispatch and send OTP to customer</button></form>`);
+}
+function dReject(s){openD(`<form id="fRej" class="dform" data-id="${s.id}"><button class="x" type="button" data-act="dclose" aria-label="Close">${ic("x",16)}</button><h2>Reject ${s.id}?</h2><p class="muted sm">Rejecting lowers your acceptance rate. The order goes to admin to reassign.</p><label class="fl2">Reason<select class="field" name="why"><option>Out of stock</option><option>Plant or yard fully booked</option><option>Cannot deliver to this pincode</option><option>Price changed</option></select></label><button class="btn red wide" type="submit">Reject order</button></form>`)}
+function dReport(s){openD(`<form id="fRep" class="dform" data-id="${s.id}"><button class="x" type="button" data-act="dclose" aria-label="Close">${ic("x",16)}</button><h2>Report a problem</h2><p class="muted sm">Your payment of ${inr(total(s))} stays frozen until an admin decides.</p>${["Short quantity","Damaged goods","Wrong item","Poor quality"].map((t,i)=>`<label class="radio"><input type="radio" name="type" value="${t}" ${i?"":"checked"}><span>${t}</span></label>`).join("")}<label class="fl2">What happened?<textarea class="field" name="note" rows="3" placeholder="For example: 8 bags were torn and leaking."></textarea><span class="ferr" data-e="note"></span></label><button class="btn red wide" type="submit">Submit and freeze payout</button></form>`)}
+function dResolve(s){const tot=total(s),claim=Math.min(s.issue.claim||tot,tot);openD(`<form id="fRes" class="dform" data-id="${s.id}"><button class="x" type="button" data-act="dclose" aria-label="Close">${ic("x",16)}</button><h2>Resolve dispute ${s.id}</h2><div class="note bad">${ic("alert",18)}<div><b>${esc(s.issue.type)}.</b> ${esc(s.issue.note)}<br>Customer claim ${inr(claim)}. Escrow held ${inr(tot)}. Driver recorded ${s.deliveredQty} of ${s.qty} ${esc(s.item.u)}.</div></div>
+ <label class="radio"><input type="radio" name="mode" value="part" checked><span><b>Partial refund</b><br><span class="muted sm">Refund the disputed amount, pay the vendor the rest.</span><input class="field" name="amt" type="number" min="1" max="${tot}" value="${claim}" style="margin-top:6px" aria-label="Refund amount"></span></label>
+ <label class="radio"><input type="radio" name="mode" value="full"><span><b>Refund in full</b><br><span class="muted sm">Customer gets ${inr(tot)}, vendor receives nothing.</span></span></label>
+ <label class="radio"><input type="radio" name="mode" value="none"><span><b>Reject the claim</b><br><span class="muted sm">Release the payout to the vendor.</span></span></label>
+ <span class="ferr" id="resErr"></span><button class="btn yellow wide" type="submit">Apply decision</button></form>`)}
+function dReassign(s){openD(`<form id="fRea" class="dform" data-id="${s.id}"><button class="x" type="button" data-act="dclose" aria-label="Close">${ic("x",16)}</button><h2>Reassign ${s.id}</h2><p class="muted sm">${esc(s.item.n)} · ${s.qty} ${esc(s.item.u)}. The new vendor gets ${ACCEPT_H} hours to accept.</p><label class="fl2">New vendor<select class="field" name="v">${VENDORS.filter(v=>v!==s.vendor).map(v=>`<option>${esc(v)}</option>`).join("")}</select></label><button class="btn yellow wide" type="submit">Reassign</button></form>`)}
+
+/* ---------- events ---------- */
+document.addEventListener("click",e=>{
+ const t=e.target.closest("[data-act]");if(!t){if(e.target===dlg)closeD();return}
+ const id=t.dataset.id,act=t.dataset.act;
+ if(A[act]){A[act](id);return}
+ switch(act){
+  case"tab":ui.tab=t.dataset.t;render();scrollTo(0,0);break;
+  case"adv":{const h=+t.dataset.h;S.clock+=h*H;const n=runTimers();save();render();toast(`Moved forward ${h} hour${h>1?"s":""}`+(n?`. ${n} automatic update${n>1?"s":""} happened.`:""));break}
+  case"reset":seed();render();toast("Demo reset");break;
+  case"dclose":closeD();break;
+  case"order":ui.order=id;render();break;
+  case"dispatch":dDispatch(ship(id));break;case"reject":dReject(ship(id));break;case"report":dReport(ship(id));break;case"resolve":dResolve(ship(id));break;case"reassign":dReassign(ship(id));break;
+  case"refundall":{const s=ship(id);settle(s,"Admin refunded the customer in full ("+inr(total(s))+") because no vendor could fulfil the order",total(s),{who:"Admin"});save();render();toast("Customer refunded "+inr(total(s)));break}
+  case"nudge":toast("Reminder sent to the vendor");break;
+  case"drvsel":ui.drv=id;ui.drvOtp=["","","",""];ui.drvPhoto=false;ui.drvQty=null;render();break;
+  case"photo":ui.drvPhoto=!ui.drvPhoto;render();break;
+  case"deliver":{const s=ship(ui.drv);doDeliver(s);break}
+  case"failatt":{const s=ship(ui.drv);s.status="failed";s.issue={type:"Failed attempt",note:"Customer not available at drop-off.",at:T()};ev(s,"Driver","Failed attempt: customer not available");save();render();toast("Marked as failed attempt. The vendor will reschedule");break}
+ }
+});
+document.addEventListener("submit",e=>{
+ const f=e.target;if(!f.id)return;e.preventDefault();const s=ship(f.dataset.id),v=n=>f.querySelector(`[name=${n}]`);
+ if(f.id==="fDisp")doDispatch(s,f);
+ else if(f.id==="fRej"){s.status="rejected";S.vendors[s.vendor].rejected=(S.vendors[s.vendor].rejected||0)+1;s.issue={type:"Rejected by vendor",note:v("why").value,at:T()};ev(s,"Vendor","Rejected: "+v("why").value);save();closeD();render();toast("Rejected. Sent to admin to reassign")}
+ else if(f.id==="fRep"){const note=v("note").value.trim();if(note.length<5){f.querySelector("[data-e=note]").textContent="Please describe the problem in a few words";return}const type=f.querySelector("[name=type]:checked").value;s.status="disputed";s.issue={type,note,claim:total(s),at:T()};ev(s,"Customer","Reported: "+type.toLowerCase()+". "+note);ev(s,"System","Payout frozen until admin review");save();closeD();render();toast("Problem reported. Payout frozen")}
+ else if(f.id==="fRes"){const mode=f.querySelector("[name=mode]:checked").value,amt=Math.round(+v("amt").value);if(mode==="part"&&!(amt>0&&amt<=total(s))){$("#resErr").textContent="Enter an amount between 1 and "+total(s);return}resolve(s,mode,amt)}
+ else if(f.id==="fRea"){const nv=v("v").value;ev(s,"Admin","Reassigned from "+s.vendor+" to "+nv);s.vendor=nv;S.vendors[nv].offered++;s.status="awaiting";s.acceptBy=T()+ACCEPT_H*H;s.issue=null;save();closeD();render();toast("Reassigned to "+nv)}
+});
+document.addEventListener("input",e=>{
+ const t=e.target;
+ if(t.dataset&&t.dataset.otp!=null){const i=+t.dataset.otp,d=t.value.replace(/\D/g,"").slice(-1);t.value=d;ui.drvOtp[i]=d;if(d&&i<3){const n=$(`[data-otp="${i+1}"]`);n&&n.focus()}}
+ else if(t.id==="dq")ui.drvQty=t.value;
+ if(t.closest&&t.closest(".fl2")){const er=t.closest(".fl2").querySelector(".ferr");if(er)er.textContent=""}
+});
+document.addEventListener("keydown",e=>{
+ if(e.key==="Backspace"&&e.target.dataset&&e.target.dataset.otp!=null&&!e.target.value){const i=+e.target.dataset.otp;if(i>0){const p=$(`[data-otp="${i-1}"]`);p.focus()}}
+});
+document.addEventListener("change",e=>{if(e.target.id==="vsel"){ui.vendor=e.target.value;render()}});
+$("#mk").innerHTML=ic("truck",20);
+render();
+setInterval(()=>{if(!document.hidden&&!dlg.open&&!document.activeElement.matches("input,textarea,select")){const n=runTimers();if(n)render()}},30000);
+</script>
+</body>
+</html>
