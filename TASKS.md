@@ -18,7 +18,7 @@ Priority: P0 = must ship, P1 = should ship, P2 = defer if time runs out.
 |---|---|---|---|---|
 | 1.1 Scaffold Next.js TS app, Tailwind/CSS tokens from prototype palette, fonts, shared app shell + placeholder storefront | P0 | DONE | 0.4 | App boots; tokens match prototype palette; lint+build pass (`eslint src` exit 0; `next build` exit 0, static prerender `/` verified). README quickstart accurate. UI primitives land in 1.3 |
 | 1.2 Design tokens + dark-mode variant identical to prototypes | P1 | NOT STARTED | 1.1 | palette variables in CSS match both light + dark prototypes |
-| 1.3 Extract reusable components (product card, product art placeholders/rating stars, stepper, pills, data tables) | P0 | NOT STARTED | 1.1 | components render with prototype markup parity |
+| 1.3 Extract reusable components (product card, product art placeholders/rating stars, stepper, pills, data tables) | P0 | NOT STARTED | 1.1 | components render with prototype markup parity — **fidelity check per D13: compare against prototype source, document deviations** |
 
 ## Phase 2 — Database + backend foundation
 | Task | Pri | Status | Depends | Acceptance criteria |
@@ -69,7 +69,7 @@ Priority: P0 = must ship, P1 = should ship, P2 = defer if time runs out.
 | 7.1 Shipment state machine + deadline timers (accept 4h, dispatch 24h, review 24h) + events log, server-side | P0 | NOT STARTED | 5.2 | states + side-branches match `docs/PROTOTYPE_AUDIT.md` §4 (test) |
 | 7.2 Driver mobile view: assignment list, OTP (3 tries → failed), photo proof flag, delivered quantity, unavailable marking | P0 | NOT STARTED | 7.1 | short-quantity auto-dispute opens (test) |
 | 7.3 Customer tracking view: OTP display only at dispatched, review window confirm/report freezing payouts | P0 | NOT STARTED | 7.2 | report freezes vendor payout in ledger |
-| 7.4 Admin exception console (stopgap UI): disputes resolve (partial/full/reject), reassign rejected/timeout to another vendor, late nudges, failed attempts; escrow KPIs; vendor scorecards; activity log | P0 | NOT STARTED | 7.1 | all actions write payout ledger + events; admin-only endpoints |
+| 7.4 Admin exception console (stopgap UI): disputes resolve (partial/full/reject), reassign rejected/timeout to another vendor, late nudges, failed attempts; escrow KPIs; vendor scorecards; activity log | P0 | NOT STARTED | 7.1 | follows delivery prototype's Admin-tab design at D13 fidelity for now; when owner delivers `buildgrid-platform-admin.html` (after 3 portals), re-verify fidelity against it and record deviations; actions write payout ledger + events; admin-only endpoints |
 | 7.5 Payout release job/endpoint after review window: commission 5%, late penalty 2%, refunds respected | P0 | NOT STARTED | 7.1 | math matches prototype `payFor()` (test) |
 
 ## Phase 8 — Integration, hardening, docs
@@ -80,3 +80,4 @@ Priority: P0 = must ship, P1 = should ship, P2 = defer if time runs out.
 | 8.3 `.env.example` + README setup verified by clean run + deployment doc | P0 | NOT STARTED | 8.1 | fresh clone setup works from README alone |
 | 8.4 Prototype files marked superseded / demo banner status recorded | P2 | NOT STARTED | 8.1 | recorded in DECISIONS, originals still intact |
 | 8.5 Performance/accessibility basics: focus management, keyboard nav from prototype, reduced-motion support | P1 | NOT STARTED | 8.1 | prototype a11y behaviors preserved |
+| 8.6 Prototype fidelity verification pass (D13): page-by-page comparison of every implemented view vs its prototype (hierarchy, spacing, typography, colors, proportions); desktop + mobile responsiveness; every intentional deviation recorded | P0 | NOT STARTED | all UI tasks | fidelity report reviewed, deviations documented in DECISIONS/task notes; prototypes still byte-identical |

@@ -33,8 +33,11 @@ Platform commission 5% · delivery free ≥ ₹5,000 else ₹199 · COD cap ₹5
 | `buildgrid-shop.html` | customer storefront (SPA, hash router, 10 views) | 788 lines, 114 KB | `localStorage` `buildgrid_shop_v1` |
 | `buildgrid-seller-dashboard.html` | Seller Hub (7 sections, order drawer, dialogs, CSV export) | 470 lines, 81 KB | `localStorage` `buildgrid_seller_dash_v1` |
 | `buildgrid-delivery-workflow.html` | multi-role delivery demo (5 tabs: flow / customer / vendor / driver / admin) | 433 lines, 65 KB | `localStorage` `buildgrid_delivery_demo_v1` |
+| `buildgrid-platform-admin.html` | admin portal design reference — **owner will deliver after the 3 portals are built**; audit reserved | – | – |
 
-All three are self-contained vanilla JS SPAs with realistic seeded demo state, **no backend calls**. The shop prototype contains a hand-rolled SHA-256 password hashing demo — the real implementation must be server-side bcrypt/argon, not this.
+All reachable prototypes are self-contained vanilla JS SPAs with realistic seeded demo state, **no backend calls**. The shop prototype contains a hand-rolled SHA-256 password hashing demo — the real implementation must be server-side bcrypt/argon, not this.
+
+**Prototype fidelity (D13, APPROVED):** the prototypes are the primary visual/UX references for every portal. Preserve palette, typography, identity, navigation, layouts, journeys; improve responsiveness/a11y/states/polish; never genericize or drop features pending backend. Verification steps per UI task are in `AGENTS.md`.
 
 ## 5. Technology stack — **APPROVED 2026-11-05 (D2)**
 - **Next.js (App Router, TypeScript) full-stack monolith** in `app/`: storefront + seller + driver + admin surfaces as route groups, API routes as backend. One language, one deployable; matches developer's React/Next familiarity.

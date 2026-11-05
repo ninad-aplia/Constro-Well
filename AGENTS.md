@@ -40,6 +40,17 @@ An e-commerce marketplace for construction materials (cement, steel, sand, tiles
 ## Running tests is part of "done"
 Never mark a task DONE in `TASKS.md` without executing the check that proves it and recording the real result in `HANDOFF.md`.
 
+## Prototype fidelity policy (APPROVED, product-owner directive — acceptance criterion)
+The four original prototypes are the primary visual + UX references:
+`buildgrid-shop.html`, `buildgrid-seller-dashboard.html`, `buildgrid-delivery-workflow.html`, `buildgrid-platform-admin.html`.
+
+- **MUST preserve:** color palette/design tokens, typography + hierarchy + sizing, visual identity/branding, navigation structure and information architecture, page layouts/card structure/spacing/visual hierarchy, user journeys and interaction patterns, portal-specific visual characteristics.
+- **MAY improve:** responsiveness, accessibility + keyboard navigation, component reusability/code quality, form validation + error feedback, loading/empty/success/failure states, micro-interactions, usability fixes that don't change design intent.
+- **MUST NOT:** swap in a generic Next.js/SaaS dashboard template; arbitrarily change palette/typography/branding; redesign page structure or navigation without written justification; remove prototype features because their backend is not connected yet; inconsistent styling between portals; design changes based on personal preference.
+- **Verification before any UI task is DONE:** implemented page compared against its prototype; visual hierarchy/spacing/typography/colors/proportions checked; desktop + mobile responsiveness checked; every intentional deviation documented in `DECISIONS.md`/task notes with a reason; prototypes confirmed unchanged (`git diff`).
+
+Principle: **Preserve the design, improve the experience, strengthen the implementation.**
+
 ## Multi-IDE rules (OpenCode / Antigravity / Freebuff share this working tree)
 - Read all 5 docs above every session, even if you "remember" the project.
 - One IDE writes at a time. Never launch two agents that mutate the same files concurrently.

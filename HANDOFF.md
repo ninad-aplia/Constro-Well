@@ -38,12 +38,13 @@ Only lint + build exist at this point (no Vitest yet — TASK 2.4). No tests wer
 
 ## Pending decisions
 D5 only (SMS channel for delivery OTP — stays in-app until user provides a provider).
+Deferred input: **`buildgrid-platform-admin.html`** — owner supplies it after the 3 portals are built; until then TASK 7.4 uses the delivery prototype's Admin tab as its fidelity reference.
 D2/D4/D10/D12 etc. all APPROVED as recorded in `DECISIONS.md`.
 
 ## Exact next action
 Next IDE:
 1. Read `AGENTS.md` → `PROJECT_CONTEXT.md` → `TASKS.md` → `DECISIONS.md` → this file; `git status` + `git log --oneline` (last commit = TASK 1.1). Verify build still passes: `cd app && npm run build`.
-2. Do **TASK 1.3** — port shared UI primitives from the prototypes into `app/src/components/ui/` (+ `components/shop/`): Card, Button (yellow/line/orange variants, sm/wide/disabled), Toast (client), Dialog (native `<dialog>` wrapper, client), rating Stars (CSS-mask technique from prototype), Pill, Stepper (qty), Escape/validation-error field pattern. Pure presentation only — no business logic (approved rule).
+2. Do **TASK 1.3** — port shared UI primitives from the prototypes into `app/src/components/ui/` (+ `components/shop/`): Card, Button (yellow/line/orange variants, sm/wide/disabled), Toast (client), Dialog (native `<dialog>` wrapper, client), rating Stars (CSS-mask technique from prototype), Pill, Stepper (qty), field + validation-error pattern. Pure presentation only — no business logic (approved rule). **Fidelity is an acceptance criterion (D13): match prototype markup/palette/typography/spacing; document every deviation.**
 3. Optionally verify dark mode: `npm run dev`, switch OS theme; tokens flip like the prototype.
 4. Update `TASKS.md` + this `HANDOFF.md` with real check results before stopping. Do not start Phase 2 (Prisma/schema) before TASK 1.3 is DONE and 1.2 visually verified.
 

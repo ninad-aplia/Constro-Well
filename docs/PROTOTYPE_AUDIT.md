@@ -1,6 +1,8 @@
-# PROTOTYPE_AUDIT.md — findings from actual inspection of the three prototype files
+# PROTOTYPE_AUDIT.md — findings from actual inspection of the prototype files
 
-Audit method: full read of every line of all three files (788 / 470 / 433 lines). Everything below is taken from the code, not assumptions.
+Audit method: full read of every line of the three delivered files (788 / 470 / 433 lines). Everything below is taken from the code, not assumptions.
+
+> **`buildgrid-platform-admin.html` (admin portal design reference)** — named by the product owner, **deliberately deferred: they will add it only after the customer / seller / delivery portals are built**. Until it arrives, the stopgap admin console (TASK 7.4) follows the delivery prototype's Admin tab at D13 fidelity; when the file lands, re-verify that console against it and document deviations. Its audit section is reserved here.
 
 ## 1. `buildgrid-shop.html` — customer storefront (788 lines)
 
