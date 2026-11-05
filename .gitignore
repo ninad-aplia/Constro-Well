@@ -1,0 +1,7 @@
+# Repository root ignores (Next app keeps its own .gitignore in app/)
+node_modules/
+.env
+.env.local
+.DS_Store
+npm-debug.log*
+*.pem

@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+/*
+  Design tokens lifted from buildgrid-shop.html (the approved visual spec).
+  All colors translate to utilities via @theme inline, e.g. `bg-nav`, `text-ink`,
+  `border-line`, `bg-hi`, `text-muted`. Dark mode mirrors the prototype's
+  prefers-color-scheme override (no toggle UI until the prototypes demand one).
+*/
+:root {
+  --bg: #EAEDF1;
+  --panel: #ffffff;
+  --tint: #F3F5F8;
+  --ink: #0F1B2D;
+  --ink2: #3B4A60;
+  --muted: #5D6B80;
+  --line: #D5DBE3;
+  --nav: #0B1F3A;
+  --nav2: #12305A;
+  --hi: #FFC72C;
+  --hi2: #F5B800;
+  --hi-ink: #1F1700;
+  --or: #FF8A1F;
+  --link: #1250C0;
+  --deal: #C7352B;
+  --ok: #147A45;
+  --bad: #B42318;
+  --star: #F5A623;
+  --star-off: #C9D0DB;
+
+  --shadow: 0 10px 30px rgba(11, 31, 58, .18);
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #081120;
+    --panel: #0F1D33;
+    --tint: #13243D;
+    --ink: #EAF0FA;
+    --ink2: #C3CFE2;
+    --muted: #93A3BC;
+    --line: #22344F;
+    --nav: #050C18;
+    --nav2: #0B1A30;
+    --link: #86AEFF;
+    --deal: #FF8272;
+    --ok: #4CC78A;
+    --bad: #FF8A7A;
+    --star-off: #3A4A63;
+
+    --shadow: 0 10px 30px rgba(0, 0, 0, .5);
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-tint: var(--tint);
+  --color-ink: var(--ink);
+  --color-ink2: var(--ink2);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-nav: var(--nav);
+  --color-nav2: var(--nav2);
+  --color-hi: var(--hi);
+  --color-hi2: var(--hi2);
+  --color-hiink: var(--hi-ink);
+  --color-or: var(--or);
+  --color-link: var(--link);
+  --color-deal: var(--deal);
+  --color-ok: var(--ok);
+  --color-bad: var(--bad);
+  --color-star: var(--star);
+  --color-staroff: var(--star-off);
+
+  --shadow-card: var(--shadow);
+
+  --font-sans: var(--font-body);
+  --font-display: var(--font-disp);
+}
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font: 400 15px/1.5 var(--font-body);
+}
+
+/* Base type the prototype sets globally */
+h1, h2, h3, h4 {
+  font-family: var(--font-disp);
+  letter-spacing: -.01em;
+  line-height: 1.15;
+}
+
+/* Accessibility baseline carried over from the prototype */
+:focus-visible {
+  outline: 3px solid var(--hi);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    transition: none !important;
+    animation: none !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Skip link (prototype parity) */
+.skip {
+  position: absolute;
+  left: -999px;
+  top: 0;
+  background: var(--hi);
+  color: var(--hi-ink);
+  padding: 8px 14px;
+  z-index: 300;
+}
+.skip:focus {
+  left: 8px;
+  top: 8px;
+}

@@ -1,45 +1,53 @@
 # HANDOFF.md — current checkpoint for the next IDE
 
-**Last updated:** 2026-11-05 · **Writer agent:** OpenCode (GLM-5.3-Flash)
+**Last updated:** 2026-11-05 (Phase 1, TASK 1.1) · **Writer agent:** OpenCode (GLM-5.3-Flash)
 
 ## Current phase
-Phase 0 — Foundation. **Complete, awaiting user decisions before code begins.**
+**Phase 1 — TASK 1.1 DONE.** Next incomplete task: **TASK 1.2** (dark/light token parity is already achieved in `app/src/app/globals.css` — verify on `npm run dev` with an OS theme switch, then move straight to **TASK 1.3**, the shared UI primitives).
 
-## Last completed task
-- TASK 0.1: full inspection of all three prototypes (read end-to-end) → `docs/PROTOTYPE_AUDIT.md`
-- TASK 0.2: stack rationale + layout → `docs/ARCHITECTURE_PROPOSAL.md`
-- TASK 0.3: `AGENTS.md`, `PROJECT_CONTEXT.md`, `TASKS.md`, `HANDOFF.md`, `DECISIONS.md`, `README.md`
-- TASK 0.5: git initialized, checkpoint commit made; prototypes unchanged (verify with `git log --oneline` + `git diff HEAD~1 --stat` — prototype blobs must show 0 changes)
+## Last completed task (TASK 1.1, this checkpoint)
+All approved decisions recorded in `DECISIONS.md` (D1–D12; D5 still open). PROJECT_CONTEXT updated to approved stack. Scaffolded `app/`:
 
-## Current task
-TASK 0.4 — **BLOCKED on the user**: decisions D1–D6 in `DECISIONS.md` need approval/rejection. Nothing code-related should start until at least D1 (branding), D2 (stack) and D3/D4 (payment scope) are answered.
+- **Stack installed:** Next.js 16.4.5 (App Router, Turbopack), React 19.3.0, TypeScript 5, Tailwind CSS v4, ESLint 9 (flat config), `@tailwindcss/turbopack`.
+- **Design tokens:** `app/src/app/globals.css` — exact palette from `buildgrid-shop.html` (light + dark via `prefers-color-scheme`, no toggle UI), fonts Figtree + Bricolage Grotesque via `next/font/google`, focus-visible, reduced-motion, skip-link, tokens exposed as Tailwind utilities (`bg-nav`, `text-ink`, `border-line`, `bg-hi`, `font-display`, …).
+- **App shell:** `app/src/app/layout.tsx` (skip link, header, main `#app` skip target, footer); `app/src/components/ui/SiteHeader.tsx` (sticky dark-nav header, Constro Well wordmark placeholder "CW", search visual placeholder for TASK 4.2); `app/src/components/ui/SiteFooter.tsx` (minimal until destinations exist).
+- **Placeholder storefront:** `app/src/app/page.tsx` — static hero + 12 static category cards + build-status panel. **No shopping workflow, no catalogue fetch.**
+- **Env & ignore:** `app/.env.example` (DATABASE_URL, SESSION_SECRET placeholders only); `app/.gitignore` (create-next-app's, + `!.env.example` so the example commits); root `.gitignore`.
+- `app/package.json` script change: `"lint": "eslint src"` (was bare `eslint`).
 
 ## Files created or modified
-Created: `AGENTS.md`, `PROJECT_CONTEXT.md`, `TASKS.md`, `HANDOFF.md`, `DECISIONS.md`, `README.md`, `docs/PROTOTYPE_AUDIT.md`, `docs/ARCHITECTURE_PROPOSAL.md`
-Modified: none (all three `buildgrid-*.html` files untouched).
+Created: `app/**` (scaffold + above), `.gitignore` (root).
+Modified: `DECISIONS.md`, `PROJECT_CONTEXT.md`, `TASKS.md`, `HANDOFF.md` (this file), `AGENTS.md` (commands block), `app/.gitignore`, `app/package.json` (lint script), `app/README.md` (project quickstart).
+**Prototypes untouched — verified** (`git diff HEAD -- buildgrid-*.html` → empty).
 
-## Commands executed
-- `wc -l` on the three prototypes; read of every line of all three files (788/470/433 lines).
-- `git init`, `git add`, checkpoint commit (see git log for the hash).
+## Commands executed (and real results)
+| Command | Result |
+|---|---|
+| `npx create-next-app@latest app --typescript --tailwind --eslint --app --src-dir --turbopack --import-alias "@/*" --use-npm --yes` | OK (slow; interrupted twice by shell timeout, resolved below) |
+| `npm install` (in `app/`) | exit 0 — "added 360 packages in 23m" |
+| `npm run lint` → `eslint src` | **exit 0, zero problems** (first failure was a real error: `<a>` to `/` → fixed with `next/link`) |
+| `npm run build` (Next 16, Turbopack) | **exit 0** — static prerender of `/` + `/_not-found`; included typecheck passed |
 
-## Tests executed and results
-None — no code exists yet, no test runner installed. (Do not invent results.)
+## Tests executed and their actual results
+Only lint + build exist at this point (no Vitest yet — TASK 2.4). No tests were invented or skipped.
 
-## Known errors / blockers
-- **BLOCKER**: decisions pending (see `DECISIONS.md` statuses). Payment integration (TASK 5.4) and anything spending money cannot be built until D3/D4 are resolved; TASK 1.1 onward is gated on D2 (stack) + D1 (branding surfaces) to avoid rework.
+## Known errors, blockers, environment notes
+- **First build failed** with `Cannot find module 'next/dist/compiled/loader-runner'` because `.next` had been symlinked to ext4 to work around DrvFS slowness; Turbopack resolves modules relative to the build-output root. **Fix: `.next` must stay a real directory inside `app/` (symlink removed; reverted data deleted).**
+- Two npm installs timed out mid-reify on `/mnt/c` (WSL DrvFS is ~10–20× slower on I/O). A leftover npm process also held a lock causing EACCES on rename — killed. Final clean `npm install` succeeded. `node_modules` is a **real directory in `app/`** (npm reifies over symlinks, so a symlink workaround does not stick).
+- Precedent for future agents: run long npm/build commands as background jobs and wait; keep `lint` scoped; do not symlink `.next` or `node_modules`.
 
 ## Pending decisions
-All of D1–D10 in `DECISIONS.md` (open ones marked PROPOSED/OPEN).
+D5 only (SMS channel for delivery OTP — stays in-app until user provides a provider).
+D2/D4/D10/D12 etc. all APPROVED as recorded in `DECISIONS.md`.
 
 ## Exact next action
-Next IDE should:
-1. Read `AGENTS.md` → `PROJECT_CONTEXT.md` → `TASKS.md` → `DECISIONS.md` → this file.
-2. Check `git status`; if decisions remain unanswered, stop and surface D1–D6 to the user again.
-3. Once approved: start **TASK 1.1** (scaffold Next.js TypeScript app). Concretely: `npx create-next-app@latest <app-dir-here> --ts` (decide directory name only after D2 is approved — proposal: root-level app beside `docs/`, see `docs/ARCHITECTURE_PROPOSAL.md` §4), Tailwind config with prototype tokens, then verify `npm run dev` serves, and update this file + `TASKS.md`.
-4. Update `HANDOFF.md` before stopping, with real command outputs.
+Next IDE:
+1. Read `AGENTS.md` → `PROJECT_CONTEXT.md` → `TASKS.md` → `DECISIONS.md` → this file; `git status` + `git log --oneline` (last commit = TASK 1.1). Verify build still passes: `cd app && npm run build`.
+2. Do **TASK 1.3** — port shared UI primitives from the prototypes into `app/src/components/ui/` (+ `components/shop/`): Card, Button (yellow/line/orange variants, sm/wide/disabled), Toast (client), Dialog (native `<dialog>` wrapper, client), rating Stars (CSS-mask technique from prototype), Pill, Stepper (qty), Escape/validation-error field pattern. Pure presentation only — no business logic (approved rule).
+3. Optionally verify dark mode: `npm run dev`, switch OS theme; tokens flip like the prototype.
+4. Update `TASKS.md` + this `HANDOFF.md` with real check results before stopping. Do not start Phase 2 (Prisma/schema) before TASK 1.3 is DONE and 1.2 visually verified.
 
 ## Instructions for the next IDE
-- Verify claimed progress against files/git before trusting it (e.g. re-check prototypes are untouched).
-- Continue the first non-DONE task; do not recreate Phase 0.
-- Do not modify the three prototype HTML files.
-- Record every executed check honestly; never mark DONE without verification.
+- Commands are run from `app/`, not the repo root.
+- This environment (WSL on `/mnt/c`) is slow on file I/O: background-mode long commands, expect minutes not seconds.
+- Keep prototypes byte-identical; keep every decision traceable in `DECISIONS.md`; never mark DONE without an executed check recorded here.

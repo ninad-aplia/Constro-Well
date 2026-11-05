@@ -30,9 +30,12 @@ An e-commerce marketplace for construction materials (cement, steel, sand, tiles
 - Error handling: user-visible states for loading, empty, and error on every async view.
 - Comments explain why, not what. Keep them rare.
 
-## Commands (establish in Phase 2; update this block when they exist)
-- Setup: `npm install` · DB: `npm run db:migrate` · Dev: `npm run dev`
-- Test: `npm run test` · Build: `npm run build`
+## Commands (verified working — TASK 1.1)
+- Setup: `cd app && npm install` · Dev: `npm run dev` (from `app/`)
+- Lint: `npm run lint` · Build: `npm run build`
+- DB/test commands arrive in Phase 2 (`npm run db:migrate`, `npm run test`) — do not invent them here until those tasks land.
+
+**Environment note (WSL on `/mnt/c`):** npm + I/O-heavy tools on the Windows drive are very slow; timeouts on long installs are normal. `npm run lint` is scoped to `src` intentionally; never symlink `.next` outside the project tree (breaks Turbopack module resolution — tested and reverted).
 
 ## Running tests is part of "done"
 Never mark a task DONE in `TASKS.md` without executing the check that proves it and recording the real result in `HANDOFF.md`.

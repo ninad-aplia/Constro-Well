@@ -36,13 +36,15 @@ Platform commission 5% · delivery free ≥ ₹5,000 else ₹199 · COD cap ₹5
 
 All three are self-contained vanilla JS SPAs with realistic seeded demo state, **no backend calls**. The shop prototype contains a hand-rolled SHA-256 password hashing demo — the real implementation must be server-side bcrypt/argon, not this.
 
-## 5. Technology stack — PROPOSED, awaiting approval (D2)
-- **Next.js (App Router, TypeScript) full-stack monolith**: storefront + seller + driver + admin surfaces as route groups, API routes / server actions as backend. One language, one deployable, fastest to a coherent MVP; matches the developer's React/Next familiarity.
-- **PostgreSQL + Prisma** (migrations first-class; Prisma chosen over raw SQL for speed)
-- **Auth**: server-side sessions — bcrypt (or argon2) hashes, httpOnly session cookie, sessions table. No OAuth (not needed for MVP).
-- **Testing**: light-weight — backend route/service tests with a runner already in the Next.js ecosystem (e.g. Vitest); one e2e smoke script optional.
-- Styling: **Tailwind CSS** (design tokens extracted from the prototypes) or plain CSS tokens — final call at Phase 2 start.
-- Deployment target: a single Node host or Vercel + managed Postgres (e.g. Neon/Supabase) — decision pending (D10).
+## 5. Technology stack — **APPROVED 2026-11-05 (D2)**
+- **Next.js (App Router, TypeScript) full-stack monolith** in `app/`: storefront + seller + driver + admin surfaces as route groups, API routes as backend. One language, one deployable; matches developer's React/Next familiarity.
+- **PostgreSQL + Prisma** (schema-first, migrations via Prisma)
+- **Auth**: server-side session cookie, bcrypt password hashes, sessions table, role checks in API layer. No OAuth.
+- **Validation**: Zod at every API boundary; no business rules duplicated in components.
+- **Testing**: Vitest — unit (money/pricing/state math) + API integration + critical end-to-end workflow tests (D12).
+- **Styling**: Tailwind CSS with design tokens lifted from the storefront prototype (see `docs/PROTOTYPE_AUDIT.md`).
+- **Payments (D3/D4)**: COD only, ₹50,000 max order value, enforced server-side. No simulated online payments.
+- **Deployment (D10)**: local dev first; Docker-based deployment prepared in Phase 8.
 
 ## 6. Architecture
 Monolith, three layers, no shared types shortcuts across trust boundaries:
@@ -77,15 +79,15 @@ Monolith, three layers, no shared types shortcuts across trust boundaries:
 - Money formatting `₹` + Indian grouping (`en-IN`); dates `en-IN`.
 
 ## 10. Integrations
-- **Payments: UNRESOLVED (D3/D4 — blocked).** Prototype shows UPI/card/netbanking/COD forms but no gateway. No fake success responses allowed. Do not build checkout payment endpoints until decided; COD-only is the recommended MVP fallback (real order still places).
-- SMS for OTP (delivery OTP currently shown in UI, no channel): needs decision D5.
+- **Payments: APPROVED (D3/D4).** COD-only MVP, ₹50,000 max order value, enforced server-side. No simulated online payment flows; gateway UI deferred until an approved decision provides real keys.
+- **Delivery OTP channel (D5 — still OPEN):** OTP generated server-side and shown in the customer order view; **no SMS provider** until user supplies one. Do not fake "SMS sent".
 - No shipping-provider integration — vendors self-deliver with own trucks (per prototypes; confirm as D6).
 - File uploads (KYC cheque, product photos, driver photo proof) — "demo file" checkboxes in prototype; real uploads deferred unless decided.
 
 ## 11. Known limitations / risks
 - Prototype hashing is client-side and not portable — replace fully; do not import demo users' records.
 - Prototype order IDs/seller IDs are generated client-side with `Math.random` — replace server-side.
-- The shop's sellers-per-product are synthesized from the brand + a name pool, not real seller rows. Real model must connect products to `Seller` rows with per-seller price/stock. This is the biggest data-model gap between the shop and seller prototypes.
-- The shop has no seller-scoped view of "other sellers" backed by data (fake offers).
-- The actual admin portal is being developed separately: backend admin endpoints must exist (role admin) so the future portal can consume them; any admin UI we build is a stopgap exception console.
-- Legal/tax: GST-inclusive display, e-way bill thresholds are prototype rules — confirm with the user before shipping beyond demo.
+- The shop's sellers-per-product are synthesized from the brand + a name pool, not real seller rows. Resolved by D11 (products belong to individual vendors); product detail offers become real seller-backed rows.
+- **Admin portal UI is a separate product being developed elsewhere (D7 APPROVED):** backend admin endpoints must exist (role admin) so the external portal can consume them; our admin UI is a stopgap exception console only.
+- Legal/tax: GST-inclusive display approved for MVP (D8); e-way bill thresholds are configurable business rules — confirm with the user before anything beyond demo.
+- **Branding (D1 APPROVED):** new app is Constro Well; prototypes remain BuildGrid byte-identically; no final logo invented — use a neutral wordmark placeholder.

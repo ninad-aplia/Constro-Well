@@ -10,13 +10,13 @@ Priority: P0 = must ship, P1 = should ship, P2 = defer if time runs out.
 | 0.1 Inspect 3 prototypes, screen/workflow/entity audit | P0 | DONE | – | `docs/PROTOTYPE_AUDIT.md` written from actual file contents |
 | 0.2 Architecture proposal + stack rationale + directory layout | P0 | DONE | 0.1 | `docs/ARCHITECTURE_PROPOSAL.md` with rationale + dir tree |
 | 0.3 Six root handoff docs created and populated from real audit | P0 | DONE | 0.1 | AGENTS/PROJECT_CONTEXT/TASKS/HANDOFF/DECISIONS/README exist and match reality |
-| 0.4 Get user approval on open decisions D1–D6 (branding, payment, auth scope, shipping, stack, deployment) | P0 | BLOCKED | 0.2 | User answers recorded in `DECISIONS.md` with status APPROVED/REJECTED |
+| 0.4 Get user approval on open decisions D1–D6 (branding, payment, auth scope, shipping, stack, deployment) | P0 | DONE | 0.2 | User answers recorded in `DECISIONS.md` with status APPROVED/REJECTED — **2026-11-05: D1,D2,D3,D4,D6,D7,D8,D9,D10,D11,D12 APPROVED; D5 still open** |
 | 0.5 Repo: git init + initial commit (prototypes preserved) | P0 | DONE | 0.3 | `git log` shows checkpoint commit containing prototypes unchanged |
 
 ## Phase 1 — Frontend foundation (Next.js)
 | Task | Pri | Status | Depends | Acceptance criteria |
 |---|---|---|---|---|
-| 1.1 Scaffold Next.js TS app, Tailwind/CSS tokens from prototype palette, fonts, shared UI primitives from shop prototype (Card, Button, Toast, Dialog, stars) | P0 | NOT STARTED | 0.4 | App boots; tokens match prototype palette; README quickstart accurate |
+| 1.1 Scaffold Next.js TS app, Tailwind/CSS tokens from prototype palette, fonts, shared app shell + placeholder storefront | P0 | DONE | 0.4 | App boots; tokens match prototype palette; lint+build pass (`eslint src` exit 0; `next build` exit 0, static prerender `/` verified). README quickstart accurate. UI primitives land in 1.3 |
 | 1.2 Design tokens + dark-mode variant identical to prototypes | P1 | NOT STARTED | 1.1 | palette variables in CSS match both light + dark prototypes |
 | 1.3 Extract reusable components (product card, product art placeholders/rating stars, stepper, pills, data tables) | P0 | NOT STARTED | 1.1 | components render with prototype markup parity |
 
