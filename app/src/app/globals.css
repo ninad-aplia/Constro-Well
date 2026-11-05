@@ -24,6 +24,7 @@
   --deal: #C7352B;
   --ok: #147A45;
   --bad: #B42318;
+  --warn: #945400;
   --star: #F5A623;
   --star-off: #C9D0DB;
 
@@ -46,6 +47,7 @@
     --deal: #FF8272;
     --ok: #4CC78A;
     --bad: #FF8A7A;
+    --warn: #F0B74A;
     --star-off: #3A4A63;
 
     --shadow: 0 10px 30px rgba(0, 0, 0, .5);
@@ -71,6 +73,7 @@
   --color-deal: var(--deal);
   --color-ok: var(--ok);
   --color-bad: var(--bad);
+  --color-warn: var(--warn);
   --color-star: var(--star);
   --color-staroff: var(--star-off);
 
@@ -121,4 +124,20 @@ h1, h2, h3, h4 {
 .skip:focus {
   left: 8px;
   top: 8px;
+}
+
+/* Rating stars: exact CSS-mask technique from buildgrid-shop.html */
+.stars {
+  display: inline-block;
+  width: 84px;
+  height: 16px;
+  vertical-align: -3px;
+  background: linear-gradient(90deg, var(--star) var(--p), var(--star-off) var(--p));
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 24'%3E%3Cpath id='s' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(24 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(48 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(72 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(96 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3C/svg%3E") center/100% 100% no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 24'%3E%3Cpath d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(24 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(48 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(72 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3Cpath transform='translate(96 0)' d='M12 2l3 6.5 7 .8-5.2 4.8 1.5 7L12 17.6 5.7 21l1.5-7L2 9.3l7-.8z'/%3E%3C/svg%3E") center/100% 100% no-repeat;
+}
+
+/* Native <dialog> backdrop, ported from the prototypes */
+dialog::backdrop {
+  background: rgba(5, 12, 24, .6);
 }

@@ -1,6 +1,8 @@
 // Placeholder storefront route (TASK 1.1). No shopping workflow yet —
 // catalog tiles are static copies of the prototype's category list; the real
 // catalogue is served by the API in TASK 4.1+.
+import PrimitiveShowcase from "@/components/ui/PrimitiveShowcase";
+
 const CATEGORIES = [
   "Cement",
   "Steel",
@@ -71,6 +73,8 @@ export default function Home() {
           <code>HANDOFF.md</code>.
         </p>
       </section>
+
+      <PrimitiveShowcase />
     </div>
   );
 }
