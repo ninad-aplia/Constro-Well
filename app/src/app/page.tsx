@@ -1,26 +1,14 @@
-// Placeholder storefront route (TASK 1.1). No shopping workflow yet beyond the
-// category tiles (TASK 4.1, in progress) — hero carousel, deals and best
-// sellers still to come.
+// Placeholder storefront route (TASK 1.1). No shopping workflow yet beyond
+// the hero carousel and category tiles (TASK 4.1, in progress) — deals and
+// best sellers still to come.
 import PrimitiveShowcase from "@/components/ui/PrimitiveShowcase";
+import Hero from "@/components/home/Hero";
 import CategoryTiles from "@/components/home/CategoryTiles";
 
 export default function Home() {
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-6">
-      <section className="rounded-xl bg-nav px-6 py-12 text-center text-white sm:px-10 sm:py-16">
-        <h1 className="mx-auto max-w-xl font-display text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
-          Building materials, delivered to your site.
-        </h1>
-        <p className="mx-auto mt-3 max-w-md text-white/85">
-          Multiple verified sellers, bulk pricing, and delivery tracked to the
-          last bag. We are laying the foundation now — browse arrives with the
-          catalogue.
-        </p>
-        <span
-          aria-hidden="true"
-          className="mx-auto mt-6 block h-1 w-24 rounded bg-hi"
-        />
-      </section>
+      <Hero />
 
       <section aria-label="Product categories" className="mt-6 max-w-sm">
         <CategoryTiles />

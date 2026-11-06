@@ -2,7 +2,7 @@
 // through (see data/catalog.ts header). Wraps the mock catalogue behind async
 // calls today; swaps to real fetch/DB-backed calls once TASK 2.1/2.2 land,
 // without UI call sites changing shape.
-import { ART, HUE } from "@/data/catalog";
+import { ART, HUE, SLIDES, type Slide } from "@/data/catalog";
 import { CATEGORIES, type Category } from "@/lib/shop/types";
 
 /** Categories featured on the homepage "Shop by category" tile (prototype `catTiles`, buildgrid-shop.html:405). */
@@ -25,4 +25,14 @@ export async function getCategories(): Promise<readonly Category[]> {
 /** Tiles for the homepage "Shop by category" card. */
 export async function getFeaturedCategoryTiles(): Promise<CategoryTile[]> {
   return FEATURED_CATEGORIES.map(toTile);
+}
+
+/** Hero slide with its `art` category names resolved to rendered SVG markup. */
+export interface HeroSlide extends Omit<Slide, "art"> {
+  art: [string, string];
+}
+
+/** Home hero carousel slides (prototype `SLIDES`, buildgrid-shop.html:391-397). */
+export async function getHeroSlides(): Promise<HeroSlide[]> {
+  return SLIDES.map((s) => ({ ...s, art: s.art.map((c) => ART[c as Category]) as [string, string] }));
 }
