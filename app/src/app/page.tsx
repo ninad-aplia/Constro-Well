@@ -1,12 +1,15 @@
 // Placeholder storefront route (TASK 1.1). No shopping workflow yet beyond
-// the hero carousel and the `.tiles` discovery row (TASK 4.1, in progress) —
-// best sellers and recently viewed still to come.
+// the hero carousel, the `.tiles` discovery row and the three product rows
+// (TASK 4.1, in progress) — recently viewed and the trust strip still to come.
 import PrimitiveShowcase from "@/components/ui/PrimitiveShowcase";
 import Hero from "@/components/home/Hero";
 import CategoryTiles from "@/components/home/CategoryTiles";
 import DealTiles from "@/components/home/DealTiles";
 import BulkSaverTile from "@/components/home/BulkSaverTile";
 import SignInTile from "@/components/home/SignInTile";
+import TodaysDealsRow from "@/components/home/TodaysDealsRow";
+import BestSellersRow from "@/components/home/BestSellersRow";
+import FinishingTouchesRow from "@/components/home/FinishingTouchesRow";
 
 export default function Home() {
   return (
@@ -33,6 +36,12 @@ export default function Home() {
         <BulkSaverTile />
         <SignInTile />
       </section>
+
+      <div className="mt-6">
+        <TodaysDealsRow />
+        <BestSellersRow />
+        <FinishingTouchesRow />
+      </div>
 
       <section
         aria-label="Build status"
