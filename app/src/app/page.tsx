@@ -1,10 +1,12 @@
 // Placeholder storefront route (TASK 1.1). No shopping workflow yet beyond
-// the hero carousel, category tiles and deals tiles (TASK 4.1, in progress) —
-// bulk saver, sign-in tile and best sellers still to come.
+// the hero carousel and the `.tiles` discovery row (TASK 4.1, in progress) —
+// best sellers and recently viewed still to come.
 import PrimitiveShowcase from "@/components/ui/PrimitiveShowcase";
 import Hero from "@/components/home/Hero";
 import CategoryTiles from "@/components/home/CategoryTiles";
 import DealTiles from "@/components/home/DealTiles";
+import BulkSaverTile from "@/components/home/BulkSaverTile";
+import SignInTile from "@/components/home/SignInTile";
 
 export default function Home() {
   return (
@@ -12,19 +14,24 @@ export default function Home() {
       <Hero />
 
       {/*
-        Prototype `.tiles` row (buildgrid-shop.html:76, 156, 158) is 4 columns
-        desktop (>1100px), 2 columns at intermediate widths (≤1100px), 1 column
-        mobile (≤640px). Only 2 of the eventual 4 tiles exist (category, deals;
-        bulk saver + sign-in still to come), so this grid intentionally stays at
-        the 2-column tier at all widths ≥640px for now — add an `lg:grid-cols-4`
-        tier only once all 4 tiles are implemented, to avoid empty desktop slots.
+        Prototype `.tiles` row (buildgrid-shop.html:76, 156, 158), now complete
+        with all 4 tiles: 4 columns desktop (>1100px), 2 columns at
+        intermediate widths (640-1100px), 1 column mobile (<640px). `1100px` is
+        an arbitrary breakpoint matching the prototype's own cutoff, which
+        doesn't align with Tailwind's default `lg` (1024px). The intermediate
+        tier is bounded on both ends (`sm:max-[1099px]:`) rather than left
+        open-ended — Tailwind emits the `min-[1100px]` media block before the
+        standard `sm` block in the stylesheet, so an unbounded `sm:grid-cols-2`
+        would win the cascade at >=1100px too (verified in the browser).
       */}
       <section
-        aria-label="Shop by category and today's deals"
-        className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"
+        aria-label="Shop by category, today's deals, bulk saver and your account"
+        className="mt-6 grid grid-cols-1 gap-4 sm:max-[1099px]:grid-cols-2 min-[1100px]:grid-cols-4"
       >
         <CategoryTiles />
         <DealTiles />
+        <BulkSaverTile />
+        <SignInTile />
       </section>
 
       <section

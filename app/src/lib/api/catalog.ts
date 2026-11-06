@@ -3,6 +3,7 @@
 // calls today; swaps to real fetch/DB-backed calls once TASK 2.1/2.2 land,
 // without UI call sites changing shape.
 import { ART, HUE, PRODUCTS, SLIDES, type Slide } from "@/data/catalog";
+import { BULK } from "@/lib/shop/pricing";
 import { CATEGORIES, type Category } from "@/lib/shop/types";
 
 /** Categories featured on the homepage "Shop by category" tile (prototype `catTiles`, buildgrid-shop.html:405). */
@@ -55,4 +56,9 @@ export async function getDealTiles(): Promise<DealTile[]> {
   return discountedProducts()
     .slice(0, 4)
     .map((p) => ({ id: p.id, category: p.cat, off: p.off, hue: HUE[p.cat], art: ART[p.cat] }));
+}
+
+/** Bulk-pricing tiers for the homepage "Bulk saver" card (`lib/shop/pricing.ts` `BULK`, verified business logic, not mock data). */
+export async function getBulkTiers(): Promise<readonly [number, number][]> {
+  return BULK;
 }
