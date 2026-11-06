@@ -1,7 +1,8 @@
 import Link from "next/link";
 
 // Header parity port of the storefront prototype's header (sticky dark-nav bar).
-// Interactive parts are intentionally absent until their workflows exist (TASK 4.x).
+// Search now submits to /search (TASK 4.2); other interactive parts (account,
+// cart, delivery location) are still absent until their workflows exist.
 export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-60 bg-nav text-white">
@@ -23,19 +24,27 @@ export default function SiteHeader() {
           MVP under construction — storefront lands in Phase&nbsp;1–5
         </p>
 
-        {/* Search placeholder — real search ships with TASK 4.2 */}
-        <div
-          role="presentation"
-          aria-label="Search arriving with the catalogue"
+        <form
+          action="/search"
+          method="GET"
+          role="search"
+          aria-label="Search Constro Well"
           className="order-last flex h-11 w-full rounded-lg sm:order-none sm:ml-auto sm:flex-1 sm:max-w-xl"
         >
-          <span className="hidden flex-1 items-center rounded-l-lg bg-white/85 px-3 text-sm text-ink sm:flex">
-            Search cement, TMT bars, tiles, paint…
-          </span>
-          <span className="grid w-12 place-items-center rounded-r-lg bg-hi font-display text-sm font-bold text-hiink">
+          <input
+            type="search"
+            name="q"
+            placeholder="Search cement, TMT bars, tiles, paint…"
+            className="min-w-0 flex-1 rounded-l-lg border-0 bg-white/85 px-3 text-sm text-ink placeholder:text-ink/70"
+          />
+          <button
+            type="submit"
+            aria-label="Search"
+            className="grid w-12 place-items-center rounded-r-lg bg-hi font-display text-sm font-bold text-hiink hover:bg-hi2"
+          >
             GO
-          </span>
-        </div>
+          </button>
+        </form>
       </div>
     </header>
   );

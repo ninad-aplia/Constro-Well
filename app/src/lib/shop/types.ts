@@ -1,6 +1,11 @@
 // Customer-shop domain types. Shape mirrors buildgrid-shop.html exactly;
 // real API responses (Phase 2+) must serialize to the same shape so the UI
 // never notices the swap.
+//
+// "Interior Design" is the one entry not from the original prototype (which
+// has exactly these 12) — owner-approved addition (DECISIONS.md D15),
+// appended at the end so every existing category keeps its position. It
+// currently has zero sample products — see data/catalog.ts.
 export const CATEGORIES = [
   "Cement",
   "Steel",
@@ -14,6 +19,7 @@ export const CATEGORIES = [
   "Paint",
   "Doors and windows",
   "Safety",
+  "Interior Design",
 ] as const;
 
 export type Category = (typeof CATEGORIES)[number];

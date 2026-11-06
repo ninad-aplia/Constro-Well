@@ -1,7 +1,13 @@
 // Product card — port of buildgrid-shop.html's `pcard()` (lines 377-386) and
 // its `.pcard`/`.pimg`/`.pinfo`/`.ptitle`/`.rate`/`.price`/`.mrp`/`.offt`/
 // `.tagdeal`/`.tagbest`/`.heart` CSS (lines 88-97). Server component: pure
-// presentation, props come from the catalog API facade via ProductRow.
+// presentation, props come from the catalog API facade via ProductRow (or
+// directly from /search). `layout` matches the prototype's two contexts:
+// "scroll" is `.scroller .pcard{flex:0 0 220px}` (homepage rows, default —
+// every existing call site is unchanged); "grid" is the bare `.pcard` inside
+// `.pgrid{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}` (search
+// results), where the card has no fixed width and stretches to fill its
+// track. Card contents/artwork/badges/typography are identical either way.
 //
 // Deliberate deviations from the prototype (mock-data safety, D14):
 // - Wishlist ("heart") and "Add to cart" are rendered disabled. Neither
@@ -31,9 +37,14 @@ export default function ProductCard({
   best,
   hue,
   art,
-}: ProductCardData) {
+  layout = "scroll",
+}: ProductCardData & { layout?: "scroll" | "grid" }) {
   return (
-    <article className="relative flex w-[220px] flex-none snap-start flex-col overflow-hidden rounded-xl border border-line bg-panel hover:border-ink2">
+    <article
+      className={`relative flex flex-col overflow-hidden rounded-xl border border-line bg-panel hover:border-ink2 ${
+        layout === "scroll" ? "w-[220px] flex-none snap-start" : "w-full"
+      }`}
+    >
       <button
         type="button"
         disabled

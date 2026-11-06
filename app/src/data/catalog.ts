@@ -85,6 +85,12 @@ const RAW: Record<Category, Row[]> = {
     ["Steel Toe Safety Shoes", "SiteSafe", 1490, 899, "pair", 4.3, 5420, 300, 2, ["Steel toe cap", "Slip-resistant sole", "Sizes: 6 to 11"]],
     ["Hi-Vis Reflective Vest, Pack of 5", "SiteSafe", 650, 499, "pack of 5", 4.2, 3210, 600, 1, ["Reflective tape", "Free size with zip", "Colour: orange"]],
   ],
+  // Owner-approved addition (DECISIONS.md D15), not in the original
+  // prototype. No sample products exist for it yet — left empty rather than
+  // inventing catalogue inventory; `searchProducts`/category facets already
+  // handle a zero-product category correctly (it just won't appear in
+  // result-count facets until real products are added).
+  "Interior Design": [],
 };
 
 export const PRODUCTS: Product[] = [];
@@ -125,6 +131,9 @@ export const ART: Record<Category, string> = {
   Paint: '<path d="M28 30L34 68H86L92 30z" fill="#7A47C8"/><ellipse cx="60" cy="30" rx="32" ry="7" fill="#B190EA"/><path d="M32 28Q60 -8 88 28" fill="none" stroke="#51607A" stroke-width="3"/><rect x="40" y="42" width="40" height="14" rx="2" fill="#FFC72C"/>',
   "Doors and windows": '<rect x="36" y="6" width="48" height="68" rx="3" fill="#8A5A2B"/><rect x="42" y="12" width="15" height="24" fill="#A87440"/><rect x="63" y="12" width="15" height="24" fill="#A87440"/><rect x="42" y="42" width="36" height="26" fill="#A87440"/><circle cx="77" cy="40" r="2.5" fill="#FFC72C"/>',
   Safety: '<path d="M22 54Q22 18 60 18Q98 18 98 54z" fill="#FFC72C"/><rect x="16" y="54" width="88" height="9" rx="4.5" fill="#E0A800"/><rect x="53" y="18" width="14" height="36" fill="#E0A800"/>',
+  // Not in the prototype's ART map — simple sofa silhouette, same flat-shape
+  // style as the other icons (owner-approved addition, DECISIONS.md D15).
+  "Interior Design": '<rect x="16" y="38" width="88" height="26" rx="8" fill="#4F9C86"/><rect x="10" y="26" width="20" height="36" rx="8" fill="#3D7E6B"/><rect x="90" y="26" width="20" height="36" rx="8" fill="#3D7E6B"/><rect x="22" y="48" width="76" height="16" rx="4" fill="#DCEFE9"/><circle cx="26" cy="68" r="4" fill="#2C5C4E"/><circle cx="94" cy="68" r="4" fill="#2C5C4E"/>',
 };
 
 /** Category tint used by `linear-gradient(160deg, var(--tint), mix(var(--h)))` placeholders. */
@@ -141,6 +150,7 @@ export const HUE: Record<Category, string> = {
   Paint: "#7A47C8",
   "Doors and windows": "#8A5A2B",
   Safety: "#FFC72C",
+  "Interior Design": "#4F9C86",
 };
 
 /* ---------- mock seller offers (prototype synthesis; real sellers land with D11 backend) ---------- */
@@ -166,6 +176,7 @@ export const PAIR: Record<Category, [Category, Category]> = {
   Paint: ["Tiles", "Doors and windows"],
   "Doors and windows": ["Paint", "Safety"],
   Safety: ["Steel", "Cement"],
+  "Interior Design": ["Paint", "Tiles"],
 };
 
 /* ---------- hero slides (verbatim) ---------- */
