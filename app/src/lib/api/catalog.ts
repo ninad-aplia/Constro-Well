@@ -118,3 +118,21 @@ export async function getFinishingTouchesRow(): Promise<ProductCardData[]> {
     .slice(0, 10)
     .map(toCardData);
 }
+
+/**
+ * Resolves recently-viewed product IDs to cards, preserving the given (MRU)
+ * order and dropping any ID that no longer resolves (prototype `recentList`,
+ * buildgrid-shop.html:358: `DB.recent.map(P).filter(Boolean)`).
+ *
+ * Exposed to the client via the `getRecentlyViewedCards` Server Action in
+ * `recentlyViewedAction.ts` — not marked "use server" here directly, because
+ * Next.js forbids an inline Server Action in a file that's also imported
+ * (even type-only) into a Client Component's module graph.
+ */
+export async function getProductCardsByIds(ids: number[]): Promise<ProductCardData[]> {
+  const byId = new Map(PRODUCTS.map((p) => [p.id, p]));
+  return ids
+    .map((id) => byId.get(id))
+    .filter((p): p is Product => Boolean(p))
+    .map(toCardData);
+}

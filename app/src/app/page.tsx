@@ -1,6 +1,6 @@
-// Placeholder storefront route (TASK 1.1). No shopping workflow yet beyond
-// the hero carousel, the `.tiles` discovery row and the three product rows
-// (TASK 4.1, in progress) — recently viewed and the trust strip still to come.
+// Placeholder storefront route (TASK 1.1). The full `VIEWS_home` prototype
+// section order is now ported (TASK 4.1): hero, `.tiles` discovery row, the
+// three product rows, recently viewed, trust strip.
 import PrimitiveShowcase from "@/components/ui/PrimitiveShowcase";
 import Hero from "@/components/home/Hero";
 import CategoryTiles from "@/components/home/CategoryTiles";
@@ -10,6 +10,8 @@ import SignInTile from "@/components/home/SignInTile";
 import TodaysDealsRow from "@/components/home/TodaysDealsRow";
 import BestSellersRow from "@/components/home/BestSellersRow";
 import FinishingTouchesRow from "@/components/home/FinishingTouchesRow";
+import RecentlyViewedRow from "@/components/home/RecentlyViewedRow";
+import TrustStrip from "@/components/home/TrustStrip";
 
 export default function Home() {
   return (
@@ -41,7 +43,10 @@ export default function Home() {
         <TodaysDealsRow />
         <BestSellersRow />
         <FinishingTouchesRow />
+        <RecentlyViewedRow />
       </div>
+
+      <TrustStrip />
 
       <section
         aria-label="Build status"
