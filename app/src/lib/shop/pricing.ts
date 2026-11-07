@@ -3,7 +3,7 @@
 // server-side API (Phase 2+) must reuse this module — client totals stay
 // display hints and the backend re-runs the same math before accepting orders.
 
-import type { CouponOutcome, Product, SellerOffer, Totals } from "./types";
+import type { CouponOutcome, SellerOffer, Totals } from "./types";
 
 /** Bulk tiers: [minUnits, percentOff] */
 export const BULK: [number, number][] = [

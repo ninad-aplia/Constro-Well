@@ -1,0 +1,13 @@
+# Local production-like run: docker compose up --build
+# The app does not read Postgres at runtime yet (D14). When it does, add a
+# DATABASE_URL pointing at a managed or container database and run
+# `npx prisma migrate deploy` before starting the app.
+services:
+  app:
+    build: .
+    image: constro-well:local
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+    restart: unless-stopped

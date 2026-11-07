@@ -1,8 +1,8 @@
 import Link from "next/link";
+import CartBadge from "@/components/cart/CartBadge";
 
 // Header parity port of the storefront prototype's header (sticky dark-nav bar).
-// Search now submits to /search (TASK 4.2); other interactive parts (account,
-// cart, delivery location) are still absent until their workflows exist.
+// Search submits to /search; cart badge wired to the client cart store.
 export default function SiteHeader() {
   return (
     <header className="sticky top-0 z-60 bg-nav text-white">
@@ -45,6 +45,7 @@ export default function SiteHeader() {
             GO
           </button>
         </form>
+        <CartBadge />
       </div>
     </header>
   );

@@ -1,0 +1,474 @@
+// Constro Well — persistence schema (TASK 2.1).
+// Stack (DECISIONS.md D2, APPROVED): PostgreSQL + Prisma, schema-first.
+//
+// MONEY (DECISIONS.md D16, owner-approved):
+//   Every monetary column is   Decimal @db.Decimal(14, 2)  — exact INR with
+//   2 fractional digits (paise). Percentage rates are Decimal @db.Decimal(7, 6)
+//   (e.g. 0.050000 = 5%, 0.020000 = 2%). Prisma returns `Decimal` objects:
+//   at every API/application boundary they are serialized as exact decimal
+//   strings (`dec.toFixed(2)` or String(dec)) and
+//   are never converted to JavaScript `number` nor combined with float
+//   arithmetic. Client prices/totals are display hints only (PROJECT_CONTEXT
+//   §8). Non-money display metrics (rating, weight, discount %) may use Float.
+//
+// OTP (DECISIONS.md D17, owner-approved): only a bcrypt digest is stored
+// (`otpHash`); the plaintext 4-digit code never reaches the database. No
+// expiry column exists — expiry policy is unresolved (D5 remains OPEN); do
+// not invent one. No SMS/outside delivery provider exists in this schema.
+//
+// ENUM SOURCES — no invented states:
+//   ShipmentStatus   = PROJECT_CONTEXT §6 machine + side states, identical to
+//                      SellerOrderStatus; shipped "cancel" per delivery demo.
+//   OrderStage       = buildgrid-shop.html `STAGES` ("Ordered", "Packed",
+//                      "Shipped", "Out for delivery", "Delivered") + the
+//                      prototype's cancelled flag as a boolean.
+//   Role             = customer / seller / driver / admin (AGENTS.md roles).
+//   EscrowEntryType  = held / commission / penalty / refund / released /
+//                      withdrawn (PROJECT_CONTEXT §7).
+//
+// Deletion rules: user-owned UI rows (sessions, cart, wishlist, addresses,
+// notifications) cascade; financial and audit rows (orders, lines, shipments,
+// events, issues, ledger) are Restrict — they are never removed through
+// cascading deletion.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  customer
+  seller
+  driver
+  admin
+}
+
+enum KycStatus {
+  verified
+  pending
+}
+
+enum ProductStatus {
+  active
+  paused
+}
+
+enum ShipmentStatus {
+  new
+  accepted
+  packed
+  dispatched
+  failed
+  review
+  disputed
+  settled
+  rejected
+  missed
+  cancelled
+  refunded
+}
+
+enum OrderStage {
+  ordered
+  packed
+  shipped
+  out_for_delivery
+  delivered
+}
+
+enum ShipmentActor {
+  vendor
+  driver
+  customer
+  system
+}
+
+enum ShipmentIssueType {
+  short_quantity // prototype "Short quantity" (auto-disputed shortfall)
+  damaged_goods // prototype "Damaged goods" (customer report)
+  failed_attempt // prototype "Failed attempt" (customer not available)
+}
+
+enum EscrowEntryType {
+  held
+  commission
+  penalty
+  refund
+  released
+  withdrawn
+}
+
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String // bcrypt digest — never store or log plaintext
+  role         Role
+  name         String
+  phone        String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @default(now()) @updatedAt
+
+  sessions      Session[]
+  addresses     Address[]
+  cart          Cart?
+  wishlistItems WishlistItem[]
+  reviews       Review[]
+  orders        Order[]
+  driverProfile Driver? @relation("DriverUser")
+  sellerProfile Seller?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique // digest of the session token; cookie is httpOnly
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Seller {
+  id            String    @id @default(cuid())
+  code          String    @unique // stable seed key (e.g. "ultrabuild")
+  ownerUserId   String    @unique // D11: each seller is an individual vendor
+  storeName     String
+  gstin         String    @unique
+  phone         String
+  city          String
+  pickupAddress String
+  bankRef       String
+  kycGst        KycStatus
+  kycPan        KycStatus
+  kycCheque     KycStatus
+  vacationMode  Boolean   @default(false)
+  // Seller-configurable delivery rules (data/seller.ts `rules`): free-above
+  // threshold and flat fee are money; slotsPerDay is the prototype's plan.
+  freeAbove     Decimal   @db.Decimal(14, 2)
+  fee           Decimal   @db.Decimal(14, 2)
+  slotsPerDay   Int[]     @default([])
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now()) @updatedAt
+
+  owner      User           @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  pincodes   SellerPincode[]
+  vehicles   Vehicle[]
+  drivers    Driver[]
+  products   Product[]
+  shipments  Shipment[]
+  escrow     EscrowEntry[]
+  notifications  Notification[]
+  orderLines OrderLine[]
+
+  @@index([city])
+}
+
+model SellerPincode {
+  id       String @id @default(cuid())
+  sellerId String
+  pin      String
+
+  seller Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@unique([sellerId, pin])
+  @@index([pin])
+}
+
+model Driver {
+  id        String  @id @default(cuid())
+  sellerId  String
+  code      String // stable seed key ("d1"…)
+  name      String
+  phone     String
+  // Optional link to this driver's login (role `driver`), created in TASK 3.x;
+  // kept optional so drivers exist as seeded staff before accounts do.
+  userId    String? @unique
+
+  seller   Seller  @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  user     User?   @relation("DriverUser", fields: [userId], references: [id], onDelete: SetNull)
+  vehicles Vehicle[]
+  shipments Shipment[]
+
+  @@unique([sellerId, code])
+}
+
+model Vehicle {
+  id        String  @id @default(cuid())
+  sellerId  String
+  code      String // stable seed key ("v1"…)
+  regNumber String  @unique
+  type      String
+  driverId  String?
+
+  seller Seller @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  driver Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  shipments Shipment[]
+
+  @@unique([sellerId, code])
+}
+
+model Category {
+  id   String @id @default(cuid())
+  name String @unique // exact CATEGORIES vocabulary (lib/shop/types.ts), 12 + D15
+
+  products Product[]
+}
+
+model Product {
+  id           String        @id @default(cuid())
+  code         String        @unique // stable seed key: catalog ids "0".."47"
+  sellerId     String // D11: products belong to individual vendors
+  categoryId   String
+  name         String
+  unit         String
+  mrp          Decimal       @db.Decimal(14, 2)
+  price        Decimal       @db.Decimal(14, 2) // GST-inclusive (D8)
+  stock        Int           @default(0)
+  minOrderQty  Int           @default(1)
+  unitWeightKg Float
+  bulkFlag     Boolean       @default(false)
+  reorderLevel Int           @default(0)
+  status       ProductStatus @default(active)
+  soldCount    Int           @default(0)
+  specs        Json          @default("[]") // prototype specs list (display)
+  imageUrl     String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now()) @updatedAt
+
+  seller        Seller         @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  category      Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  cartItems     CartItem[]
+  wishlistItems WishlistItem[]
+  orderLines    OrderLine[]
+  reviews       Review[]
+
+  @@index([categoryId, status])
+  @@index([sellerId])
+}
+
+model Cart {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items CartItem[]
+}
+
+model CartItem {
+  id             String  @id @default(cuid())
+  cartId         String
+  productId      String
+  offerIndex     Int     @default(0) // catalog offer slot ("id:offerIndex" key)
+  qty            Int
+  savedForLater  Boolean @default(false)
+
+  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([cartId, productId, offerIndex])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@unique([userId, productId])
+  @@index([productId])
+}
+
+model Address {
+  id        String  @id @default(cuid())
+  userId    String
+  label     String  @default("Home")
+  line1     String
+  city      String
+  pin       String
+  isDefault Boolean @default(false)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Review {
+  id               String   @id @default(cuid())
+  productId        String
+  userId           String
+  stars            Int // 1..5, prototype rating scale
+  title            String
+  body             String
+  verifiedPurchase Boolean  @default(false)
+  createdAt        DateTime @default(now())
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([productId])
+}
+
+model Coupon {
+  id               String    @id @default(cuid())
+  code             String    @unique
+  label            String
+  discountPercent  Decimal?  @db.Decimal(7, 6) // exact rate, never float
+  freeDelivery     Boolean   @default(false)
+  isActive         Boolean   @default(true)
+}
+
+model Order {
+  id          String     @id @default(cuid())
+  code        String     @unique // "BG-######", generated server-side at checkout
+  userId      String
+  // Totals snapshot (PROJECT_CONTEXT §7): GST-inclusive amounts (D8).
+  itemValue   Decimal    @db.Decimal(14, 2)
+  deliveryFee Decimal    @db.Decimal(14, 2)
+  grossTotal  Decimal    @db.Decimal(14, 2)
+  paymentMethod String   @default("COD") // D3/D4: COD-only; enforced at checkout from TASK 5
+  paymentLabel  String   @default("Cash on delivery")
+  // Customer lifecycle = the shop prototype's STAGES + cancelled flag.
+  stage       OrderStage @default(ordered)
+  cancelled   Boolean    @default(false)
+  addressSnapshot Json // point-in-time delivery address (order survives address edits)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @default(now()) @updatedAt
+
+  user      User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  lines     OrderLine[]
+  shipments Shipment[]
+  escrow    EscrowEntry[]
+
+  @@index([userId, createdAt])
+}
+
+model OrderLine {
+  id          String   @id @default(cuid())
+  orderId     String
+  productId   String
+  sellerId    String // D11: every line is backed by one vendor
+  name        String // product-name snapshot (point-in-time display text)
+  unit        String // unit snapshot
+  unitPrice   Decimal  @db.Decimal(14, 2)
+  qty         Int
+  lineValue   Decimal  @db.Decimal(14, 2) // units: exact price × qty at seed/API time
+  shipmentId  String? // assignment to the vendor's Shipment once determined
+
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  seller   Seller   @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  shipment Shipment? @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productId])
+  @@index([sellerId])
+}
+
+model Shipment {
+  id         String         @id @default(cuid())
+  code       String         @unique // same "BG-######" family, one per seller per order
+  orderId    String
+  sellerId   String
+  status     ShipmentStatus @default(new)
+  slot       String? // prototype slot vocabulary (DELIVERY_SLOTS / "Delivered"…)
+  vehicleId  String?
+  driverId   String?
+  // Documents snapshot (SellerOrderDocs reconciled): booleans + reference
+  // numbers; e-way/weighbridge are String codes, challan/invoice are flags.
+  docsChallan    Boolean @default(false)
+  docsInvoice    Boolean @default(false)
+  docsEway       String?
+  docsWeighbridge String?
+  // OTP: digest only (D17). otpTries supports the 3-wrong-tries → failed rule
+  // server-side. No expiry field — policy unresolved (D5).
+  otpHash    String?
+  otpTries   Int     @default(0)
+  late       Boolean @default(false)
+  acceptBy   DateTime?
+  dispatchBy DateTime?
+  deliveredAt DateTime?
+  deliveredQty Int?
+  reviewEnds DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
+
+  order  Order  @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  seller Seller @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+
+  vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
+  driver  Driver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
+
+  events       ShipmentEvent[]
+  issue        ShipmentIssue?
+  escrowEntries EscrowEntry[]
+  lines        OrderLine[]
+
+  @@index([sellerId, status])
+  @@index([orderId])
+}
+
+model ShipmentEvent {
+  id         String        @id @default(cuid())
+  shipmentId String
+  actor      ShipmentActor
+  message    String // prototype-style message carries the event type verbatim
+  at         DateTime
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+
+  @@index([shipmentId, at])
+}
+
+model ShipmentIssue {
+  id         String            @id @default(cuid())
+  shipmentId String            @unique // current dispute per shipment, as everywhere in the approved model
+  type       ShipmentIssueType
+  note       String
+  claim      Decimal?          @db.Decimal(14, 2) // e.g. shortfall × unit price, exact
+  auto       Boolean           @default(false) // system-opened (shortfall) vs customer-reported
+  createdAt  DateTime          @default(now())
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+}
+
+model EscrowEntry {
+  id         String          @id @default(cuid())
+  orderId    String?
+  shipmentId String?
+  sellerId   String? // seller-level entries (bank withdrawals) have no shipment
+  type       EscrowEntryType
+  amount     Decimal         @db.Decimal(14, 2)
+  note       String
+  createdAt  DateTime        @default(now())
+
+  order    Order?    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  shipment Shipment? @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  seller   Seller?   @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+
+  @@index([type, createdAt])
+  @@index([shipmentId])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  sellerId  String
+  message   String
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  seller Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  @@index([sellerId, createdAt])
+}

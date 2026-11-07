@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { Bricolage_Grotesque, Figtree } from "next/font/google";
 import "./globals.css";
-import SiteHeader from "@/components/ui/SiteHeader";
-import SiteFooter from "@/components/ui/SiteFooter";
 import ToastProvider from "@/components/ui/Toast";
+import PortalChrome from "@/components/layout/PortalChrome";
+import { CartProvider } from "@/components/cart";
 
 // Fonts from the storefront prototype: Figtree (body), Bricolage Grotesque (display).
 const body = Figtree({
@@ -36,11 +36,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           Skip to main content
         </a>
         <ToastProvider>
-          <SiteHeader />
-          <main id="app" className="flex-1" tabIndex={-1}>
-            {children}
-          </main>
-          <SiteFooter />
+          <CartProvider>
+            <PortalChrome>{children}</PortalChrome>
+          </CartProvider>
         </ToastProvider>
       </body>
     </html>

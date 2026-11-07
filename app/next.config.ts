@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  /* Self-contained output for the Docker image (D10). */
+  output: "standalone",
   cacheComponents: true,
   partialPrefetching: true,
   turbopack: {

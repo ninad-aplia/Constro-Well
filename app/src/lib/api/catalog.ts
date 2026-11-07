@@ -2,9 +2,9 @@
 // through (see data/catalog.ts header). Wraps the mock catalogue behind async
 // calls today; swaps to real fetch/DB-backed calls once TASK 2.1/2.2 land,
 // without UI call sites changing shape.
-import { ART, HUE, PRODUCTS, SLIDES, type Slide } from "@/data/catalog";
+import { ART, HUE, PAIR, PRODUCTS, sellersOf, SLIDES, type Slide } from "@/data/catalog";
 import { BULK } from "@/lib/shop/pricing";
-import { CATEGORIES, type Category, type Product } from "@/lib/shop/types";
+import { CATEGORIES, type Category, type Product, type SellerOffer } from "@/lib/shop/types";
 
 /** Categories featured on the homepage "Shop by category" tile (prototype `catTiles`, buildgrid-shop.html:405). */
 const FEATURED_CATEGORIES: Category[] = ["Cement", "Steel", "Tiles", "Paint"];
@@ -78,7 +78,7 @@ export interface ProductCardData {
   art: string;
 }
 
-function toCardData(p: Product): ProductCardData {
+export function toCardData(p: Product): ProductCardData {
   return {
     id: p.id,
     name: p.name,
@@ -258,4 +258,163 @@ export async function getProductCardsByIds(ids: number[]): Promise<ProductCardDa
     .map((id) => byId.get(id))
     .filter((p): p is Product => Boolean(p))
     .map(toCardData);
+}
+
+/** Fields the product-detail page needs. Deliberately excludes `stock`/`days` — same mock-data-safety reasoning as `ProductCardData`: no live inventory/delivery claims. */
+export interface ProductDetail {
+  id: number;
+  name: string;
+  brand: string;
+  category: Category;
+  mrp: number;
+  price: number;
+  off: number;
+  unit: string;
+  rating: number;
+  reviews: number;
+  best: boolean;
+  specs: string[];
+  hue: string;
+  art: string;
+}
+
+function toProductDetail(p: Product): ProductDetail {
+  return {
+    id: p.id,
+    name: p.name,
+    brand: p.brand,
+    category: p.cat,
+    mrp: p.mrp,
+    price: p.price,
+    off: p.off,
+    unit: p.unit,
+    rating: p.rating,
+    reviews: p.reviews,
+    best: p.best,
+    specs: p.specs,
+    hue: HUE[p.cat],
+    art: ART[p.cat],
+  };
+}
+
+/** Product detail lookup (prototype `P(id)` via `VIEWS_product`, buildgrid-shop.html:477-478). Returns `null` for an unknown/invalid id — callers should treat that as not-found, never render a fallback product. */
+export async function getProductById(id: number): Promise<ProductDetail | null> {
+  const product = PRODUCTS.find((p) => p.id === id);
+  return product ? toProductDetail(product) : null;
+}
+
+/**
+ * Synthetic seller comparison (prototype `sellers()`/`sellersOf`) — sample
+ * data only. These are not real sellers (see PROJECT_CONTEXT.md §7: "shop
+ * prototype's sellers-per-product are synthesized from the brand + a name
+ * pool, not real seller rows"); the UI must disclose this, never present it
+ * as live/verified seller availability.
+ */
+export async function getSellerOffers(id: number): Promise<SellerOffer[]> {
+  const product = PRODUCTS.find((p) => p.id === id);
+  return product ? sellersOf(product) : [];
+}
+
+function topRatedInCategory(category: Category): Product | undefined {
+  return PRODUCTS.filter((p) => p.cat === category).sort((a, b) => b.rating - a.rating || b.reviews - a.reviews)[0];
+}
+
+/** "Frequently bought together" (prototype `fbt`, buildgrid-shop.html:480): this product plus the top-rated product from each of its two paired categories (`PAIR`). */
+export async function getFrequentlyBoughtTogether(id: number): Promise<ProductCardData[]> {
+  const product = PRODUCTS.find((p) => p.id === id);
+  if (!product) return [];
+  const picks = [product, ...PAIR[product.cat].map(topRatedInCategory)].filter((p): p is Product => Boolean(p));
+  return picks.map(toCardData);
+}
+
+/** "Customers also viewed" (prototype `simil`, buildgrid-shop.html:479): same-category products first (natural order), then other-category products by review count, capped at 10. */
+export async function getSimilarProducts(id: number): Promise<ProductCardData[]> {
+  const product = PRODUCTS.find((p) => p.id === id);
+  if (!product) return [];
+  const sameCategory = PRODUCTS.filter((p) => p.cat === product.cat && p.id !== id);
+  const otherCategory = PRODUCTS.filter((p) => p.cat !== product.cat && p.id !== id).sort((a, b) => b.reviews - a.reviews);
+  return [...sameCategory, ...otherCategory].slice(0, 10).map(toCardData);
+}
+
+export interface ProductReview {
+  name: string;
+  stars: number;
+  title: string;
+  body: string;
+  /** Pre-formatted display date — computed here (data-fetch time), not in a component render body, which React's purity rules forbid for `Date.now()`. */
+  postedOn: string;
+}
+
+// Sample review content ported verbatim from the prototype (buildgrid-shop.html:367-370) —
+// generic placeholder names/text, not real individuals or purchases. The UI
+// must never label these "Verified purchase" (the prototype does not either,
+// for these synthetic entries) and must disclose they're sample content.
+const REVIEW_NAMES = ["Rohit S.", "Anita K.", "Vikram P.", "Deepa R.", "Mohammed A.", "Sunita M.", "Karthik N.", "Priyanka T.", "Harish B.", "Lakshmi V.", "Ajay D.", "Farhan Q."];
+const REVIEW_POSITIVE: [string, string][] = [
+  ["Exactly as described", "Quality is good and it arrived on time. Used it on our site and had no complaints."],
+  ["Good value for money", "Compared prices with local dealers and this was cheaper even with delivery."],
+  ["Packed well", "Delivery was on schedule and the packaging was intact. Will order again."],
+  ["Solid quality", "Used it for our house construction and the mason was happy with it."],
+];
+const REVIEW_MIXED: [string, string][] = [
+  ["Good, but delivery was late", "The product is fine. The truck arrived a day later than promised."],
+  ["Okay for the price", "Does the job. Packaging could be better."],
+];
+const REVIEW_NEGATIVE: [string, string][] = [
+  ["Some pieces damaged", "A few units were damaged in transit. A replacement was arranged but took time."],
+];
+
+/** Deterministic seeded PRNG (prototype `rng`, buildgrid-shop.html:366) — same product id always yields the same sample reviews, not random noise on every request. */
+function seededRandom(seed: number): () => number {
+  let s = seed | 0;
+  return () => {
+    s = (s + 0x6d2b79f5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+// Fixed anchor for sample-review dates — NOT `Date.now()`. Two reasons: (1)
+// Next's cacheComponents treats `Date.now()` as an "unstable value" that
+// can't be read during prerendering, even deep inside a data-fetch helper;
+// (2) more importantly, this is static mock content — it shouldn't silently
+// drift ("reviewed 4 months ago" slowly becoming "8 months ago" as real time
+// passes) for data that never actually changes. A fixed reference date keeps
+// `getProductReviews` a pure function of `id`, like every other facade call.
+const REVIEW_REFERENCE_DATE = Date.UTC(2026, 10, 1);
+
+/** Sample reviews (prototype `genReviews`, buildgrid-shop.html:371) — 6 per product, seeded by id. Illustrative sample content, not real customer reviews. */
+export async function getProductReviews(id: number): Promise<ProductReview[]> {
+  const rand = seededRandom(id * 7919 + 13);
+  const reviews: ProductReview[] = [];
+  for (let i = 0; i < 6; i++) {
+    const roll = rand();
+    const pool = roll < 0.72 ? REVIEW_POSITIVE : roll < 0.92 ? REVIEW_MIXED : REVIEW_NEGATIVE;
+    const stars = pool === REVIEW_POSITIVE ? (rand() < 0.65 ? 5 : 4) : pool === REVIEW_MIXED ? 3 : 2;
+    const [title, body] = pool[Math.floor(rand() * pool.length)];
+    const daysAgo = Math.floor(rand() * 120 + 2);
+    const postedOn = new Date(REVIEW_REFERENCE_DATE - daysAgo * 86400000).toLocaleDateString("en-IN", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+    reviews.push({
+      name: REVIEW_NAMES[Math.floor(rand() * REVIEW_NAMES.length)],
+      stars,
+      title,
+      body,
+      postedOn,
+    });
+  }
+  return reviews;
+}
+
+/** Rating-distribution bars, 5-star down to 1-star (prototype `hist`, buildgrid-shop.html:373). */
+export async function getRatingBreakdown(rating: number): Promise<number[]> {
+  const p1 = Math.round((5 - rating) * 4);
+  const p2 = Math.round((5 - rating) * 2.5);
+  const p3 = Math.round((5 - rating) * 7);
+  const p4 = Math.round(18 + (4.5 - rating) * 10);
+  return [100 - p1 - p2 - p3 - p4, p4, p3, p2, p1];
 }

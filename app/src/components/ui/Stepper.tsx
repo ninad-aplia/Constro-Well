@@ -13,6 +13,7 @@ export default function Stepper({
   onChange,
   min = 1,
   max,
+  step = 1,
   label = "Quantity",
   className,
 }: {
@@ -20,6 +21,8 @@ export default function Stepper({
   onChange?: (next: number) => void;
   min?: number;
   max?: number;
+  /** Amount each +/- click changes by (seller stock stepper uses 10; default 1 preserves every existing caller). */
+  step?: number;
   label?: string;
   className?: string;
 }) {
@@ -43,7 +46,7 @@ export default function Stepper({
         type="button"
         className="grid h-8 w-[29px] place-items-center bg-tint hover:bg-line"
         aria-label={`${label}: decrease`}
-        onClick={() => commit(cur - 1)}
+        onClick={() => commit(cur - step)}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M5 12h14" /></svg>
       </button>
@@ -61,7 +64,7 @@ export default function Stepper({
         type="button"
         className="grid h-8 w-[29px] place-items-center bg-tint hover:bg-line"
         aria-label={`${label}: increase`}
-        onClick={() => commit(cur + 1)}
+        onClick={() => commit(cur + step)}
       >
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>
       </button>

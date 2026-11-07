@@ -1,0 +1,88 @@
+// Delivery Portal Settings — read-only "your fleet" roster and the static
+// rules this app enforces, ported from buildgrid-delivery-workflow.html's
+// driver-tab rules card (line 331). No vehicle/driver CRUD here — that
+// mutation UI already exists at /seller/delivery; this links to it rather
+// than duplicating it.
+"use client";
+
+import Link from "next/link";
+import Card from "@/components/ui/Card";
+import SellerIcon from "@/components/seller/SellerIcon";
+import PreviewDisclosure from "@/components/delivery/PreviewDisclosure";
+import { useDeliveryStore } from "@/components/delivery/DeliveryStoreProvider";
+
+export default function DeliverySettingsPage() {
+  const { state } = useDeliveryStore();
+
+  return (
+    <div className="grid gap-4">
+      <PreviewDisclosure />
+
+      <div>
+        <h1 className="font-display text-[clamp(25px,3vw,34px)] font-bold">Profile and settings</h1>
+        <p className="mt-1 text-muted">{state.storeName}&rsquo;s registered vehicles and drivers, and the rules this app enforces.</p>
+      </div>
+
+      <Card rounded="lg" className="p-[18px]">
+        <div className="mb-2 flex items-center justify-between gap-3.5">
+          <h2 className="font-display text-lg font-bold">Vehicles and drivers</h2>
+          <Link href="/seller/delivery" className="text-[13px] font-semibold text-link hover:underline">
+            Manage in Seller Hub
+          </Link>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[480px] border-collapse">
+            <thead>
+              <tr>
+                <th className="border-b border-line px-3 py-2.5 text-left text-[13px] font-semibold text-muted">Vehicle</th>
+                <th className="border-b border-line px-3 py-2.5 text-left text-[13px] font-semibold text-muted">Type</th>
+                <th className="border-b border-line px-3 py-2.5 text-left text-[13px] font-semibold text-muted">Driver</th>
+                <th className="border-b border-line px-3 py-2.5 text-left text-[13px] font-semibold text-muted">Mobile</th>
+              </tr>
+            </thead>
+            <tbody>
+              {state.vehicles.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="p-6 text-center text-muted">
+                    No vehicles registered yet.
+                  </td>
+                </tr>
+              ) : (
+                state.vehicles.map((v) => {
+                  const driver = state.drivers.find((d) => d.id === v.driverId);
+                  return (
+                    <tr key={v.id}>
+                      <td className="border-b border-line px-3 py-2.5">
+                        <b>{v.regNumber}</b>
+                      </td>
+                      <td className="border-b border-line px-3 py-2.5">{v.type}</td>
+                      <td className="border-b border-line px-3 py-2.5">{driver?.name ?? "None"}</td>
+                      <td className="border-b border-line px-3 py-2.5">{driver?.phone}</td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </Card>
+
+      <Card rounded="lg" className="p-[18px]">
+        <h2 className="mb-2 font-display text-lg font-bold">Rules this app enforces</h2>
+        <ul className="grid list-disc gap-2 pl-[18px] text-sm">
+          <li>Three wrong OTP entries mark the delivery as a failed attempt.</li>
+          <li>A photo and the delivered quantity are stored as proof of delivery.</li>
+          <li>If the delivered quantity is less than ordered, a dispute opens automatically and the seller&rsquo;s payout freezes until an admin resolves it.</li>
+        </ul>
+      </Card>
+
+      <div className="flex items-start gap-2.5 rounded-xl border border-line bg-tint p-3.5 text-sm text-muted">
+        <SellerIcon name="lock" size={18} />
+        <div>
+          This preview has no real GPS tracking, live location sharing or SMS notifications. The delivery OTP shown in
+          a job&rsquo;s details is sample data for testing the flow, not a real one-time password.
+        </div>
+      </div>
+    </div>
+  );
+}

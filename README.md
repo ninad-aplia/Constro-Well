@@ -2,7 +2,7 @@
 
 An e-commerce marketplace MVP for **construction materials in India** — customer storefront, seller portal, driver delivery view and admin exception console — target: a working version in ~48 hours.
 
-> ⚠️ **Status: documentation phase. No application code exists yet.** Architecture is proposed and awaiting approval — see `DECISIONS.md` (open decisions D1–D6) and `docs/ARCHITECTURE_PROPOSAL.md`.
+> **Status: deployable mock-data preview.** The Next.js app in `app/` serves the Customer, Seller and Delivery portals; cart/checkout/orders work as browser-local previews (D14). Authentication, the API layer and live order processing are not implemented yet. Release status and deployment procedure: `docs/CLIENT_DEPLOYMENT_READINESS.md`.
 
 ## Repository map
 | Path | What it is |
@@ -29,15 +29,16 @@ Open one directly in a browser to see it work:
 | `buildgrid-delivery-workflow.html` | Multi-role delivery demo (customer / vendor / driver / admin tabs) |
 
 ## Setup (application)
-**Not yet available.** The application does not exist yet; setup instructions appear here once Phase 1 scaffold lands and are verified by a clean run (`AGENTS.md` blocks "done" claims without it). Planned quickstart shape:
-
 ```bash
+cd app
 npm install
-cp .env.example .env      # fill DATABASE_URL etc.
-npm run db:migrate
+cp .env.example .env      # fill DATABASE_URL for Prisma commands
+npm run db:migrate        # development migrations
 npm run db:seed           # optional demo data
 npm run dev               # http://localhost:3000
 ```
+
+Production build, hosting, migration and rollback steps: `docs/CLIENT_DEPLOYMENT_READINESS.md`.
 
 ## Working on this repo (agents)
 Follow the entry procedure in `AGENTS.md` before every session: read all five docs, check `git status`, verify claimed progress, continue the first non-DONE task in `TASKS.md`, and update `HANDOFF.md` before stopping.
