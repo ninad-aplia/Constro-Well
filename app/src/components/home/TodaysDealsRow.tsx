@@ -1,5 +1,5 @@
 // "Today's deals" product row (prototype `dl.slice(0,10)`, buildgrid-shop.html:412).
-import { getTodaysDealsRow } from "@/lib/api/catalog";
+import { getTodaysDealsRow } from "@/lib/api/catalogDb";
 import ProductRow from "./ProductRow";
 
 export default async function TodaysDealsRow() {

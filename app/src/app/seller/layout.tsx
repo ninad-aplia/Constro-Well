@@ -8,7 +8,13 @@ import SellerStoreProvider from "@/components/seller/SellerStoreProvider";
 import SellerSidebar from "@/components/seller/SellerSidebar";
 import SellerTopBar from "@/components/seller/SellerTopBar";
 import SellerBottomNav from "@/components/seller/SellerBottomNav";
+import SellerAccessNotice from "@/components/seller/SellerAccessNotice";
+import SellerLiveProvider from "@/components/seller/SellerLiveProvider";
 import { getSellerState } from "@/lib/api/seller";
+import { sellerSummary } from "@/server/orders/sellerService";
+import { resolveSellerForUser } from "@/server/auth/session";
+import { getCurrentUser } from "@/server/auth/current";
+import { redirect } from "next/navigation";
 
 // Every Seller Hub page is a fully interactive preview dashboard (live
 // filters, drawers, forms) with no meaningful static shell — same situation
@@ -17,20 +23,32 @@ import { getSellerState } from "@/lib/api/seller";
 export const instant = false;
 
 export default async function SellerLayout({ children }: { children: React.ReactNode }) {
-  const initialState = await getSellerState();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/seller");
+  if (user.role !== "seller") return <SellerAccessNotice user={user} />;
+
+  const seller = await resolveSellerForUser(user);
+  if (!seller) return <SellerAccessNotice user={user} />;
+
+  const [initialState, initialSummary] = await Promise.all([
+    getSellerState(),
+    sellerSummary(seller.id),
+  ]);
 
   return (
     <SellerStoreProvider initialState={initialState}>
-      <div className="min-h-screen bg-bg text-ink md:grid md:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[244px_minmax(0,1fr)]">
-        <SellerSidebar />
-        <div className="min-w-0">
-          <SellerTopBar />
-          <main className="mx-auto max-w-[1500px] px-3.5 py-5 pb-24 md:px-6 md:pb-8" tabIndex={-1}>
-            {children}
-          </main>
+      <SellerLiveProvider initialSummary={initialSummary}>
+        <div className="min-h-screen bg-bg text-ink md:grid md:grid-cols-[72px_minmax(0,1fr)] lg:grid-cols-[244px_minmax(0,1fr)]">
+          <SellerSidebar />
+          <div className="min-w-0">
+            <SellerTopBar />
+            <main className="mx-auto max-w-[1500px] px-3.5 py-5 pb-24 md:px-6 md:pb-8" tabIndex={-1}>
+              {children}
+            </main>
+          </div>
         </div>
-      </div>
-      <SellerBottomNav />
+        <SellerBottomNav />
+      </SellerLiveProvider>
     </SellerStoreProvider>
   );
 }

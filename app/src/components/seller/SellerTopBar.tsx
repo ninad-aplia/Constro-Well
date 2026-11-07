@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSellerStore } from "./SellerStoreProvider";
 import SellerIcon from "./SellerIcon";
+import LogoutButton from "@/components/auth/LogoutButton";
 
 export default function SellerTopBar() {
   const router = useRouter();
@@ -102,6 +103,8 @@ export default function SellerTopBar() {
           </div>
         )}
       </div>
+
+      <LogoutButton className="rounded-xl border border-line bg-panel px-3 py-2 text-[13px] font-semibold hover:bg-tint disabled:opacity-60" />
 
       <div
         className="grid h-[34px] w-[34px] flex-none place-items-center rounded-full bg-hi text-[13px] font-bold text-hiink"

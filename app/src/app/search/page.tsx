@@ -11,7 +11,8 @@ import SearchFilters from "@/components/search/SearchFilters";
 import SortSelect from "@/components/search/SortSelect";
 import Pagination from "@/components/search/Pagination";
 import { buildSearchHref } from "@/components/search/buildSearchHref";
-import { searchProducts, type SearchQuery, type SortOrder } from "@/lib/api/catalog";
+import { searchProducts } from "@/lib/api/catalogDb";
+import type { SearchQuery, SortOrder } from "@/lib/api/catalog";
 
 // Every part of this page's content (title, filters, grid, pagination)
 // depends on `searchParams`, so there's no meaningful static shell to stream
@@ -93,7 +94,7 @@ export default async function SearchPage({
           {result.items.length ? (
             <>
               <p className="mb-3 text-xs text-muted">
-                Sample catalogue data for preview — not live prices or availability.
+                Catalogue results from the marketplace database.
               </p>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(210px,1fr))] gap-3.5">
                 {result.items.map((item) => (

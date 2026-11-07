@@ -11,10 +11,12 @@
 //   arithmetic. Client prices/totals are display hints only (PROJECT_CONTEXT
 //   §8). Non-money display metrics (rating, weight, discount %) may use Float.
 //
-// OTP (DECISIONS.md D17, owner-approved): only a bcrypt digest is stored
-// (`otpHash`); the plaintext 4-digit code never reaches the database. No
-// expiry column exists — expiry policy is unresolved (D5 remains OPEN); do
-// not invent one. No SMS/outside delivery provider exists in this schema.
+// OTP (DECISIONS.md D17, amended 2026-11-08): server-side verification uses
+// only a bcrypt digest (`otpHash`); the customer-visible copy is stored as
+// AES-256-GCM ciphertext (`otpEncrypted`) under OTP_ENCRYPTION_KEY. Plaintext
+// 4-digit OTPs are never stored or logged. No expiry column exists — expiry
+// policy is unresolved (D5 remains OPEN); do not invent one. No SMS/outside
+// delivery provider exists in this schema.
 //
 // ENUM SOURCES — no invented states:
 //   ShipmentStatus   = PROJECT_CONTEXT §6 machine + side states, identical to
@@ -103,14 +105,14 @@ enum EscrowEntryType {
 }
 
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   passwordHash String // bcrypt digest — never store or log plaintext
   role         Role
   name         String
   phone        String?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @default(now()) @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
   sessions      Session[]
   addresses     Address[]
@@ -118,7 +120,7 @@ model User {
   wishlistItems WishlistItem[]
   reviews       Review[]
   orders        Order[]
-  driverProfile Driver? @relation("DriverUser")
+  driverProfile Driver?        @relation("DriverUser")
   sellerProfile Seller?
 }
 
@@ -156,15 +158,15 @@ model Seller {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
 
-  owner      User           @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
-  pincodes   SellerPincode[]
-  vehicles   Vehicle[]
-  drivers    Driver[]
-  products   Product[]
-  shipments  Shipment[]
-  escrow     EscrowEntry[]
-  notifications  Notification[]
-  orderLines OrderLine[]
+  owner         User            @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  pincodes      SellerPincode[]
+  vehicles      Vehicle[]
+  drivers       Driver[]
+  offers        SellerOffer[]
+  shipments     Shipment[]
+  escrow        EscrowEntry[]
+  notifications Notification[]
+  orderLines    OrderLine[]
 
   @@index([city])
 }
@@ -181,18 +183,18 @@ model SellerPincode {
 }
 
 model Driver {
-  id        String  @id @default(cuid())
-  sellerId  String
-  code      String // stable seed key ("d1"…)
-  name      String
-  phone     String
+  id       String  @id @default(cuid())
+  sellerId String
+  code     String // stable seed key ("d1"…)
+  name     String
+  phone    String
   // Optional link to this driver's login (role `driver`), created in TASK 3.x;
   // kept optional so drivers exist as seeded staff before accounts do.
-  userId    String? @unique
+  userId   String? @unique
 
-  seller   Seller  @relation(fields: [sellerId], references: [id], onDelete: Restrict)
-  user     User?   @relation("DriverUser", fields: [userId], references: [id], onDelete: SetNull)
-  vehicles Vehicle[]
+  seller    Seller     @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  user      User?      @relation("DriverUser", fields: [userId], references: [id], onDelete: SetNull)
+  vehicles  Vehicle[]
   shipments Shipment[]
 
   @@unique([sellerId, code])
@@ -206,8 +208,8 @@ model Vehicle {
   type      String
   driverId  String?
 
-  seller Seller @relation(fields: [sellerId], references: [id], onDelete: Restrict)
-  driver Driver? @relation(fields: [driverId], references: [id], onDelete: SetNull)
+  seller    Seller     @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  driver    Driver?    @relation(fields: [driverId], references: [id], onDelete: SetNull)
   shipments Shipment[]
 
   @@unique([sellerId, code])
@@ -220,36 +222,64 @@ model Category {
   products Product[]
 }
 
+// Canonical catalogue product (D11): one row per real-world product. Seller-
+// specific price, stock and availability live on SellerOffer; a product can
+// therefore be listed by many vendors without duplicating catalogue data.
 model Product {
-  id           String        @id @default(cuid())
-  code         String        @unique // stable seed key: catalog ids "0".."47"
-  sellerId     String // D11: products belong to individual vendors
+  id           String   @id @default(cuid())
+  code         String   @unique // stable seed key: catalog ids "0".."47"
   categoryId   String
   name         String
+  brand        String? // prototype catalogue brand (search facet)
   unit         String
-  mrp          Decimal       @db.Decimal(14, 2)
-  price        Decimal       @db.Decimal(14, 2) // GST-inclusive (D8)
-  stock        Int           @default(0)
-  minOrderQty  Int           @default(1)
+  mrp          Decimal  @db.Decimal(14, 2)
   unitWeightKg Float
-  bulkFlag     Boolean       @default(false)
-  reorderLevel Int           @default(0)
-  status       ProductStatus @default(active)
-  soldCount    Int           @default(0)
-  specs        Json          @default("[]") // prototype specs list (display)
+  bulkFlag     Boolean  @default(false)
+  specs        Json     @default("[]") // prototype specs list (display)
   imageUrl     String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @default(now()) @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
 
-  seller        Seller         @relation(fields: [sellerId], references: [id], onDelete: Restrict)
   category      Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-  cartItems     CartItem[]
+  offers        SellerOffer[]
   wishlistItems WishlistItem[]
   orderLines    OrderLine[]
   reviews       Review[]
 
-  @@index([categoryId, status])
-  @@index([sellerId])
+  @@index([categoryId])
+}
+
+// Seller-specific listing of a canonical Product (D11). This is the row a
+// customer actually buys: it owns price, stock, minimum quantity, availability
+// and lead time. Serviceability (SellerPincode) and delivery rules
+// (Seller.freeAbove/fee/slotsPerDay) stay on the seller, since those apply to
+// every listing from that vendor.
+model SellerOffer {
+  id           String        @id @default(cuid())
+  code         String        @unique // stable seed key, e.g. "ultrabuild:0"
+  productId    String
+  sellerId     String
+  price        Decimal       @db.Decimal(14, 2) // GST-inclusive (D8)
+  stock        Int           @default(0)
+  minOrderQty  Int           @default(1)
+  status       ProductStatus @default(active)
+  reorderLevel Int           @default(0)
+  soldCount    Int           @default(0)
+  leadTimeDays Int           @default(1)
+  verified     Boolean       @default(true)
+  rating       Float?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @default(now()) @updatedAt
+
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  seller  Seller  @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+
+  cartItems  CartItem[]
+  orderLines OrderLine[]
+
+  @@unique([sellerId, productId])
+  @@index([productId, status])
+  @@index([sellerId, status])
 }
 
 model Cart {
@@ -258,22 +288,22 @@ model Cart {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now()) @updatedAt
 
-  user User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user  User       @relation(fields: [userId], references: [id], onDelete: Cascade)
   items CartItem[]
 }
 
 model CartItem {
-  id             String  @id @default(cuid())
-  cartId         String
-  productId      String
-  offerIndex     Int     @default(0) // catalog offer slot ("id:offerIndex" key)
-  qty            Int
-  savedForLater  Boolean @default(false)
+  id            String  @id @default(cuid())
+  cartId        String
+  sellerOfferId String
+  qty           Int
+  savedForLater Boolean @default(false)
 
-  cart    Cart    @relation(fields: [cartId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+  cart        Cart        @relation(fields: [cartId], references: [id], onDelete: Cascade)
+  sellerOffer SellerOffer @relation(fields: [sellerOfferId], references: [id], onDelete: Restrict)
 
-  @@unique([cartId, productId, offerIndex])
+  @@unique([cartId, sellerOfferId])
+  @@index([sellerOfferId])
 }
 
 model WishlistItem {
@@ -293,14 +323,18 @@ model Address {
   id        String  @id @default(cuid())
   userId    String
   label     String  @default("Home")
+  name      String  @default("") // recipient name from checkout
+  phone     String  @default("") // 10-digit mobile from checkout
   line1     String
   city      String
+  state     String  @default("") // checkout state selector
   pin       String
   isDefault Boolean @default(false)
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, isDefault])
 }
 
 model Review {
@@ -321,32 +355,40 @@ model Review {
 }
 
 model Coupon {
-  id               String    @id @default(cuid())
-  code             String    @unique
-  label            String
-  discountPercent  Decimal?  @db.Decimal(7, 6) // exact rate, never float
-  freeDelivery     Boolean   @default(false)
-  isActive         Boolean   @default(true)
+  id              String   @id @default(cuid())
+  code            String   @unique
+  label           String
+  discountPercent Decimal? @db.Decimal(7, 6) // exact rate, never float
+  discountAmount  Decimal? @db.Decimal(14, 2) // flat ₹ discount (FIRST250)
+  maxDiscount     Decimal? @db.Decimal(14, 2) // cap for percentage coupons (BUILD10)
+  minSubtotal     Decimal  @default(0) @db.Decimal(14, 2)
+  firstOrderOnly  Boolean  @default(false)
+  freeDelivery    Boolean  @default(false)
+  isActive        Boolean  @default(true)
 }
 
 model Order {
-  id          String     @id @default(cuid())
-  code        String     @unique // "BG-######", generated server-side at checkout
-  userId      String
+  id              String     @id @default(cuid())
+  code            String     @unique // "BG-######", generated server-side at checkout
+  userId          String
   // Totals snapshot (PROJECT_CONTEXT §7): GST-inclusive amounts (D8).
-  itemValue   Decimal    @db.Decimal(14, 2)
-  deliveryFee Decimal    @db.Decimal(14, 2)
-  grossTotal  Decimal    @db.Decimal(14, 2)
-  paymentMethod String   @default("COD") // D3/D4: COD-only; enforced at checkout from TASK 5
-  paymentLabel  String   @default("Cash on delivery")
+  itemValue       Decimal    @db.Decimal(14, 2) // subtotal before discount
+  discount        Decimal    @default(0) @db.Decimal(14, 2)
+  couponCode      String?
+  deliveryFee     Decimal    @db.Decimal(14, 2)
+  taxAmount       Decimal    @default(0) @db.Decimal(14, 2) // GST component inside the total
+  taxRate         Decimal    @default(0.18) @db.Decimal(7, 6)
+  grossTotal      Decimal    @db.Decimal(14, 2) // final customer total
+  paymentMethod   String     @default("COD") // D3/D4: COD-only; enforced at checkout from TASK 5
+  paymentLabel    String     @default("Cash on delivery")
   // Customer lifecycle = the shop prototype's STAGES + cancelled flag.
-  stage       OrderStage @default(ordered)
-  cancelled   Boolean    @default(false)
+  stage           OrderStage @default(ordered)
+  cancelled       Boolean    @default(false)
   addressSnapshot Json // point-in-time delivery address (order survives address edits)
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @default(now()) @updatedAt
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @default(now()) @updatedAt
 
-  user      User        @relation(fields: [userId], references: [id], onDelete: Restrict)
+  user      User          @relation(fields: [userId], references: [id], onDelete: Restrict)
   lines     OrderLine[]
   shipments Shipment[]
   escrow    EscrowEntry[]
@@ -355,54 +397,60 @@ model Order {
 }
 
 model OrderLine {
-  id          String   @id @default(cuid())
-  orderId     String
-  productId   String
-  sellerId    String // D11: every line is backed by one vendor
-  name        String // product-name snapshot (point-in-time display text)
-  unit        String // unit snapshot
-  unitPrice   Decimal  @db.Decimal(14, 2)
-  qty         Int
-  lineValue   Decimal  @db.Decimal(14, 2) // units: exact price × qty at seed/API time
-  shipmentId  String? // assignment to the vendor's Shipment once determined
+  id            String  @id @default(cuid())
+  orderId       String
+  productId     String
+  sellerId      String // D11: every line is backed by one vendor
+  sellerOfferId String? // listing snapshot reference (nullable for historical rows)
+  name          String // product-name snapshot (point-in-time display text)
+  unit          String // unit snapshot
+  unitPrice     Decimal @db.Decimal(14, 2)
+  qty           Int
+  lineValue     Decimal @db.Decimal(14, 2) // units: exact price × qty at seed/API time
+  shipmentId    String? // assignment to the vendor's Shipment once determined
 
-  order    Order    @relation(fields: [orderId], references: [id], onDelete: Restrict)
-  product  Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
-  seller   Seller   @relation(fields: [sellerId], references: [id], onDelete: Restrict)
-  shipment Shipment? @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Restrict)
+  product     Product      @relation(fields: [productId], references: [id], onDelete: Restrict)
+  seller      Seller       @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  sellerOffer SellerOffer? @relation(fields: [sellerOfferId], references: [id], onDelete: SetNull)
+  shipment    Shipment?    @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
 
   @@index([orderId])
   @@index([productId])
   @@index([sellerId])
+  @@index([sellerOfferId])
 }
 
 model Shipment {
-  id         String         @id @default(cuid())
-  code       String         @unique // same "BG-######" family, one per seller per order
-  orderId    String
-  sellerId   String
-  status     ShipmentStatus @default(new)
-  slot       String? // prototype slot vocabulary (DELIVERY_SLOTS / "Delivered"…)
-  vehicleId  String?
-  driverId   String?
+  id              String         @id @default(cuid())
+  code            String         @unique // same "BG-######" family, one per seller per order
+  orderId         String
+  sellerId        String
+  status          ShipmentStatus @default(new)
+  slot            String? // prototype slot vocabulary (DELIVERY_SLOTS / "Delivered"…)
+  vehicleId       String?
+  driverId        String?
   // Documents snapshot (SellerOrderDocs reconciled): booleans + reference
   // numbers; e-way/weighbridge are String codes, challan/invoice are flags.
-  docsChallan    Boolean @default(false)
-  docsInvoice    Boolean @default(false)
-  docsEway       String?
+  docsChallan     Boolean        @default(false)
+  docsInvoice     Boolean        @default(false)
+  docsEway        String?
   docsWeighbridge String?
-  // OTP: digest only (D17). otpTries supports the 3-wrong-tries → failed rule
-  // server-side. No expiry field — policy unresolved (D5).
-  otpHash    String?
-  otpTries   Int     @default(0)
-  late       Boolean @default(false)
-  acceptBy   DateTime?
-  dispatchBy DateTime?
-  deliveredAt DateTime?
-  deliveredQty Int?
-  reviewEnds DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @default(now()) @updatedAt
+  // OTP (D17, amended): bcrypt digest for server-side verification, plus an
+  // AES-256-GCM encrypted copy for the authenticated customer's order view.
+  // The plaintext 4-digit code is never stored. The encryption key comes from
+  // OTP_ENCRYPTION_KEY (env, never committed). No expiry field — D5 OPEN.
+  otpHash         String?
+  otpEncrypted    String?
+  otpTries        Int            @default(0)
+  late            Boolean        @default(false)
+  acceptBy        DateTime?
+  dispatchBy      DateTime?
+  deliveredAt     DateTime?
+  deliveredQty    Int?
+  reviewEnds      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @default(now()) @updatedAt
 
   order  Order  @relation(fields: [orderId], references: [id], onDelete: Restrict)
   seller Seller @relation(fields: [sellerId], references: [id], onDelete: Restrict)
@@ -410,10 +458,10 @@ model Shipment {
   vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   driver  Driver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
 
-  events       ShipmentEvent[]
-  issue        ShipmentIssue?
+  events        ShipmentEvent[]
+  issue         ShipmentIssue?
   escrowEntries EscrowEntry[]
-  lines        OrderLine[]
+  lines         OrderLine[]
 
   @@index([sellerId, status])
   @@index([orderId])

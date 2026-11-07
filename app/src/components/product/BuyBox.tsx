@@ -1,17 +1,8 @@
 // Buy box — port of buildgrid-shop.html's `.buy`/`buyBox()` (CSS line 115,
-// markup lines 465-475). Client component. Add to cart / Buy now are wired to
-// the client cart store (Stage 1): the storefront cart is browser-side preview
-// state (D14 condition 4 + Stage-1 rules), so this only touches client state
-// and clearly-actionable navigation — order confirmation pages made from it
-// say "Preview order" wherever they render one. Wishlist stays disabled.
-//
-// Deliberately omitted vs. the prototype (mock-data safety, D14 — same
-// precedent as ProductCard): live stock count ("Only N left in stock"),
-// delivery ETA/"FREE delivery by <date>", and the "Deliver to <pincode>"
-// control (no pincode/zone feature exists in this app). Seller selection is
-// static (first/official seller only) — switching sellers is deferred to
-// Stage 2, documented in the handoff, to avoid any appearance that changing
-// the displayed seller is a real reservation.
+// markup lines 465-475). Client component. Add to cart / Buy now still use the
+// browser-side cart preview (cart/checkout APIs are out of this task), while
+// the price, stock, minimum quantity and lead time come from the selected
+// PostgreSQL seller offer.
 "use client";
 
 import { useState } from "react";
@@ -19,40 +10,65 @@ import { useRouter } from "next/navigation";
 import Stepper from "@/components/ui/Stepper";
 import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
-import { useCart } from "@/components/cart";
+import { useSession } from "@/components/auth/SessionProvider";
+import { useRemoteCart } from "@/components/cart/RemoteCartProvider";
+import { ApiClientError } from "@/lib/api/client";
 import { fmt } from "@/lib/shop/format";
 import { bulkTier } from "@/lib/shop/pricing";
 
 export default function BuyBox({
   id,
+  offerId,
   price,
   unit,
   sellerName,
+  minOrderQty = 1,
+  stock,
+  leadTimeDays,
 }: {
   id: number;
+  offerId: string;
   price: number;
   unit: string;
   sellerName: string;
+  minOrderQty?: number;
+  stock?: number;
+  leadTimeDays?: number;
 }) {
-  const [qty, setQty] = useState(1);
+  const [qty, setQty] = useState(minOrderQty);
+  const [adding, setAdding] = useState(false);
   const tier = bulkTier(qty);
   const unitPrice = Math.round(price * (1 - (tier ? tier[1] : 0) / 100));
-  const { add } = useCart();
+  const cart = useRemoteCart();
+  const session = useSession();
   const toast = useToast();
   const router = useRouter();
 
-  const addToCart = (goCheckout: boolean) => {
-    // Offer index 0 = the official/first seller the buy box displays (seller
-    // switching is Stage 2, see header comment). Stock clamp happens in the
-    // cart store/layer where inventory data exists (mock-data-safety, D14 —
-    // ProductDetail deliberately carries no stock).
-    add(id, qty, 0);
-    setQty(1);
-    if (goCheckout) {
-      router.push("/checkout");
+  const addToCart = async (goCheckout: boolean) => {
+    if (session.status === "loading" || adding) return;
+    if (!session.user) {
+      router.push(`/login?next=${encodeURIComponent(`/product/${id}`)}`);
       return;
     }
-    toast.show("Added to cart", { label: "Go to cart", onClick: () => router.push("/cart") });
+    if (session.user.role !== "customer") {
+      toast.show("Sign in with a customer account to add items");
+      return;
+    }
+
+    setAdding(true);
+    try {
+      await cart.add(offerId, qty);
+      setQty(minOrderQty);
+      if (goCheckout) {
+        router.push("/cart");
+        return;
+      }
+      toast.show("Added to cart", { label: "Go to cart", onClick: () => router.push("/cart") });
+    } catch (error) {
+      toast.show(error instanceof ApiClientError ? error.message : "Could not add to cart");
+    } finally {
+      setAdding(false);
+    }
   };
 
   return (
@@ -67,16 +83,28 @@ export default function BuyBox({
       <p className="text-sm text-muted">
         {tier ? `Bulk price applied: ${tier[1]}% off` : "Inclusive of all taxes"}
       </p>
+      <p className="text-[13px] text-muted">
+        {stock === undefined ? "Availability from seller listing" : `${stock} in stock`}
+        {minOrderQty > 1 ? ` · Min order ${minOrderQty}` : ""}
+        {leadTimeDays !== undefined
+          ? ` · Delivery in ${leadTimeDays} day${leadTimeDays === 1 ? "" : "s"}`
+          : ""}
+      </p>
 
       <label className="flex items-center gap-2.5 font-semibold">
         Quantity
-        <Stepper value={qty} onChange={setQty} min={1} />
+        <Stepper
+          value={qty}
+          onChange={setQty}
+          min={minOrderQty}
+          max={stock === undefined ? undefined : Math.max(stock, minOrderQty)}
+        />
       </label>
 
-      <Button variant="yellow" pill wide onClick={() => addToCart(false)}>
-        Add to cart
+      <Button variant="yellow" pill wide onClick={() => void addToCart(false)} disabled={adding}>
+        {adding ? "Adding…" : "Add to cart"}
       </Button>
-      <Button variant="orange" pill wide onClick={() => addToCart(true)}>
+      <Button variant="orange" pill wide onClick={() => void addToCart(true)} disabled={adding}>
         Buy now
       </Button>
 
@@ -93,7 +121,7 @@ export default function BuyBox({
         Add to wish list
       </Button>
 
-      <p className="text-xs text-muted">Sample listing for preview — not a live offer.</p>
+      <p className="text-xs text-muted">Price and availability from the seller listing.</p>
     </div>
   );
 }

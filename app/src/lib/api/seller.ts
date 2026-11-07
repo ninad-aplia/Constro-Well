@@ -1,13 +1,10 @@
-// Seller Hub API facade — the only module Seller Portal UI should import
-// mock data through (see data/seller.ts header). Mirrors `lib/api/catalog.ts`'s
-// pattern: wraps mock data behind an async call today, swappable for a real
-// per-seller fetch once seller auth/backend exists, without UI call sites
-// changing shape.
+// Seller Hub API facade - the only module Seller Portal UI should import
+// mock data through (see data/seller.ts header). Still mock-backed today; the
+// PostgreSQL inventory client is `lib/api/sellerApi.ts` and the server service
+// is `src/server/seller/inventory.ts`. Pages migrate incrementally.
 //
-// There is no write-side here: this portal has no backend to persist to, so
-// mutations (accept/reject/dispatch/stock edits/etc.) live entirely in
-// client-side preview state (`SellerStoreProvider`), never claimed as saved
-// remotely. This facade only supplies the initial seed.
+// Mutations remain client-side preview state until the Seller Hub is wired to
+// `sellerApi.ts` with a signed-in seller session.
 import { createSellerSeed } from "@/data/seller";
 import type { SellerState } from "@/lib/seller/types";
 

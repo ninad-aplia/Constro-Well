@@ -23,7 +23,7 @@ export default function DeliverySidebar() {
         </span>
         <div className="hidden lg:block">
           <b className="block font-display text-[21px] leading-none font-bold text-white">Constro Well</b>
-          <small className="text-xs text-[#9BADC8]">Delivery</small>
+          <small className="text-xs text-[#9BADC8]">Driver Portal</small>
         </div>
       </div>
 
@@ -56,7 +56,7 @@ export default function DeliverySidebar() {
 
       <div className="hidden rounded-xl bg-white/[0.07] p-3 text-[13px] lg:block">
         <b className="block text-white">{state.storeName}</b>
-        <span className="text-[#9BADC8]">Driver app preview</span>
+        <span className="text-[#9BADC8]">{state.driverName}</span>
       </div>
     </aside>
   );

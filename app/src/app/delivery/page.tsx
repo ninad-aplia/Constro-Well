@@ -25,8 +25,7 @@ export default function DeliveryOverviewPage() {
       <div>
         <h1 className="font-display text-[clamp(25px,3vw,34px)] font-bold">Delivery overview</h1>
         <p className="mt-1 text-muted">
-          {state.storeName}&rsquo;s dispatched shipments, from pickup to proof of delivery. Deliveries appear here once a
-          seller dispatches an order with a vehicle — manage dispatch itself in the Seller Hub.
+          {state.storeName}&rsquo;s dispatched shipments assigned to you, from pickup to proof of delivery. Deliveries appear here once a seller dispatches an order with your vehicle — manage dispatch itself in the Seller Hub.
         </p>
       </div>
 
@@ -90,7 +89,7 @@ export default function DeliveryOverviewPage() {
       </Card>
 
       <Card rounded="lg" className="p-[18px]">
-        <h2 className="mb-2 font-display text-lg font-bold">Completed, this preview session</h2>
+        <h2 className="mb-2 font-display text-lg font-bold">Delivery outcomes</h2>
         <div className="grid grid-cols-3 gap-3.5 text-center">
           <div>
             <b className="block font-display text-2xl font-bold">{stats.settled}</b>

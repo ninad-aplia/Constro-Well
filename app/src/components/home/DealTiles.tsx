@@ -5,7 +5,7 @@
 // live offers.
 import Link from "next/link";
 import Card from "@/components/ui/Card";
-import { getDealTiles } from "@/lib/api/catalog";
+import { getDealTiles } from "@/lib/api/catalogDb";
 
 export default async function DealTiles() {
   const tiles = await getDealTiles();

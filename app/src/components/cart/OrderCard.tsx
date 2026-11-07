@@ -67,9 +67,11 @@ export default function OrderCard({
                 Qty {it.q} · Sold by {it.seller}
               </p>
               <div className="mt-1 flex gap-2">
-                <Button size="sm" variant="yellow" onClick={() => onReorder?.(it.id, it.q)}>
-                  Buy it again
-                </Button>
+                {onReorder && (
+                  <Button size="sm" variant="yellow" onClick={() => onReorder(it.id, it.q)}>
+                    Buy it again
+                  </Button>
+                )}
               </div>
             </div>
             <b className="ms-auto">{inr(it.total)}</b>

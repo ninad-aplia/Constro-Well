@@ -9,7 +9,8 @@
 // only receives a thin RPC call. (Next.js requires this directive to live in
 // its own file, separate from `catalog.ts`, since that module is also
 // imported type-only into the client component.)
-import { getProductCardsByIds, type ProductCardData } from "./catalog";
+import { getProductCardsByIds } from "./catalogDb";
+import type { ProductCardData } from "./catalog";
 
 export async function getRecentlyViewedCards(ids: number[]): Promise<ProductCardData[]> {
   return getProductCardsByIds(ids);

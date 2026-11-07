@@ -1,7 +1,7 @@
-// Catalog API facade — the only module UI code should import catalog data
-// through (see data/catalog.ts header). Wraps the mock catalogue behind async
-// calls today; swaps to real fetch/DB-backed calls once TASK 2.1/2.2 land,
-// without UI call sites changing shape.
+// Catalog API facade - the only module UI code should import catalog data
+// through (see data/catalog.ts header). Still mock-backed today; the
+// PostgreSQL HTTP client is `lib/api/catalogApi.ts` and the server query
+// service is `src/server/catalog/service.ts`. Pages migrate incrementally.
 import { ART, HUE, PAIR, PRODUCTS, sellersOf, SLIDES, type Slide } from "@/data/catalog";
 import { BULK } from "@/lib/shop/pricing";
 import { CATEGORIES, type Category, type Product, type SellerOffer } from "@/lib/shop/types";

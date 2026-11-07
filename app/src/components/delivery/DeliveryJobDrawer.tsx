@@ -1,10 +1,8 @@
 // Delivery job detail + completion workflow — port of buildgrid-delivery-workflow.html's
 // driver screen body (`viewDriver()` line 315): pickup/drop-off info,
-// documents, OTP entry (4 boxes), photo-proof toggle, delivered-quantity
-// input, and the "Customer not available" failed-attempt action. For
-// historical jobs (already delivered/disputed/settled) this renders a
-// read-only summary instead of the completion form, same as the prototype's
-// own status-gated body.
+// documents, OTP entry (4 boxes), proof checkbox, delivered-quantity input,
+// and issue reporting. Delivery and OTP verification are persisted by
+// /api/driver/jobs; the driver never sees the customer's OTP.
 "use client";
 
 import { useState } from "react";
@@ -12,31 +10,52 @@ import Pill from "@/components/ui/Pill";
 import Button from "@/components/ui/Button";
 import SellerIcon from "@/components/seller/SellerIcon";
 import { useDeliveryStore } from "./DeliveryStoreProvider";
-import { vehicleFor, driverFor } from "@/lib/delivery/selectors";
 import { DELIVERY_STATUS } from "@/lib/delivery/status";
+import { MAX_OTP_TRIES } from "@/lib/delivery/rules";
 import type { DeliveryJob } from "@/lib/delivery/types";
+import { ApiClientError } from "@/lib/api/client";
+import type { DriverIssueType } from "@/lib/api/driverApi";
 
 function inr(n: number): string {
   return `₹${Math.round(n).toLocaleString("en-IN")}`;
 }
 
+function messageOf(error: unknown): string {
+  return error instanceof ApiClientError ? error.message : "Could not reach the delivery service.";
+}
+
+const ISSUE_OPTIONS: { value: DriverIssueType; label: string }[] = [
+  { value: "failed_attempt", label: "Customer unavailable" },
+  { value: "failed_attempt", label: "Address or serviceability issue" },
+  { value: "damaged_goods", label: "Damaged goods" },
+  { value: "short_quantity", label: "Short quantity" },
+];
+
 export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob | null; onClose: () => void }) {
-  const { state, confirmDelivery, markFailedAttempt } = useDeliveryStore();
+  const { state, busyId, acceptJob, confirmDelivery, reportIssue } = useDeliveryStore();
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [photoConfirmed, setPhotoConfirmed] = useState(false);
   const [qty, setQty] = useState<number | "">("");
+  const [issueOption, setIssueOption] = useState(0);
+  const [issueNote, setIssueNote] = useState("");  const [issueQty, setIssueQty] = useState<number | "">("");
+  const [error, setError] = useState("");
+  const [issueError, setIssueError] = useState("");
 
   if (!job) return null;
 
-  const vehicle = vehicleFor(state, job);
-  const driver = driverFor(state, job);
   const status = DELIVERY_STATUS[job.status];
   const canComplete = job.status === "dispatched";
+  const busy = busyId === job.shipmentId;
+  const issueType = ISSUE_OPTIONS[issueOption]?.value ?? "failed_attempt";
 
   const resetForm = () => {
     setOtp(["", "", "", ""]);
     setPhotoConfirmed(false);
     setQty("");
+    setIssueNote("");
+    setIssueQty("");
+    setError("");
+    setIssueError("");
   };
 
   const close = () => {
@@ -49,11 +68,55 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
     setOtp((prev) => prev.map((p, idx) => (idx === i ? d : p)));
   };
 
-  const submit = () => {
+  const accept = async () => {
+    setError("");
+    try {
+      await acceptJob(job);
+    } catch (err) {
+      setError(messageOf(err));
+    }
+  };
+
+  const submit = async () => {
     const code = otp.join("");
-    if (code.length < 4) return;
-    confirmDelivery(job.id, { otp: code, photoConfirmed, deliveredQty: qty === "" ? -1 : qty });
-    setOtp(["", "", "", ""]);
+    setError("");
+    if (code.length < 4) {
+      setError("Enter the 4-digit OTP from the customer.");
+      return;
+    }
+    if (!photoConfirmed) {
+      setError("Confirm the goods were photographed before completing the delivery.");
+      return;
+    }
+    try {
+      await confirmDelivery(job, { otp: code, photoConfirmed, deliveredQty: qty === "" ? job.qty : qty });
+      setOtp(["", "", "", ""]);
+    } catch (err) {
+      setError(messageOf(err));
+    }
+  };
+
+  const submitIssue = async () => {
+    setIssueError("");
+    if (issueNote.trim().length < 3) {
+      setIssueError("Describe what happened.");
+      return;
+    }
+    if (issueType === "short_quantity" && issueQty === "") {
+      setIssueError("Enter the quantity actually delivered.");
+      return;
+    }
+    try {
+      await reportIssue(job, {
+        type: issueType,
+        note: issueNote,
+        ...(issueType === "short_quantity" ? { deliveredQty: Number(issueQty) } : {}),
+      });
+      setIssueNote("");
+      setIssueQty("");
+    } catch (err) {
+      setIssueError(messageOf(err));
+    }
   };
 
   return (
@@ -65,6 +128,7 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
             <h2 className="font-display text-lg font-bold">{job.id}</h2>
             <div className="mt-1 flex flex-wrap items-center gap-1.5">
               <Pill tone={status.tone}>{status.label}</Pill>
+              {job.accepted && <Pill tone="ok">Accepted</Pill>}
               {job.slot && <Pill tone="info">{job.slot}</Pill>}
             </div>
           </div>
@@ -78,7 +142,7 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
             <div>
               <b>{job.productName}</b>
               <span className="block text-[13px] text-muted">
-                {job.qty} {job.unit} · {Math.round(job.qty * job.weightKg).toLocaleString("en-IN")} kg · {inr(job.price)} each
+                {job.qty} {job.unit} · {inr(job.price)} each
               </span>
             </div>
 
@@ -89,15 +153,15 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
               <dd>
                 {job.buyer}, {job.city} {job.pin}
               </dd>
-              {vehicle && (
+              {job.vehicleReg && (
                 <>
                   <dt className="text-muted">Vehicle</dt>
                   <dd>
-                    {vehicle.regNumber}, {vehicle.type}
+                    {job.vehicleReg}, {job.vehicleType}
                   </dd>
                   <dt className="text-muted">Driver</dt>
                   <dd>
-                    {driver?.name} <span className="text-muted">{driver?.phone}</span>
+                    {job.driverName} <span className="text-muted">{job.driverPhone}</span>
                   </dd>
                 </>
               )}
@@ -155,13 +219,24 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
               </p>
             )}
 
+            {canComplete && !job.accepted && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-link/35 bg-link/10 p-2.5 text-sm">
+                <SellerIcon name="truck" size={18} />
+                <div className="grid gap-2">
+                  <span>Accept this job before you start the delivery.</span>
+                  <Button variant="yellow" disabled={busy} onClick={() => void accept()}>
+                    {busy ? "Accepting…" : "Accept job"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {canComplete && (
               <div className="grid gap-3 rounded-xl border border-line p-3.5">
                 <div>
                   <b className="text-sm">1. Ask the customer for their delivery OTP</b>
                   <p className="mt-0.5 text-[13px] text-muted">
-                    Demo OTP for this preview: <b>{job.otp}</b> (normally shown only to the customer — shown here since
-                    order tracking isn&apos;t built yet).
+                    The OTP is shown in the customer&rsquo;s order page. It is never shown in this portal.
                   </p>
                   <div className="mt-1.5 flex justify-center gap-2">
                     {otp.map((d, i) => (
@@ -176,7 +251,7 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
                       />
                     ))}
                   </div>
-                  {job.otpTries > 0 && <p className="mt-1 text-center text-[13px] font-medium text-bad">{3 - job.otpTries} tries left</p>}
+                  {job.otpTries > 0 && <p className="mt-1 text-center text-[13px] font-medium text-bad">{MAX_OTP_TRIES - job.otpTries} tries left</p>}
                 </div>
 
                 <button
@@ -188,7 +263,9 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
                   <span>
                     <b>2. Photo of the unloaded goods</b>
                     <br />
-                    <span className="text-[13px] text-muted">{photoConfirmed ? "Photo attached (demo)" : "Tap to attach a photo (demo)"}</span>
+                    <span className="text-[13px] text-muted">
+                      {photoConfirmed ? "Photo taken and kept on your phone" : "Take a photo on your phone, then tap here"}
+                    </span>
                   </span>
                 </button>
 
@@ -198,24 +275,67 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
                     type="number"
                     min={0}
                     max={job.qty}
+                    placeholder={String(job.qty)}
                     value={qty}
                     onChange={(e) => setQty(e.target.value === "" ? "" : Number(e.target.value))}
                     className="h-10 rounded-lg border border-line bg-panel px-2.5"
                   />
+                  {(qty === "" ? job.qty : qty) < job.qty && (
+                    <span className="text-[13px] font-medium text-warn">Less than ordered opens a short-quantity dispute.</span>
+                  )}
                 </label>
 
-                <Button variant="yellow" wide onClick={submit}>
-                  Confirm delivery
+                {error && <p role="alert" className="rounded-lg border border-bad bg-panel p-2.5 text-[13px] font-medium text-bad">{error}</p>}
+                <Button variant="yellow" wide disabled={busy} onClick={() => void submit()}>
+                  {busy ? "Verifying…" : "Confirm delivery"}
                 </Button>
-                <Button
-                  variant="line"
-                  wide
-                  onClick={() => {
-                    markFailedAttempt(job.id);
-                    close();
-                  }}
-                >
-                  Customer not available
+              </div>
+            )}
+
+            {canComplete && (
+              <div className="grid gap-2 rounded-xl border border-line p-3.5">
+                <b className="text-sm">Report a delivery issue</b>
+                <p className="text-[13px] text-muted">Reporting an issue does not mark the shipment delivered.</p>
+                <label className="grid gap-1 text-sm font-semibold">
+                  Issue
+                  <select
+                    className="h-10 rounded-lg border border-line bg-panel px-2.5"
+                    value={issueOption}
+                    onChange={(e) => setIssueOption(Number(e.target.value))}
+                    aria-label="Issue type"
+                  >
+                    {ISSUE_OPTIONS.map((option, index) => (
+                      <option key={`${option.value}-${index}`} value={index}>{option.label}</option>
+                    ))}
+                  </select>
+                </label>
+                {issueType === "short_quantity" && (
+                  <label className="grid gap-1 text-sm font-semibold">
+                    Quantity actually delivered ({job.unit})
+                    <input
+                      type="number"
+                      min={0}
+                      max={job.qty - 1}
+                      value={issueQty}
+                      onChange={(e) => setIssueQty(e.target.value === "" ? "" : Number(e.target.value))}
+                      className="h-10 rounded-lg border border-line bg-panel px-2.5"
+                    />
+                  </label>
+                )}
+                <label className="grid gap-1 text-sm font-semibold">
+                  What happened
+                  <textarea
+                    rows={2}
+                    maxLength={300}
+                    value={issueNote}
+                    onChange={(e) => setIssueNote(e.target.value)}
+                    className="rounded-lg border border-line bg-panel p-2.5 text-sm font-normal"
+                    placeholder="Customer not reachable, gate locked, damaged bag…"
+                  />
+                </label>
+                {issueError && <p role="alert" className="rounded-lg border border-bad bg-panel p-2.5 text-[13px] font-medium text-bad">{issueError}</p>}
+                <Button variant="line" wide disabled={busy} onClick={() => void submitIssue()}>
+                  {busy ? "Saving…" : "Report issue"}
                 </Button>
               </div>
             )}

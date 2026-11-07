@@ -53,6 +53,9 @@ export interface SellerOrderIssue {
 
 export interface SellerOrder {
   id: string;
+  /** Internal Shipment.id used by the seller order APIs. */
+  shipmentId?: string;
+  orderCode?: string;
   buyer: string;
   city: string;
   pin: string;
@@ -79,6 +82,17 @@ export interface SellerOrder {
   withdrawn: boolean;
   refund?: number;
   events: SellerOrderEvent[];
+  /** Populated by the API adapter; the mock fixture does not need them. */
+  itemValue?: number;
+  lines?: {
+    id: string;
+    name: string;
+    qty: number;
+    unit: string;
+    unitPrice: number;
+    lineValue: number;
+    weightKg: number;
+  }[];
 }
 
 export interface Vehicle {

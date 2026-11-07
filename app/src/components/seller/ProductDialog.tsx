@@ -1,71 +1,139 @@
-// Add/edit product dialog — port of buildgrid-seller-dashboard.html's
-// `dProduct()` (line 259) and its `fProd` validation (line 441).
-//
-// The form is split into its own component, keyed by the target product's id
-// (or "new"): remounting on a fresh key re-initializes state straight from
-// props via useState's initializer, rather than resetting it with a
-// setState-in-effect (which `react-hooks/set-state-in-effect` flags, same
-// pattern already fixed once in `Stepper.tsx`).
+// Add/edit listing dialog — same Dialog/field styling as the prototype port,
+// now backed by the authenticated seller inventory API. Canonical product
+// fields (name/category/unit/MRP/weight) are read-only: sellers own their
+// SellerOffer price/stock/terms, not the catalogue product.
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Dialog from "@/components/ui/Dialog";
 import Button from "@/components/ui/Button";
 import SellerIcon from "./SellerIcon";
-import { useSellerStore, type ProductInput } from "./SellerStoreProvider";
+import { ApiClientError } from "@/lib/api/client";
+import { fetchProducts } from "@/lib/api/catalogApi";
+import { createSellerProduct, updateSellerProduct } from "@/lib/api/sellerApi";
+import type { ProductSummaryDto, SellerProductDto } from "@/lib/api/dto";
 import { COMMISSION_RATE } from "@/lib/seller/rules";
-import type { SellerProduct } from "@/lib/seller/types";
 
-const CATEGORIES = ["Cement", "Mortar", "Steel", "Sand", "Bricks", "White"];
+interface FormState {
+  productId: string;
+  price: number;
+  stock: number;
+  minOrderQty: number;
+  reorderLevel: number;
+  leadTimeDays: number;
+}
 
-const EMPTY: ProductInput = {
-  name: "",
-  category: CATEGORIES[0],
-  unit: "bag",
-  mrp: 0,
+const EMPTY: FormState = {
+  productId: "",
   price: 0,
   stock: 0,
   minOrderQty: 1,
-  weightKg: 0,
-  reorderLevel: 20,
-  bulk: false,
+  reorderLevel: 0,
+  leadTimeDays: 1,
 };
 
-function toFormInput(product: SellerProduct | null): ProductInput {
+function toForm(product: SellerProductDto | null): FormState {
   if (!product) return EMPTY;
-  const { name, category, unit, mrp, price, stock, minOrderQty, weightKg, reorderLevel, bulk } = product;
-  return { name, category, unit, mrp, price, stock, minOrderQty, weightKg, reorderLevel, bulk };
+  return {
+    productId: product.productId,
+    price: Number(product.price),
+    stock: product.stock,
+    minOrderQty: product.minOrderQty,
+    reorderLevel: product.reorderLevel,
+    leadTimeDays: product.leadTimeDays,
+  };
 }
 
-function ProductForm({ product, onClose }: { product: SellerProduct | null; onClose: () => void }) {
-  const { addProduct, editProduct } = useSellerStore();
-  const [form, setForm] = useState<ProductInput>(() => toFormInput(product));
+function messageOf(error: unknown): string {
+  return error instanceof ApiClientError ? error.message : "Could not save this listing. Try again.";
+}
+
+function ProductForm({
+  product,
+  onClose,
+  onSaved,
+}: {
+  product: SellerProductDto | null;
+  onClose: () => void;
+  onSaved: (product: SellerProductDto) => void;
+}) {
+  const [form, setForm] = useState<FormState>(() => toForm(product));
+  const [catalog, setCatalog] = useState<ProductSummaryDto[]>([]);
+  const [catalogError, setCatalogError] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [apiError, setApiError] = useState("");
+  const [saving, setSaving] = useState(false);
 
-  const set = <K extends keyof ProductInput>(key: K, value: ProductInput[K]) => setForm((f) => ({ ...f, [key]: value }));
+  useEffect(() => {
+    if (product) return;
+    let cancelled = false;
+    fetchProducts({ pageSize: 50 })
+      .then((result) => {
+        if (!cancelled) setCatalog(result.products);
+      })
+      .catch((error: unknown) => {
+        if (!cancelled) setCatalogError(messageOf(error));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [product]);
 
-  const submit = () => {
+  const selected = product
+    ? product
+    : catalog.find((item) => item.id === form.productId) ?? null;
+  const isNew = !product;
+  const mrp = selected ? Number(selected.mrp) : 0;
+
+  const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
+    setForm((current) => ({ ...current, [key]: value }));
+
+  const submit = async () => {
     const next: Record<string, string> = {};
-    if (form.name.length < 4) next.name = "Enter the full product name";
-    if (!(form.mrp > 0)) next.mrp = "Enter the MRP";
-    if (!(form.price > 0) || form.price > form.mrp) next.price = "Price must be above 0 and not more than the MRP";
-    if (form.stock < 0) next.stock = "Enter your stock";
-    if (!(form.minOrderQty >= 1)) next.minOrderQty = "Minimum is 1";
-    if (!(form.weightKg > 0)) next.weightKg = "Enter the weight per unit";
-    if (form.unit.length < 2) next.unit = "Enter a unit";
+    if (isNew && !form.productId) next.productId = "Choose a product";
+    if (!(form.price > 0)) next.price = "Enter a price above 0";
+    if (mrp > 0 && form.price > mrp) next.price = "Price cannot be more than the MRP";
+    if (!Number.isInteger(form.stock) || form.stock < 0) next.stock = "Enter valid stock";
+    if (!Number.isInteger(form.minOrderQty) || form.minOrderQty < 1) {
+      next.minOrderQty = "Minimum is 1";
+    }
+    if (!Number.isInteger(form.reorderLevel) || form.reorderLevel < 0) {
+      next.reorderLevel = "Enter a valid restock level";
+    }
+    if (!Number.isInteger(form.leadTimeDays) || form.leadTimeDays < 0) {
+      next.leadTimeDays = "Enter a valid lead time";
+    }
     setErrors(next);
     if (Object.keys(next).length) return;
-    if (product) editProduct(product.id, form);
-    else addProduct(form);
-    onClose();
+
+    setApiError("");
+    setSaving(true);
+    try {
+      const input = {
+        price: form.price,
+        stock: form.stock,
+        minOrderQty: form.minOrderQty,
+        reorderLevel: form.reorderLevel,
+        leadTimeDays: form.leadTimeDays,
+      };
+      const saved = product
+        ? await updateSellerProduct(product.offerId, input)
+        : await createSellerProduct({ productId: form.productId, ...input });
+      onSaved(saved);
+      onClose();
+    } catch (error) {
+      setApiError(messageOf(error));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <form
       className="relative grid gap-3 p-[22px]"
-      onSubmit={(e) => {
-        e.preventDefault();
-        submit();
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit();
       }}
     >
       <button
@@ -76,85 +144,122 @@ function ProductForm({ product, onClose }: { product: SellerProduct | null; onCl
       >
         <SellerIcon name="x" size={16} />
       </button>
-      <h2 className="font-display text-lg font-bold">{product ? "Edit product" : "Add a product"}</h2>
+      <h2 className="font-display text-lg font-bold">{product ? "Edit listing" : "Add a listing"}</h2>
 
-      <label className="grid gap-1 text-sm font-semibold">
-        Product name
-        <input
-          className="h-10 rounded-lg border border-line bg-panel px-2.5"
-          value={form.name}
-          placeholder="TMT Fe500D bar, 12 mm, 12 m"
-          onChange={(e) => set("name", e.target.value)}
-        />
-        {errors.name && <span className="text-[13px] font-medium text-bad">{errors.name}</span>}
-      </label>
-
-      <div className="grid grid-cols-2 gap-2.5">
+      {isNew ? (
         <label className="grid gap-1 text-sm font-semibold">
-          Category
-          <select className="h-10 rounded-lg border border-line bg-panel px-2.5" value={form.category} onChange={(e) => set("category", e.target.value)}>
-            {CATEGORIES.map((c) => (
-              <option key={c}>{c}</option>
+          Catalogue product
+          <select
+            className="h-10 rounded-lg border border-line bg-panel px-2.5"
+            value={form.productId}
+            onChange={(event) => {
+              const nextId = event.target.value;
+              const nextProduct = catalog.find((item) => item.id === nextId);
+              setForm((current) => ({
+                ...current,
+                productId: nextId,
+                price: nextProduct ? Number(nextProduct.price) : current.price,
+              }));
+            }}
+          >
+            <option value="">Choose a product</option>
+            {catalog.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name} — ₹{item.price} / {item.unit}
+              </option>
             ))}
           </select>
+          {catalogError && <span className="text-[13px] font-medium text-bad">{catalogError}</span>}
+          {errors.productId && <span className="text-[13px] font-medium text-bad">{errors.productId}</span>}
         </label>
-        <label className="grid gap-1 text-sm font-semibold">
-          Unit
-          <input className="h-10 rounded-lg border border-line bg-panel px-2.5" value={form.unit} placeholder="bag, bar, tonne" onChange={(e) => set("unit", e.target.value)} />
-          {errors.unit && <span className="text-[13px] font-medium text-bad">{errors.unit}</span>}
-        </label>
-      </div>
+      ) : null}
+
+      {selected && (
+        <div className="rounded-lg border border-line bg-tint px-3 py-2 text-sm">
+          <b>{selected.name}</b>
+          <span className="mt-0.5 block text-[13px] text-muted">
+            {selected.category} · {selected.unit} · MRP ₹{selected.mrp}
+            {product ? ` · ${product.unitWeightKg} kg per unit${product.bulkFlag ? " · bulk goods" : ""}` : ""}
+          </span>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-2.5">
-        <label className="grid gap-1 text-sm font-semibold">
-          MRP (₹)
-          <input type="number" min={1} className="h-10 rounded-lg border border-line bg-panel px-2.5" value={form.mrp || ""} onChange={(e) => set("mrp", Number(e.target.value))} />
-          {errors.mrp && <span className="text-[13px] font-medium text-bad">{errors.mrp}</span>}
-        </label>
         <label className="grid gap-1 text-sm font-semibold">
           Your price (₹)
-          <input type="number" min={1} className="h-10 rounded-lg border border-line bg-panel px-2.5" value={form.price || ""} onChange={(e) => set("price", Number(e.target.value))} />
+          <input
+            type="number"
+            min={1}
+            className="h-10 rounded-lg border border-line bg-panel px-2.5"
+            value={form.price || ""}
+            onChange={(event) => set("price", Number(event.target.value))}
+          />
           {errors.price && <span className="text-[13px] font-medium text-bad">{errors.price}</span>}
         </label>
-      </div>
-
-      <div className="grid grid-cols-2 gap-2.5">
         <label className="grid gap-1 text-sm font-semibold">
           Stock
-          <input type="number" min={0} className="h-10 rounded-lg border border-line bg-panel px-2.5" value={form.stock} onChange={(e) => set("stock", Number(e.target.value))} />
+          <input
+            type="number"
+            min={0}
+            className="h-10 rounded-lg border border-line bg-panel px-2.5"
+            value={form.stock}
+            onChange={(event) => set("stock", Number(event.target.value))}
+          />
           {errors.stock && <span className="text-[13px] font-medium text-bad">{errors.stock}</span>}
-        </label>
-        <label className="grid gap-1 text-sm font-semibold">
-          Minimum order quantity
-          <input type="number" min={1} className="h-10 rounded-lg border border-line bg-panel px-2.5" value={form.minOrderQty} onChange={(e) => set("minOrderQty", Number(e.target.value))} />
-          {errors.minOrderQty && <span className="text-[13px] font-medium text-bad">{errors.minOrderQty}</span>}
         </label>
       </div>
 
       <div className="grid grid-cols-2 gap-2.5">
         <label className="grid gap-1 text-sm font-semibold">
-          Weight per unit (kg)
-          <input type="number" min={0.1} step={0.1} className="h-10 rounded-lg border border-line bg-panel px-2.5" value={form.weightKg || ""} onChange={(e) => set("weightKg", Number(e.target.value))} />
-          {errors.weightKg && <span className="text-[13px] font-medium text-bad">{errors.weightKg}</span>}
+          Minimum order quantity
+          <input
+            type="number"
+            min={1}
+            className="h-10 rounded-lg border border-line bg-panel px-2.5"
+            value={form.minOrderQty}
+            onChange={(event) => set("minOrderQty", Number(event.target.value))}
+          />
+          {errors.minOrderQty && <span className="text-[13px] font-medium text-bad">{errors.minOrderQty}</span>}
         </label>
         <label className="grid gap-1 text-sm font-semibold">
-          Restock alert at
-          <input type="number" min={0} className="h-10 rounded-lg border border-line bg-panel px-2.5" value={form.reorderLevel} onChange={(e) => set("reorderLevel", Number(e.target.value))} />
+          Lead time (days)
+          <input
+            type="number"
+            min={0}
+            max={60}
+            className="h-10 rounded-lg border border-line bg-panel px-2.5"
+            value={form.leadTimeDays}
+            onChange={(event) => set("leadTimeDays", Number(event.target.value))}
+          />
+          {errors.leadTimeDays && <span className="text-[13px] font-medium text-bad">{errors.leadTimeDays}</span>}
         </label>
       </div>
 
-      <label className="flex items-start gap-2.5 rounded-lg border border-line p-2.5 has-[:checked]:border-ink has-[:checked]:bg-tint">
-        <input type="checkbox" checked={form.bulk} onChange={(e) => set("bulk", e.target.checked)} className="mt-1 accent-nav" />
-        <span>Bulk goods (needs a weighbridge slip at dispatch)</span>
+      <label className="grid gap-1 text-sm font-semibold">
+        Restock alert at
+        <input
+          type="number"
+          min={0}
+          className="h-10 rounded-lg border border-line bg-panel px-2.5"
+          value={form.reorderLevel}
+          onChange={(event) => set("reorderLevel", Number(event.target.value))}
+        />
+        {errors.reorderLevel && <span className="text-[13px] font-medium text-bad">{errors.reorderLevel}</span>}
       </label>
 
       <p className="text-sm text-muted">
-        Buyers automatically get 3% off at 10+ units, 6% at 50+ and 10% at 200+. Platform commission is {COMMISSION_RATE * 100}% of the
-        item value.
+        Buyers automatically get 3% off at 10+ units, 6% at 50+ and 10% at 200+. Platform commission is{" "}
+        {COMMISSION_RATE * 100}% of the item value.
       </p>
 
-      <Button type="submit" variant="yellow" wide>
-        {product ? "Save changes" : "Add product"}
+      {apiError && (
+        <p role="alert" className="rounded-lg border border-bad bg-panel px-3 py-2 text-[13px] font-medium text-bad">
+          {apiError}
+        </p>
+      )}
+
+      <Button type="submit" variant="yellow" wide disabled={saving}>
+        {saving ? "Saving…" : product ? "Save changes" : "Add listing"}
       </Button>
     </form>
   );
@@ -164,15 +269,23 @@ export default function ProductDialog({
   product,
   open,
   onClose,
+  onSaved,
 }: {
-  /** Editing an existing product, or `null` to add a new one. */
-  product: SellerProduct | null;
+  product: SellerProductDto | null;
   open: boolean;
   onClose: () => void;
+  onSaved: (product: SellerProductDto) => void;
 }) {
   return (
-    <Dialog open={open} onClose={onClose} title={product ? "Edit product" : "Add a product"} wide>
-      {open && <ProductForm key={product?.id ?? "new"} product={product} onClose={onClose} />}
+    <Dialog open={open} onClose={onClose} title={product ? "Edit listing" : "Add a listing"} wide>
+      {open && (
+        <ProductForm
+          key={product?.offerId ?? "new"}
+          product={product}
+          onClose={onClose}
+          onSaved={onSaved}
+        />
+      )}
     </Dialog>
   );
 }

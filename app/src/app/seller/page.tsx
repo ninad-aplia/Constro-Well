@@ -10,18 +10,14 @@ import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Pill from "@/components/ui/Pill";
 import { useSellerStore } from "@/components/seller/SellerStoreProvider";
+import { useSellerLive } from "@/components/seller/SellerLiveProvider";
 import PreviewDisclosure from "@/components/seller/PreviewDisclosure";
 import SalesChart from "@/components/seller/SalesChart";
 import SellerIcon from "@/components/seller/SellerIcon";
-import { computeScore, scoreTier, netPayout } from "@/lib/seller/rules";
+import { computeScore, scoreTier } from "@/lib/seller/rules";
 import {
   getBalance,
-  getDisputedOrders,
-  getLateOrders,
-  getLowStockProducts,
   getNeedsAttention,
-  getNewOrders,
-  getReadyToDispatch,
   getTopProducts,
   rangeSum,
 } from "@/lib/seller/selectors";
@@ -46,16 +42,12 @@ function Delta({ current, previous }: { current: number; previous: number }) {
 
 export default function SellerOverviewPage() {
   const { state, toggleVacation } = useSellerStore();
+  const { summary } = useSellerLive();
   const [range, setRange] = useState<(typeof RANGES)[number]>(30);
 
   const score = computeScore(state.stats);
   const tier = scoreTier(score);
   const balance = getBalance(state);
-  const lowStock = getLowStockProducts(state);
-  const newOrders = getNewOrders(state);
-  const readyToDispatch = getReadyToDispatch(state);
-  const lateOrders = getLateOrders(state);
-  const disputed = getDisputedOrders(state);
   const attention = getNeedsAttention(state);
   const topProducts = getTopProducts(state);
   const maxSold = topProducts[0]?.sold || 1;
@@ -70,14 +62,14 @@ export default function SellerOverviewPage() {
   const tips: string[] = [];
   if (state.stats.accepted / state.stats.offered < 0.95) tips.push("Accept orders within the 4-hour window to lift your acceptance rate.");
   if (state.stats.ontime / Math.max(1, state.stats.dispatched) < 0.95) tips.push("Dispatch before the 24-hour deadline to avoid the 2% penalty.");
-  if (lowStock.length) tips.push(`Restock ${lowStock.length} low-stock product${lowStock.length > 1 ? "s" : ""} so buyers do not see them as unavailable.`);
+  if (summary.lowStock) tips.push(`Restock ${summary.lowStock} low-stock product${summary.lowStock > 1 ? "s" : ""} so buyers do not see them as unavailable.`);
   if (!tips.length) tips.push("You are doing great. Keep accepting and dispatching on time.");
 
-  const firstName = state.store.owner.split(" ")[0];
+  const firstName = summary.ownerFirstName;
 
   return (
     <div className="grid gap-4">
-      <PreviewDisclosure />
+      <PreviewDisclosure message="Order and inventory counts are live from the marketplace database. Sales charts, payout figures and some other Seller Hub screens still use preview data." />
 
       {state.vacationMode && (
         <div className="flex items-center gap-3 rounded-xl border border-warn/45 bg-warn/10 p-3.5">
@@ -97,7 +89,7 @@ export default function SellerOverviewPage() {
             Good day, {firstName}
           </h1>
           <p className="mt-1 text-muted">
-            {state.store.name} · {state.store.city} · Here is what needs you today.
+            {summary.storeName} · {summary.city} · Here is what needs you today.
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
@@ -113,37 +105,35 @@ export default function SellerOverviewPage() {
       <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-4">
         <Link
           href="/seller/orders?filter=new"
-          className={`rounded-2xl border p-3.5 ${newOrders.length ? "border-bad/55 bg-bad/[0.06]" : "border-line bg-panel"}`}
+          className={`rounded-2xl border p-3.5 ${summary.newOrders ? "border-bad/55 bg-bad/[0.06]" : "border-line bg-panel"}`}
         >
-          <span className={`block font-display text-[28px] font-bold ${newOrders.length ? "text-bad" : "text-muted"}`}>{newOrders.length}</span>
+          <span className={`block font-display text-[28px] font-bold ${summary.newOrders ? "text-bad" : "text-muted"}`}>{summary.newOrders}</span>
           <b>New orders to accept</b>
-          <small className="block text-muted">{newOrders.length ? `Oldest ${newOrders[0].acceptByLabel}` : "All caught up"}</small>
+          <small className="block text-muted">{summary.newOrders ? "Waiting for acceptance" : "All caught up"}</small>
         </Link>
         <Link
           href="/seller/orders?filter=todo"
-          className={`rounded-2xl border p-3.5 ${lateOrders.length ? "border-bad/55 bg-bad/[0.06]" : "border-line bg-panel"}`}
+          className={`rounded-2xl border p-3.5 ${summary.late ? "border-bad/55 bg-bad/[0.06]" : "border-line bg-panel"}`}
         >
-          <span className={`block font-display text-[28px] font-bold ${lateOrders.length ? "text-bad" : ""}`}>{readyToDispatch.length}</span>
+          <span className={`block font-display text-[28px] font-bold ${summary.late ? "text-bad" : ""}`}>{summary.readyToDispatch}</span>
           <b>Ready to dispatch</b>
-          <small className="block text-muted">{lateOrders.length ? `${lateOrders.length} overdue` : "All within deadline"}</small>
+          <small className="block text-muted">{summary.late ? `${summary.late} overdue` : "All within deadline"}</small>
         </Link>
         <Link
           href="/seller/orders?filter=issue"
-          className={`rounded-2xl border p-3.5 ${disputed.length ? "border-bad/55 bg-bad/[0.06]" : "border-line bg-panel"}`}
+          className={`rounded-2xl border p-3.5 ${summary.openDisputes ? "border-bad/55 bg-bad/[0.06]" : "border-line bg-panel"}`}
         >
-          <span className={`block font-display text-[28px] font-bold ${disputed.length ? "text-bad" : "text-muted"}`}>{disputed.length}</span>
+          <span className={`block font-display text-[28px] font-bold ${summary.openDisputes ? "text-bad" : "text-muted"}`}>{summary.openDisputes}</span>
           <b>Open disputes</b>
-          <small className="block text-muted">
-            {disputed.length ? formatInr(disputed.reduce((a, o) => a + netPayout(o, state.rules.freeAbove, state.rules.fee), 0)) + " frozen" : "None"}
-          </small>
+          <small className="block text-muted">{summary.openDisputes ? "Payout frozen pending review" : "None"}</small>
         </Link>
         <Link
           href="/seller/products?filter=low"
-          className={`rounded-2xl border p-3.5 ${lowStock.length ? "border-bad/55 bg-bad/[0.06]" : "border-line bg-panel"}`}
+          className={`rounded-2xl border p-3.5 ${summary.lowStock ? "border-bad/55 bg-bad/[0.06]" : "border-line bg-panel"}`}
         >
-          <span className={`block font-display text-[28px] font-bold ${lowStock.length ? "text-bad" : "text-muted"}`}>{lowStock.length}</span>
+          <span className={`block font-display text-[28px] font-bold ${summary.lowStock ? "text-bad" : "text-muted"}`}>{summary.lowStock}</span>
           <b>Low-stock products</b>
-          <small className="block text-muted">{lowStock.length ? lowStock[0].name.split(",")[0] + (lowStock.length > 1 ? ` and ${lowStock.length - 1} more` : "") : "Stock is healthy"}</small>
+          <small className="block text-muted">{summary.lowStock ? "At or below reorder level" : "Stock is healthy"}</small>
         </Link>
       </div>
 

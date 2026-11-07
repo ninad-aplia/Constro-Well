@@ -1,13 +1,12 @@
 "use client";
-// Header cart button — port of buildgrid-shop.html's `.hbtn.cartb` (line 173):
+// Header cart button - port of buildgrid-shop.html's `.hbtn.cartb` (line 173):
 // icon + live count + "Cart" label, right end of the storefront header.
-// Server-rendered once count is 0 until the client cart hydrates, then the
-// badge tracks cart mutations.
+// Count comes from the PostgreSQL cart; guests see 0 until they sign in.
 import Link from "next/link";
-import { useCart } from "@/components/cart";
+import { useRemoteCart } from "./RemoteCartProvider";
 
 export default function CartBadge() {
-  const { count } = useCart();
+  const { count } = useRemoteCart();
   return (
     <Link
       href="/cart"

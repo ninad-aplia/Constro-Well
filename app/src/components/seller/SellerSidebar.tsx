@@ -8,7 +8,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSellerStore } from "./SellerStoreProvider";
-import { getLowStockProducts, getNewOrders, getDisputedOrders } from "@/lib/seller/selectors";
+import { useSellerLive } from "./SellerLiveProvider";
 import { computeScore } from "@/lib/seller/rules";
 import SellerIcon from "./SellerIcon";
 import { SELLER_NAV } from "@/lib/seller/nav";
@@ -16,9 +16,10 @@ import { SELLER_NAV } from "@/lib/seller/nav";
 export default function SellerSidebar() {
   const pathname = usePathname();
   const { state } = useSellerStore();
-  const newOrders = getNewOrders(state).length;
-  const lowStock = getLowStockProducts(state).length;
-  const disputes = getDisputedOrders(state).length;
+  const { summary } = useSellerLive();
+  const newOrders = summary.newOrders;
+  const lowStock = summary.lowStock;
+  const disputes = summary.openDisputes;
   const score = computeScore(state.stats);
 
   const badgeFor = (href: string) => {
@@ -72,9 +73,9 @@ export default function SellerSidebar() {
       <div className="flex-1" />
 
       <div className="hidden rounded-xl bg-white/[0.07] p-3 text-[13px] lg:block">
-        <b className="block text-white">{state.store.name}</b>
+        <b className="block text-white">{summary.storeName}</b>
         <span className="text-[#9BADC8]">
-          {state.store.city} · Score {score}
+          {summary.city} · Score {score}
         </span>
       </div>
     </aside>

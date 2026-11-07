@@ -4,3 +4,5 @@
 export { default as CartProvider } from "./CartProvider";
 export { default as CartBadge } from "./CartBadge";
 export { useCart } from "./CartProvider";
+export { default as RemoteCartProvider } from "./RemoteCartProvider";
+export { useRemoteCart } from "./RemoteCartProvider";

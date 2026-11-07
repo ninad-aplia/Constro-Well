@@ -30,7 +30,13 @@ import { createSellerSeed } from "@/data/seller";
 import { PRODUCTS } from "@/data/catalog";
 import { CATEGORIES } from "@/lib/shop/types";
 import { ACCEPT_WINDOW_HOURS, DISPATCH_WINDOW_HOURS, REVIEW_WINDOW_HOURS } from "@/lib/seller/rules";
-import { deriveOtp } from "@/lib/delivery/rules";
+
+/** Demo-only deterministic code for seeded rows; only its bcrypt digest is stored. */
+function deriveOtp(orderId: string): string {
+  let hash = 0;
+  for (let i = 0; i < orderId.length; i++) hash = (hash * 31 + orderId.charCodeAt(i)) >>> 0;
+  return String(1000 + (hash % 9000));
+}
 
 const db = new PrismaClient();
 
@@ -172,6 +178,7 @@ async function main() {
     update: {},
   });
   const sellers: string[] = [ultra.id];
+  const sellerCodes: string[] = ["ultrabuild"];
   for (let i = 0; i < POOL_SELLERS.length; i++) {
     const code = POOL_SELLERS[i].name.toLowerCase().replace(/[^a-z0-9]+/g, "-");
     const s = await db.seller.upsert({
@@ -195,6 +202,7 @@ async function main() {
       update: {},
     });
     sellers.push(s.id);
+    sellerCodes.push(code);
     for (const pin of ["560001", "560066"])
       await db.sellerPincode.upsert({
         where: { sellerId_pin: { sellerId: s.id, pin } },
@@ -229,37 +237,62 @@ async function main() {
     vehicleIds.set(v.id, row.id);
   }
 
-  // --- 5. Products: the 48-row catalogue + UltraBuild's inventory fields. ---
+  // --- 5. Canonical products + seller-specific offers (D11). ---
+  // Product holds catalogue data only; SellerOffer holds the vendor's price,
+  // stock, minimum quantity, availability and lead time. Every catalogue row
+  // gets exactly one seeded offer (UltraBuild for p1..p8, other pool sellers
+  // otherwise) so an order always resolves to a real vendor listing.
   const sellerProductByCode = new Map(seller.products.map((sp) => [SELLER_PRODUCT_CODES[sp.id], sp]));
   for (const p of PRODUCTS) {
     const code = String(p.id);
     const sp = sellerProductByCode.get(code);
-    await db.product.upsert({
+    const productRow = await db.product.upsert({
       where: { code },
       create: {
         code,
-        sellerId: sp ? ultra.id : sellers[1 + (p.id % POOL_SELLERS.length)],
         categoryId: categoryIds.get(p.cat) as string,
         name: p.name,
+        brand: p.brand,
         unit: p.unit,
-        mrp: D(p.mrp),
-        price: D(p.price), // GST-inclusive per D8
-        stock: sp ? sp.stock : p.stock,
-        minOrderQty: sp?.minOrderQty ?? 1,
-        // Catalog rows carry no weight figure; 0.0 is the documented demo
-        // default until real listings supply weights (Phase 5).
+        mrp: D(p.mrp), // GST-inclusive per D8
         unitWeightKg: sp?.weightKg ?? 0,
         bulkFlag: sp?.bulk ?? false,
-        reorderLevel: sp?.reorderLevel ?? 0,
-        status: sp?.status === "paused" ? "paused" : "active",
-        soldCount: sp?.sold ?? 0,
         specs: p.specs,
       },
       update: {},
     });
+
+    const sellerIndex = sp ? 0 : 1 + (p.id % POOL_SELLERS.length);
+    const offerCode = `${sellerCodes[sellerIndex]}:${code}`;
+    await db.sellerOffer.upsert({
+      where: { code: offerCode },
+      create: {
+        code: offerCode,
+        productId: productRow.id,
+        sellerId: sellers[sellerIndex],
+        price: D(sp?.price ?? p.price),
+        stock: sp?.stock ?? p.stock,
+        minOrderQty: sp?.minOrderQty ?? 1,
+        status: sp?.status === "paused" ? "paused" : "active",
+        reorderLevel: sp?.reorderLevel ?? 0,
+        soldCount: sp?.sold ?? 0,
+        leadTimeDays: p.days,
+        verified: true,
+        rating: p.rating,
+      },
+      update: {},
+    });
   }
-  const ultraProductIds = new Map(
-    (await db.product.findMany({ where: { sellerId: ultra.id }, select: { id: true, code: true } })).map((p) => [p.code, p.id]),
+  const productIdByCode = new Map(
+    (await db.product.findMany({ select: { id: true, code: true } })).map((p) => [p.code, p.id]),
+  );
+  const ultraOfferIdByProductCode = new Map(
+    (
+      await db.sellerOffer.findMany({
+        where: { sellerId: ultra.id },
+        select: { id: true, product: { select: { code: true } } },
+      })
+    ).map((o) => [o.product.code, o.id]),
   );
 
   // --- 6. Demo orders → OrderLine → Shipment (+ events, issue, escrow). ---
@@ -287,7 +320,8 @@ async function main() {
     const releaseAt = paidAt ?? createdAt;
 
     await db.$transaction(async (tx) => {
-      const productId = ultraProductIds.get(SELLER_PRODUCT_CODES[o.productId]) as string;
+      const productId = productIdByCode.get(SELLER_PRODUCT_CODES[o.productId]) as string;
+      const sellerOfferId = ultraOfferIdByProductCode.get(SELLER_PRODUCT_CODES[o.productId]) as string;
       const order = await tx.order.create({
         data: {
           code,
@@ -349,6 +383,7 @@ async function main() {
           orderId: order.id,
           productId,
           sellerId: ultra.id,
+          sellerOfferId,
           name: o.productName, // buyer-facing display text, point-in-time snapshot
           unit: o.unit,
           unitPrice: D(o.price),
@@ -404,7 +439,7 @@ async function main() {
     const code = reviewProduct.get(r.productName);
     if (!code) continue;
     const userId = (await upsertUser(r.name, "customer")).id;
-    const productId = ultraProductIds.get(code) as string;
+    const productId = productIdByCode.get(code) as string;
     await db.review.upsert({
       where: { userId_productId: { userId, productId } },
       create: {

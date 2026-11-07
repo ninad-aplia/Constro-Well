@@ -1,12 +1,8 @@
 // Customer reviews — port of buildgrid-shop.html's `.revs`/`.rvgrid`/`.rv`
 // (CSS lines 123-124, markup lines 495-496). Server component.
 //
-// Mock-data safety (D14): the prototype's synthetic reviews carry no
-// "Verified purchase" label for these generated entries (only used for seller
-// badges), so none is added here either — each review is explicitly marked
-// "Sample review" instead, with a section-level disclosure. "Write a customer
-// review" and "Helpful" are disabled (fake review submission/voting excluded,
-// per this task's scope).
+// Reviews now come from PostgreSQL (seeded demo reviews). "Write a customer
+// review" and "Helpful" stay disabled (submission/voting are out of scope).
 import Stars from "@/components/ui/Stars";
 import Button from "@/components/ui/Button";
 import { fmt } from "@/lib/shop/format";
@@ -55,28 +51,32 @@ export default function ProductReviews({
 
       <div>
         <p className="mb-3 text-xs text-muted">
-          Sample reviews shown for preview — not from verified purchases.
+          Customer reviews stored for this marketplace (demo data).
         </p>
         <div className="grid gap-4">
-          {reviews.map((r, i) => (
-            <article key={i} className="grid gap-1.5 border-b border-line pb-4 last:border-0">
-              <div className="flex items-center gap-2">
-                <span className="grid h-7 w-7 place-items-center rounded-full bg-nav text-xs font-bold text-hi">
-                  {r.name[0]}
-                </span>
-                <b className="text-sm">{r.name}</b>
-              </div>
-              <div className="flex items-center gap-2">
-                <Stars value={r.stars} />
-                <b className="text-sm">{r.title}</b>
-              </div>
-              <small className="text-xs text-muted">Reviewed on {r.postedOn} · Sample review</small>
-              <p className="text-sm">{r.body}</p>
-              <Button variant="line" size="sm" disabled title="Review voting isn't implemented yet" className="w-fit">
-                Helpful
-              </Button>
-            </article>
-          ))}
+          {reviews.length === 0 ? (
+            <p className="text-sm text-muted">No customer reviews yet.</p>
+          ) : (
+            reviews.map((r, i) => (
+              <article key={i} className="grid gap-1.5 border-b border-line pb-4 last:border-0">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-7 w-7 place-items-center rounded-full bg-nav text-xs font-bold text-hi">
+                    {r.name[0]}
+                  </span>
+                  <b className="text-sm">{r.name}</b>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Stars value={r.stars} />
+                  <b className="text-sm">{r.title}</b>
+                </div>
+                <small className="text-xs text-muted">Reviewed on {r.postedOn}</small>
+                <p className="text-sm">{r.body}</p>
+                <Button variant="line" size="sm" disabled title="Review voting isn't implemented yet" className="w-fit">
+                  Helpful
+                </Button>
+              </article>
+            ))
+          )}
         </div>
       </div>
     </section>

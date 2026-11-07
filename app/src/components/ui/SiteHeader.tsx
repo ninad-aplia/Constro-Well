@@ -1,5 +1,6 @@
 import Link from "next/link";
 import CartBadge from "@/components/cart/CartBadge";
+import SessionNav from "@/components/auth/SessionNav";
 
 // Header parity port of the storefront prototype's header (sticky dark-nav bar).
 // Search submits to /search; cart badge wired to the client cart store.
@@ -21,7 +22,7 @@ export default function SiteHeader() {
         </Link>
 
         <p className="ms-auto hidden px-2 text-sm font-semibold text-[#C9D8EE] sm:inline">
-          MVP under construction — storefront lands in Phase&nbsp;1–5
+          Construction materials marketplace
         </p>
 
         <form
@@ -45,6 +46,7 @@ export default function SiteHeader() {
             GO
           </button>
         </form>
+        <SessionNav />
         <CartBadge />
       </div>
     </header>

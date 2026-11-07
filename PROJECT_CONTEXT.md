@@ -59,12 +59,12 @@ Monolith, three layers, no shared types shortcuts across trust boundaries:
 ## 7. Database entities (minimum viable)
 - `User` (role, email, passwordHash, name, phone) · `Session`
 - `Seller` (store name, owner, GSTIN, phone, city, pickup address, bank account ref, KYC status, vacation flag) · `SellerPincode` · `Vehicle` · `Driver`
-- `Product` (seller, category, name, unit, mrp, price, stock, minOrderQty, unitWeightKg, bulkFlag, reorderLevel, status active/paused, specs json, imageUrl(s))
-- `Cart` + `CartItem` (per user; savedForLater flag) · `WishlistItem`
-- `Address` (per user, default flag) · `Review` (product, stars, title, body; verified purchase) · `Coupon`
-- `Order` (id BG-######, user, address snapshot, payment method + label, totals snapshot incl. GST, status)
-  → `OrderLine` (product snapshot: name, unit price applied, qty, seller)
-  → **`Shipment`** (one per seller per order: status machine, acceptBy/dispatchBy deadlines, slot, vehicle, driver docs json, otp, deliveredAt, deliveredQty, reviewEnds, issue json, payout json, events)
+- `Product` (canonical catalogue: category, name, brand, unit, mrp, unitWeightKg, bulkFlag, specs json, imageUrl) · **`SellerOffer`** (seller-specific listing: product, seller, price, stock, minOrderQty, status active/paused, reorderLevel, soldCount, leadTimeDays, verified, rating)
+- `Cart` + `CartItem` (per user; references the selected `SellerOffer`; savedForLater flag) · `WishlistItem`
+- `Address` (per user: name, phone, line1, city, state, pin, label, default flag) · `Review` (product, stars, title, body; verified purchase) · `Coupon` (code, percent/flat discount, maxDiscount, minSubtotal, firstOrderOnly, freeDelivery)
+- `Order` (id BG-######, user, address snapshot, payment method + label, subtotal/discount/coupon/GST/delivery/total snapshots, status)
+  → `OrderLine` (product + seller + offer references, plus name/unit/unitPrice/qty/lineValue snapshots)
+  → **`Shipment`** (one per seller per order: status machine, acceptBy/dispatchBy deadlines, slot, vehicle, driver docs json, bcrypt OTP hash + AES-GCM encrypted customer copy, deliveredAt, deliveredQty, reviewEnds, issue json, payout json, events)
   → `ShipmentEvent` (who, message, at)
 - `EscrowEntry` / payout ledger (held, commission, penalty, refund, released, withdrawn)
 - `Notification` (seller) · `NotImplementedYet`: chat/returns workflow

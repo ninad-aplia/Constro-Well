@@ -1,21 +1,29 @@
-// Delivery Portal shell — same structure as `app/seller/layout.tsx`: fetches
-// the initial preview state once via the facade, then hands it to the
-// client-side DeliveryStoreProvider, which owns every subsequent mutation
-// (confirm delivery / mark failed attempt are local preview state only —
-// see DeliveryStoreProvider's header comment).
+// Delivery Portal shell — same structure as `app/seller/layout.tsx`.
+// Server Component: resolves the authenticated Driver, loads only that
+// driver's shipments, then hands them to the client provider. Mutations go
+// through /api/driver/jobs and are persisted in PostgreSQL.
+import { redirect } from "next/navigation";
 import DeliveryStoreProvider from "@/components/delivery/DeliveryStoreProvider";
 import DeliverySidebar from "@/components/delivery/DeliverySidebar";
 import DeliveryTopBar from "@/components/delivery/DeliveryTopBar";
 import DeliveryBottomNav from "@/components/delivery/DeliveryBottomNav";
-import { getDeliveryState } from "@/lib/api/delivery";
+import DeliveryAccessNotice from "@/components/delivery/DeliveryAccessNotice";
+import { toDeliveryState } from "@/components/delivery/driverAdapter";
+import { listDriverJobs } from "@/server/orders/driverService";
+import { resolveDriverForUser } from "@/server/auth/session";
+import { getCurrentUser } from "@/server/auth/current";
 
-// Every Delivery Portal page is a fully interactive preview (filters,
-// drawers, forms) with no meaningful static shell — same situation as
-// /seller under this project's `cacheComponents` config.
 export const instant = false;
 
 export default async function DeliveryLayout({ children }: { children: React.ReactNode }) {
-  const initialState = await getDeliveryState();
+  const user = await getCurrentUser();
+  if (!user) redirect("/login?next=/delivery");
+  if (user.role !== "driver") return <DeliveryAccessNotice user={user} />;
+
+  const driver = await resolveDriverForUser(user);
+  if (!driver) return <DeliveryAccessNotice user={user} />;
+
+  const initialState = toDeliveryState(await listDriverJobs(driver.id));
 
   return (
     <DeliveryStoreProvider initialState={initialState}>

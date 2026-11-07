@@ -1,8 +1,22 @@
 # Local production-like run: docker compose up --build
-# The app does not read Postgres at runtime yet (D14). When it does, add a
-# DATABASE_URL pointing at a managed or container database and run
-# `npx prisma migrate deploy` before starting the app.
+# Run `npx prisma migrate deploy` from app/ against DATABASE_URL before first start.
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: constro
+      POSTGRES_PASSWORD: constro
+      POSTGRES_DB: constrowell
+    ports:
+      - "5432:5432"
+    volumes:
+      - constro_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U constro -d constrowell"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   app:
     build: .
     image: constro-well:local
@@ -10,4 +24,13 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
+      DATABASE_URL: postgresql://constro:constro@db:5432/constrowell?schema=public
+      APP_ORIGIN: http://localhost:3000
+      OTP_ENCRYPTION_KEY: ${OTP_ENCRYPTION_KEY:?set OTP_ENCRYPTION_KEY first}
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  constro_pgdata:

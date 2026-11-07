@@ -27,7 +27,7 @@ export default function ProductRow({
       <div className="mb-2.5 flex flex-wrap items-baseline gap-4">
         <h2 className="font-display text-xl font-bold">{title}</h2>
         <span className="text-xs text-muted">
-          Sample catalogue data for preview — not live prices or availability.
+          Catalogue data from the marketplace database.
         </span>
       </div>
       <ScrollerRow>

@@ -34,7 +34,7 @@ import {
   getRatingBreakdown,
   getSellerOffers,
   getSimilarProducts,
-} from "@/lib/api/catalog";
+} from "@/lib/api/catalogDb";
 
 // Every part of this page's content depends on `params.id` (the product being
 // displayed is the entire page), so there's no meaningful static shell to
@@ -48,10 +48,7 @@ export default async function ProductPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const productId = Number(id);
-  if (!Number.isInteger(productId)) notFound();
-
-  const product = await getProductById(productId);
+  const product = await getProductById(id);
   if (!product) notFound();
 
   const [offers, fbt, similar, reviews, histogram, bulkTiers] = await Promise.all([
@@ -59,7 +56,7 @@ export default async function ProductPage({
     getFrequentlyBoughtTogether(product.id),
     getSimilarProducts(product.id),
     getProductReviews(product.id),
-    getRatingBreakdown(product.rating),
+    getRatingBreakdown(product.id),
     getBulkTiers(),
   ]);
 
@@ -146,7 +143,7 @@ export default async function ProductPage({
             <li className="mb-1">Sold per {product.unit}.</li>
           </ul>
           <p className="mt-2 text-xs text-muted">
-            Sample catalogue data for preview — not live prices or availability.
+            Prices, stock and seller availability come from the marketplace database.
           </p>
         </section>
 
@@ -154,7 +151,25 @@ export default async function ProductPage({
           aria-label="Buy box"
           className="p-[18px] max-[1100px]:static max-[1100px]:col-span-2 min-[1101px]:sticky min-[1101px]:top-[130px]"
         >
-          <BuyBox id={product.id} price={product.price} unit={product.unit} sellerName={`${product.brand} Official`} />
+          {offers.length > 0 ? (
+            <BuyBox
+              id={product.id}
+              offerId={offers[0].id}
+              price={offers[0].price}
+              unit={product.unit}
+              sellerName={offers[0].name}
+              minOrderQty={offers[0].minOrderQty}
+              stock={offers[0].stock}
+              leadTimeDays={offers[0].leadTimeDays}
+            />
+          ) : (
+            <div className="grid gap-2">
+              <h2 className="font-display text-lg font-bold">Currently unavailable</h2>
+              <p className="text-sm text-muted">
+                No seller currently has this product in stock.
+              </p>
+            </div>
+          )}
         </Card>
       </div>
 

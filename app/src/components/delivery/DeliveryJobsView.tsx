@@ -1,21 +1,27 @@
 // Assigned deliveries — port of buildgrid-delivery-workflow.html's driver
-// assignment list (`viewDriver()` line 315, list = dispatched + failed
-// shipments). Client Component: initial filter/open values come from the
-// server-parsed URL (see app/delivery/jobs/page.tsx) rather than
-// `useSearchParams()` here, same reasoning as the Seller Hub's `OrdersView`.
+// assignment list (`viewDriver()` line 315). Client Component: initial
+// filter/open values come from the server-parsed URL. Jobs and every action
+// are scoped to the authenticated driver by the API.
 "use client";
 
 import { useState } from "react";
 import Pill from "@/components/ui/Pill";
 import Button from "@/components/ui/Button";
+import { useToast } from "@/components/ui/Toast";
 import PreviewDisclosure from "./PreviewDisclosure";
 import DeliveryJobDrawer from "./DeliveryJobDrawer";
 import { useDeliveryStore } from "./DeliveryStoreProvider";
-import { ASSIGNED_FILTERS, getActiveDeliveries, vehicleFor, driverFor } from "@/lib/delivery/selectors";
+import { ASSIGNED_FILTERS, getActiveDeliveries } from "@/lib/delivery/selectors";
 import { DELIVERY_STATUS } from "@/lib/delivery/status";
+import { ApiClientError } from "@/lib/api/client";
+
+function messageOf(error: unknown): string {
+  return error instanceof ApiClientError ? error.message : "Could not reach the delivery service.";
+}
 
 export default function DeliveryJobsView({ initialFilter, initialOpen }: { initialFilter: string; initialOpen: string | null }) {
-  const { state } = useDeliveryStore();
+  const { state, busyId, acceptJob } = useDeliveryStore();
+  const toast = useToast();
   const [filter, setFilter] = useState(initialFilter);
   const [query, setQuery] = useState("");
   const [drawerId, setDrawerId] = useState<string | null>(initialOpen);
@@ -25,9 +31,17 @@ export default function DeliveryJobsView({ initialFilter, initialOpen }: { initi
   const q = query.trim().toLowerCase();
 
   let jobs = active.filter((j) => !activeFilter.statuses || activeFilter.statuses.includes(j.status));
-  if (q) jobs = jobs.filter((j) => `${j.id} ${j.productName} ${j.city} ${j.buyer}`.toLowerCase().includes(q));
+  if (q) jobs = jobs.filter((j) => `${j.id} ${j.orderCode} ${j.productName} ${j.city} ${j.buyer}`.toLowerCase().includes(q));
 
-  const drawerJob = active.find((j) => j.id === drawerId) || null;
+  const drawerJob = state.jobs.find((j) => j.shipmentId === drawerId || j.id === drawerId) || null;
+
+  const accept = async (job: (typeof state.jobs)[number]) => {
+    try {
+      await acceptJob(job);
+    } catch (error) {
+      toast.show(messageOf(error));
+    }
+  };
 
   return (
     <div className="grid gap-4">
@@ -35,7 +49,7 @@ export default function DeliveryJobsView({ initialFilter, initialOpen }: { initi
 
       <div>
         <h1 className="font-display text-[clamp(25px,3vw,34px)] font-bold">Assigned deliveries</h1>
-        <p className="mt-1 text-muted">Shipments a seller has dispatched with a vehicle from this store, waiting to be delivered.</p>
+        <p className="mt-1 text-muted">Shipments a seller has dispatched to you, waiting to be delivered.</p>
       </div>
 
       <div className="flex flex-wrap items-center gap-2.5">
@@ -72,25 +86,29 @@ export default function DeliveryJobsView({ initialFilter, initialOpen }: { initi
       ) : (
         <div className="grid gap-2.5">
           {jobs.map((j) => {
-            const vehicle = vehicleFor(state, j);
-            const driver = driverFor(state, j);
             const status = DELIVERY_STATUS[j.status];
             return (
-              <div key={j.id} className="grid grid-cols-1 gap-2.5 rounded-2xl border border-line bg-panel p-3.5 md:grid-cols-[1fr_auto] md:items-center">
+              <div key={j.shipmentId} className="grid grid-cols-1 gap-2.5 rounded-2xl border border-line bg-panel p-3.5 md:grid-cols-[1fr_auto] md:items-center">
                 <div>
                   <div className="flex flex-wrap items-center gap-1.5">
                     <b>{j.id}</b>
                     <Pill tone={status.tone}>{status.label}</Pill>
+                    {j.accepted && <Pill tone="ok">Accepted</Pill>}
                   </div>
                   <div className="mt-1 text-[13px] text-muted">
                     {j.productName} · {j.qty} {j.unit} · to {j.buyer}, {j.city} {j.pin}
                   </div>
                   <div className="mt-1 text-[13px] text-muted">
-                    {vehicle ? `${vehicle.regNumber} · ${driver?.name ?? "No driver"}` : "No vehicle"} {j.slot ? `· ${j.slot}` : ""}
+                    {j.vehicleReg ? `${j.vehicleReg}${j.vehicleType ? ` · ${j.vehicleType}` : ""}` : "No vehicle"} {j.slot ? `· ${j.slot}` : ""}
                   </div>
                 </div>
-                <div className="flex gap-1.5 md:justify-end">
-                  <Button size="sm" variant="yellow" onClick={() => setDrawerId(j.id)}>
+                <div className="flex flex-wrap gap-1.5 md:justify-end">
+                  {j.status === "dispatched" && !j.accepted && (
+                    <Button size="sm" variant="line" disabled={busyId === j.shipmentId} onClick={() => void accept(j)}>
+                      Accept job
+                    </Button>
+                  )}
+                  <Button size="sm" variant="yellow" onClick={() => setDrawerId(j.shipmentId)}>
                     {j.status === "dispatched" ? "Complete delivery" : "Details"}
                   </Button>
                 </div>

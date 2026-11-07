@@ -13,8 +13,8 @@ export default function DeliveryTopBar() {
         <SellerIcon name="truck" size={18} />
       </span>
       <div>
-        <b className="block leading-none">Delivery preview</b>
-        <span className="text-[12px] text-muted">Sample driver workflow, not a live tracking app</span>
+        <b className="block leading-none">Driver Portal</b>
+        <span className="text-[12px] text-muted">Assigned deliveries and proof of delivery</span>
       </div>
     </header>
   );
