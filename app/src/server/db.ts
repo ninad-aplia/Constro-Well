@@ -8,4 +8,6 @@ const globalForPrisma = globalThis as unknown as { prismaClient?: PrismaClient }
 
 export const db = globalForPrisma.prismaClient ?? new PrismaClient();
 
-if (process.env.NODE_ENV !== "production") globalForPrisma.prismaClient = db;
+// Next.js production server chunks can duplicate this module; cache on
+// globalThis in every environment so all chunks share one connection pool.
+globalForPrisma.prismaClient = db;
