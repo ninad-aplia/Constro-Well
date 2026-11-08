@@ -10,33 +10,12 @@ export const ACCEPT_WINDOW_HOURS = 4;
 export const DISPATCH_WINDOW_HOURS = 24;
 export const REVIEW_WINDOW_HOURS = 24;
 export const EWAY_THRESHOLD = 50000;
-export const MIN_WITHDRAWAL = 1000;
 
 export const DELIVERY_SLOTS = ["Today, 2 to 6 pm", "Tomorrow, 8 am to 12", "Tomorrow, 2 to 6 pm"];
 
 /** Line value before delivery fee or deductions (prototype `val`). */
-export function orderItemValue(order: SellerOrder): number {
+function orderItemValue(order: SellerOrder): number {
   return order.price * order.qty;
-}
-
-/** Delivery fee charged to the buyer (prototype `deliv`) — a seller-configurable free-above threshold. */
-export function deliveryFee(order: SellerOrder, freeAbove: number, fee: number): number {
-  return orderItemValue(order) >= freeAbove ? 0 : fee;
-}
-
-/** Order total the buyer paid (prototype `gross`). */
-export function grossValue(order: SellerOrder, freeAbove: number, fee: number): number {
-  return orderItemValue(order) + deliveryFee(order, freeAbove, fee);
-}
-
-/** Seller's net payout after commission and any late-dispatch penalty (prototype `net`). */
-export function netPayout(order: SellerOrder, freeAbove: number, fee: number): number {
-  const value = orderItemValue(order);
-  const claim = order.status === "settled" && order.refund ? order.refund : 0;
-  const keep = Math.max(0, value - claim);
-  const commission = keep * COMMISSION_RATE;
-  const penalty = order.late ? keep * LATE_PENALTY_RATE : 0;
-  return Math.round(keep + deliveryFee(order, freeAbove, fee) - commission - penalty);
 }
 
 /** Whether this order requires an e-way bill number at dispatch (prototype `needEway`). */

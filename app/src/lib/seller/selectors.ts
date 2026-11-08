@@ -2,7 +2,6 @@
 // (`balance`, `lowStock`, `cnt`, top-products/needs-attention logic in
 // `viewOverview`). Pure functions of `SellerState` — no React, no mock data
 // import (the state is passed in).
-import { netPayout } from "./rules";
 import type { SellerOrder, SellerOrderStatus, SellerProduct, SellerState } from "./types";
 
 export const ORDER_FILTERS: { key: string; label: string; statuses: SellerOrderStatus[] | null }[] = [
@@ -18,20 +17,6 @@ export const ORDER_FILTERS: { key: string; label: string; statuses: SellerOrderS
 export function orderCount(state: SellerState, statuses: SellerOrderStatus[] | null): number {
   if (!statuses) return state.orders.length;
   return state.orders.filter((o) => statuses.includes(o.status)).length;
-}
-
-export function getBalance(state: SellerState): { available: number; pending: number; frozen: number } {
-  const { freeAbove, fee } = state.rules;
-  const available = state.orders
-    .filter((o) => o.status === "settled" && !o.withdrawn)
-    .reduce((sum, o) => sum + netPayout(o, freeAbove, fee), 0);
-  const pending = state.orders
-    .filter((o) => ["review", "dispatched", "failed"].includes(o.status))
-    .reduce((sum, o) => sum + netPayout(o, freeAbove, fee), 0);
-  const frozen = state.orders
-    .filter((o) => o.status === "disputed")
-    .reduce((sum, o) => sum + netPayout(o, freeAbove, fee), 0);
-  return { available, pending, frozen };
 }
 
 export function getLowStockProducts(state: SellerState): SellerProduct[] {

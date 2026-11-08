@@ -8,8 +8,7 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { useToast } from "@/components/ui/Toast";
-import { DISPATCH_WINDOW_HOURS, MIN_WITHDRAWAL } from "@/lib/seller/rules";
-import { getBalance } from "@/lib/seller/selectors";
+import { DISPATCH_WINDOW_HOURS } from "@/lib/seller/rules";
 import type {
   NotificationPreferences,
   SellerOrderDocs,
@@ -46,13 +45,6 @@ export interface VehicleInput {
   driverPhone: string;
 }
 
-export interface StoreProfileInput {
-  name: string;
-  gstin: string;
-  phone: string;
-  address: string;
-}
-
 interface SellerStoreValue {
   state: SellerState;
   acceptOrder: (id: string) => void;
@@ -64,17 +56,10 @@ interface SellerStoreValue {
   toggleProductStatus: (productId: string) => void;
   addProduct: (input: ProductInput) => void;
   editProduct: (productId: string, input: ProductInput) => void;
-  addServiceArea: (pin: string) => boolean;
-  removeServiceArea: (pin: string) => void;
-  saveDeliveryRules: (rules: { freeAbove: number; fee: number; slotsPerDay: number[] }) => void;
   addVehicle: (input: VehicleInput) => boolean;
   removeVehicle: (id: string) => void;
-  withdraw: () => void;
-  toggleVacation: () => void;
   markAllNotificationsRead: () => void;
   togglePreference: (key: keyof NotificationPreferences) => void;
-  saveStoreProfile: (input: StoreProfileInput) => void;
-  verifyKycDoc: (doc: "gst" | "pan" | "cheque") => void;
 }
 
 const Ctx = createContext<SellerStoreValue | null>(null);
@@ -284,32 +269,6 @@ export default function SellerStoreProvider({
     [state, toast]
   );
 
-  const addServiceArea = useCallback(
-    (pin: string): boolean => {
-      if (!/^[1-9]\d{5}$/.test(pin)) return false;
-      if (state.serviceAreas.includes(pin)) return false;
-      setState({ ...state, serviceAreas: [...state.serviceAreas, pin] });
-      toast.show(`Now delivering to ${pin}`);
-      return true;
-    },
-    [state, toast]
-  );
-
-  const removeServiceArea = useCallback(
-    (pin: string) => {
-      setState({ ...state, serviceAreas: state.serviceAreas.filter((a) => a !== pin) });
-    },
-    [state]
-  );
-
-  const saveDeliveryRules = useCallback(
-    (rules: { freeAbove: number; fee: number; slotsPerDay: number[] }) => {
-      setState({ ...state, rules });
-      toast.show("Delivery rules saved");
-    },
-    [state, toast]
-  );
-
   const addVehicle = useCallback(
     (input: VehicleInput): boolean => {
       const regNumber = input.regNumber.toUpperCase().replace(/[\s-]/g, "");
@@ -335,24 +294,6 @@ export default function SellerStoreProvider({
     [state, toast]
   );
 
-  const withdraw = useCallback(() => {
-    const { available } = getBalance(state);
-    if (available < MIN_WITHDRAWAL) return;
-    const transferId = `T-${2231 + state.transfers.length + 1}`;
-    setState({
-      ...state,
-      transfers: [{ id: transferId, dateLabel: "Just now", amount: available, bank: state.store.bank }, ...state.transfers],
-      orders: state.orders.map((o) => (o.status === "settled" && !o.withdrawn ? { ...o, withdrawn: true } : o)),
-    });
-    toast.show(`₹${available.toLocaleString("en-IN")} withdrawn to your bank`);
-  }, [state, toast]);
-
-  const toggleVacation = useCallback(() => {
-    const next = !state.vacationMode;
-    setState({ ...state, vacationMode: next });
-    toast.show(next ? "Vacation mode on. New orders are paused." : "You are accepting orders again.");
-  }, [state, toast]);
-
   const markAllNotificationsRead = useCallback(() => {
     setState({ ...state, notifications: state.notifications.map((n) => ({ ...n, read: true })) });
   }, [state]);
@@ -362,27 +303,6 @@ export default function SellerStoreProvider({
       setState({ ...state, preferences: { ...state.preferences, [key]: !state.preferences[key] } });
     },
     [state]
-  );
-
-  const saveStoreProfile = useCallback(
-    (input: StoreProfileInput) => {
-      setState({ ...state, store: { ...state.store, ...input, gstin: input.gstin.toUpperCase() } });
-      toast.show("Store details saved");
-    },
-    [state, toast]
-  );
-
-  // Single action for all three KYC documents (was three near-identical
-  // handlers before this fix — a bug had all three "Upload (demo)" buttons
-  // wired to the cheque-only variant, invisibly masked because the seed data
-  // already marks gst/pan "Verified" so those buttons never rendered).
-  const verifyKycDoc = useCallback(
-    (doc: "gst" | "pan" | "cheque") => {
-      setState({ ...state, store: { ...state.store, kyc: { ...state.store.kyc, [doc]: "Verified" } } });
-      const label = doc === "gst" ? "GST certificate" : doc === "pan" ? "PAN card" : "Cancelled cheque";
-      toast.show(`${label} uploaded and verified (demo)`);
-    },
-    [state, toast]
   );
 
   return (
@@ -398,17 +318,10 @@ export default function SellerStoreProvider({
         toggleProductStatus,
         addProduct,
         editProduct,
-        addServiceArea,
-        removeServiceArea,
-        saveDeliveryRules,
         addVehicle,
         removeVehicle,
-        withdraw,
-        toggleVacation,
         markAllNotificationsRead,
         togglePreference,
-        saveStoreProfile,
-        verifyKycDoc,
       }}
     >
       {children}

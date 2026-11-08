@@ -9,18 +9,14 @@ import Link from "next/link";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Pill from "@/components/ui/Pill";
+import { useToast } from "@/components/ui/Toast";
 import { useSellerStore } from "@/components/seller/SellerStoreProvider";
 import { useSellerLive } from "@/components/seller/SellerLiveProvider";
 import PreviewDisclosure from "@/components/seller/PreviewDisclosure";
 import SalesChart from "@/components/seller/SalesChart";
 import SellerIcon from "@/components/seller/SellerIcon";
-import { computeScore, scoreTier } from "@/lib/seller/rules";
-import {
-  getBalance,
-  getNeedsAttention,
-  getTopProducts,
-  rangeSum,
-} from "@/lib/seller/selectors";
+import { scoreTier } from "@/lib/seller/rules";
+import { getNeedsAttention, getTopProducts, rangeSum } from "@/lib/seller/selectors";
 import { ORDER_STATUS } from "@/lib/seller/status";
 
 const RANGES = [7, 30, 90] as const;
@@ -41,13 +37,15 @@ function Delta({ current, previous }: { current: number; previous: number }) {
 }
 
 export default function SellerOverviewPage() {
-  const { state, toggleVacation } = useSellerStore();
-  const { summary } = useSellerLive();
+  const toast = useToast();
+  const { state } = useSellerStore();
+  const { summary, setVacationMode } = useSellerLive();
   const [range, setRange] = useState<(typeof RANGES)[number]>(30);
+  const [vacationBusy, setVacationBusy] = useState(false);
 
-  const score = computeScore(state.stats);
+  const score = summary.score;
   const tier = scoreTier(score);
-  const balance = getBalance(state);
+  const balance = summary.balance;
   const attention = getNeedsAttention(state);
   const topProducts = getTopProducts(state);
   const maxSold = topProducts[0]?.sold || 1;
@@ -60,24 +58,31 @@ export default function SellerOverviewPage() {
   const dayLabels = chartData.map((_, i) => `Day ${i + 1}`);
 
   const tips: string[] = [];
-  if (state.stats.accepted / state.stats.offered < 0.95) tips.push("Accept orders within the 4-hour window to lift your acceptance rate.");
-  if (state.stats.ontime / Math.max(1, state.stats.dispatched) < 0.95) tips.push("Dispatch before the 24-hour deadline to avoid the 2% penalty.");
+  if (score < 90) tips.push("Accept orders promptly and dispatch within the 24-hour window to lift your delivery score.");
   if (summary.lowStock) tips.push(`Restock ${summary.lowStock} low-stock product${summary.lowStock > 1 ? "s" : ""} so buyers do not see them as unavailable.`);
   if (!tips.length) tips.push("You are doing great. Keep accepting and dispatching on time.");
 
   const firstName = summary.ownerFirstName;
 
+  const toggleVacation = () => {
+    const next = !summary.vacationMode;
+    setVacationBusy(true);
+    setVacationMode(next)
+      .catch(() => toast.show("Could not update vacation mode. Try again."))
+      .finally(() => setVacationBusy(false));
+  };
+
   return (
     <div className="grid gap-4">
-      <PreviewDisclosure message="Order and inventory counts are live from the marketplace database. Sales charts, payout figures and some other Seller Hub screens still use preview data." />
+      <PreviewDisclosure message="Order and inventory counts, delivery score and payout balances are live from the marketplace database. Sales charts, top products and the needs-attention list still use preview data." />
 
-      {state.vacationMode && (
+      {summary.vacationMode && (
         <div className="flex items-center gap-3 rounded-xl border border-warn/45 bg-warn/10 p-3.5">
           <SellerIcon name="alert" size={20} />
           <div>
             <b>Vacation mode is on.</b> New orders are paused and your listings are hidden from search.
           </div>
-          <Button variant="line" size="sm" className="ml-auto" onClick={toggleVacation}>
+          <Button variant="line" size="sm" className="ml-auto" onClick={toggleVacation} disabled={vacationBusy}>
             Resume selling
           </Button>
         </div>
@@ -201,28 +206,28 @@ export default function SellerOverviewPage() {
             <div className="flex items-center justify-between gap-2.5 border-b border-line pb-2.5">
               <span>
                 Available to withdraw
-                <small className="block text-muted">Orders completed and cleared</small>
+                <small className="block text-muted">{Number(balance.available) < 0 ? "Transfers exceed released escrow" : "Orders completed and cleared"}</small>
               </span>
-              <b className="font-display text-[22px] font-bold">{formatInr(balance.available)}</b>
+              <b className={`font-display text-[22px] font-bold ${Number(balance.available) < 0 ? "text-bad" : ""}`}>{formatInr(Number(balance.available))}</b>
             </div>
             <div className="flex items-center justify-between gap-2.5 border-b border-line pb-2.5">
               <span>
                 Pending release
                 <small className="block text-muted">On the road or in review window</small>
               </span>
-              <b>{formatInr(balance.pending)}</b>
+              <b>{formatInr(Number(balance.pendingRelease))}</b>
             </div>
             <div className="flex items-center justify-between gap-2.5">
               <span>
                 Frozen by disputes
                 <small className="block text-muted">Until admin decides</small>
               </span>
-              <b className={balance.frozen ? "text-bad" : ""}>{formatInr(balance.frozen)}</b>
+              <b className={Number(balance.frozen) ? "text-bad" : ""}>{formatInr(Number(balance.frozen))}</b>
             </div>
           </div>
           <Link href="/seller/payments">
             <Button variant="yellow" wide className="mt-3">
-              Withdraw {formatInr(balance.available)}
+              View payments ({formatInr(Number(balance.available))} available)
             </Button>
           </Link>
         </Card>

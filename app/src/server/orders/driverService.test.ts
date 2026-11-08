@@ -140,9 +140,11 @@ async function cleanup() {
   }
   await prisma.cartItem.deleteMany({ where: { cart: { userId: { in: created.users } } } }).catch(() => {});
   await prisma.cart.deleteMany({ where: { userId: { in: created.users } } }).catch(() => {});
+  await prisma.address.deleteMany({ where: { userId: { in: created.users } } }).catch(() => {});
   await prisma.sellerOffer.deleteMany({ where: { id: { in: created.offers } } }).catch(() => {});
   await prisma.vehicle.deleteMany({ where: { id: { in: created.vehicles } } }).catch(() => {});
   await prisma.driver.deleteMany({ where: { id: { in: created.drivers } } }).catch(() => {});
+  await prisma.sellerPincode.deleteMany({ where: { sellerId: { in: created.sellers } } }).catch(() => {});
   await prisma.seller.deleteMany({ where: { id: { in: created.sellers } } }).catch(() => {});
   await prisma.user.deleteMany({ where: { id: { in: created.users } } }).catch(() => {});
 }

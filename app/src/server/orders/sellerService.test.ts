@@ -12,6 +12,8 @@ import {
   listSellerOrders,
   packShipment,
   rejectShipment,
+  sellerPaymentsSummary,
+  sellerPerformanceStats,
 } from "./sellerService";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -123,9 +125,14 @@ async function cleanup() {
   }
   await prisma.cartItem.deleteMany({ where: { cart: { userId: { in: created.users } } } }).catch(() => {});
   await prisma.cart.deleteMany({ where: { userId: { in: created.users } } }).catch(() => {});
+  await prisma.address.deleteMany({ where: { userId: { in: created.users } } }).catch(() => {});
+  // The payments test writes a seller-scoped `withdrawn` escrow row (no order)
+  // — it would block seller deletion via Restrict if left behind.
+  await prisma.escrowEntry.deleteMany({ where: { sellerId: { in: created.sellers } } }).catch(() => {});
   await prisma.sellerOffer.deleteMany({ where: { id: { in: created.offers } } }).catch(() => {});
   await prisma.vehicle.deleteMany({ where: { id: { in: created.vehicles } } }).catch(() => {});
   await prisma.driver.deleteMany({ where: { id: { in: created.drivers } } }).catch(() => {});
+  await prisma.sellerPincode.deleteMany({ where: { sellerId: { in: created.sellers } } }).catch(() => {});
   await prisma.seller.deleteMany({ where: { id: { in: created.sellers } } }).catch(() => {});
   await prisma.user.deleteMany({ where: { id: { in: created.users } } }).catch(() => {});
 }
@@ -195,5 +202,67 @@ describe.skipIf(!hasDb)("seller order lifecycle", { timeout: 30_000 }, () => {
 
     await expect(rejectShipment(seller.seller.id, shipmentId, "Again")).rejects.toMatchObject({ status: 409 });
     expect((await prisma!.sellerOffer.findUnique({ where: { id: seller.offer.id } }))!.stock).toBe(20);
+  });
+
+  it("computes the payments balance and ledger from real escrow entries, scoped to the seller", async () => {
+    const seller = await makeSeller(4, "0");
+    const other = await makeSeller(5, "1");
+    await customerWithOrder(seller.offer.id); // left "new" — its held amount should land in pendingRelease
+
+    // A second, settled shipment: simulate the commission+release the review
+    // window normally produces (prisma/seed.ts does the same thing directly).
+    const settledOrder = await customerWithOrder(seller.offer.id);
+    const settledShipmentId = settledOrder.shipments[0].id;
+    const settledOrderRow = await prisma!.order.findUniqueOrThrow({ where: { code: settledOrder.code }, select: { id: true } });
+    await prisma!.shipment.update({ where: { id: settledShipmentId }, data: { status: "settled" } });
+    await prisma!.escrowEntry.create({
+      data: { orderId: settledOrderRow.id, shipmentId: settledShipmentId, sellerId: seller.seller.id, type: "commission", amount: "5.00", note: "test commission" },
+    });
+    await prisma!.escrowEntry.create({
+      data: { orderId: settledOrderRow.id, shipmentId: settledShipmentId, sellerId: seller.seller.id, type: "released", amount: "95.00", note: "test release" },
+    });
+    await prisma!.escrowEntry.create({
+      data: { sellerId: seller.seller.id, type: "withdrawn", amount: "40.00", note: "test transfer" },
+    });
+
+    const summary = await sellerPaymentsSummary(seller.seller.id);
+    expect(summary.totalReleased).toBe("95.00");
+    expect(summary.totalWithdrawn).toBe("40.00");
+    expect(summary.balance.available).toBe("55.00");
+    expect(Number(summary.balance.pendingRelease)).toBeGreaterThan(0); // the still-"new" first order's held amount
+    expect(summary.balance.frozen).toBe("0.00");
+    expect(summary.ledger.some((e) => e.shipmentCode && e.type === "held")).toBe(true);
+    expect(summary.bankRef).toBe("Test bank");
+
+    const otherSummary = await sellerPaymentsSummary(other.seller.id);
+    expect(otherSummary.ledger.length).toBe(0);
+    expect(otherSummary.balance.available).toBe("0.00");
+  });
+
+  it("computes performance stats from real shipment history, scoped to the seller", async () => {
+    const seller = await makeSeller(6, "0");
+    const accepted = await customerWithOrder(seller.offer.id);
+    const rejected = await customerWithOrder(seller.offer.id);
+    await customerWithOrder(seller.offer.id); // left in "new" status — excluded from offered/accepted
+
+    await acceptShipment(seller.seller.id, accepted.shipments[0].id);
+    await packShipment(seller.seller.id, accepted.shipments[0].id);
+    await dispatchShipment(seller.seller.id, accepted.shipments[0].id, {
+      vehicleId: seller.vehicle.id,
+      slot: "Today, 2 to 6 pm",
+      challan: true,
+      invoice: true,
+      weighbridge: "WB-9999",
+    });
+    await rejectShipment(seller.seller.id, rejected.shipments[0].id, "Out of stock");
+
+    const { stats, score } = await sellerPerformanceStats(seller.seller.id);
+    // offered/accepted exclude the still-"new" shipment (no decision made yet).
+    expect(stats.offered).toBe(2);
+    expect(stats.accepted).toBe(1);
+    expect(stats.dispatched).toBe(1);
+    expect(stats.ontime).toBe(1);
+    expect(score).toBeGreaterThanOrEqual(0);
+    expect(score).toBeLessThanOrEqual(100);
   });
 });

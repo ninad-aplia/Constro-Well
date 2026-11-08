@@ -6,13 +6,27 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useSellerStore } from "./SellerStoreProvider";
+import { useSellerLive } from "./SellerLiveProvider";
+import { useToast } from "@/components/ui/Toast";
 import SellerIcon from "./SellerIcon";
 import LogoutButton from "@/components/auth/LogoutButton";
 
 export default function SellerTopBar() {
   const router = useRouter();
-  const { state, toggleVacation, markAllNotificationsRead } = useSellerStore();
+  const toast = useToast();
+  const { state, markAllNotificationsRead } = useSellerStore();
+  const { summary, setVacationMode } = useSellerLive();
   const [notifOpen, setNotifOpen] = useState(false);
+  const [vacationBusy, setVacationBusy] = useState(false);
+
+  const toggleVacation = () => {
+    const next = !summary.vacationMode;
+    setVacationBusy(true);
+    setVacationMode(next)
+      .then(() => toast.show(next ? "Vacation mode on. New orders are paused." : "You are accepting orders again."))
+      .catch(() => toast.show("Could not update vacation mode. Try again."))
+      .finally(() => setVacationBusy(false));
+  };
   const unread = state.notifications.filter((n) => !n.read).length;
   const initials = state.store.owner
     .split(" ")
@@ -42,20 +56,21 @@ export default function SellerTopBar() {
       </form>
 
       <div className="ml-auto hidden items-center gap-2 text-[13px] font-semibold sm:flex">
-        <span>{state.vacationMode ? "Vacation mode" : "Accepting orders"}</span>
+        <span>{summary.vacationMode ? "Vacation mode" : "Accepting orders"}</span>
         <button
           type="button"
           role="switch"
-          aria-checked={!state.vacationMode}
+          aria-checked={!summary.vacationMode}
           aria-label="Accepting new orders"
           onClick={toggleVacation}
-          className={`relative h-6 w-[42px] flex-none rounded-xl transition-colors ${
-            state.vacationMode ? "bg-line" : "bg-ok"
+          disabled={vacationBusy}
+          className={`relative h-6 w-[42px] flex-none rounded-xl transition-colors disabled:opacity-60 ${
+            summary.vacationMode ? "bg-line" : "bg-ok"
           }`}
         >
           <span
             className={`absolute top-[3px] h-[18px] w-[18px] rounded-full bg-white shadow transition-[left] ${
-              state.vacationMode ? "left-[3px]" : "left-[21px]"
+              summary.vacationMode ? "left-[3px]" : "left-[21px]"
             }`}
           />
         </button>

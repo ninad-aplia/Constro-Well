@@ -14,6 +14,7 @@ import { useSession } from "@/components/auth/SessionProvider";
 import { ApiClientError } from "@/lib/api/client";
 import { fetchProductOffers } from "@/lib/api/catalogApi";
 import { readCart, writeCart } from "@/lib/cart/store";
+import { hasPurchasableItem } from "@/lib/cart/hasPurchasableItem";
 import { inr } from "@/lib/shop/format";
 import { FREE_DELIVERY_AT } from "@/lib/shop/pricing";
 import type { CartItemDto } from "@/lib/api/cartDto";
@@ -180,6 +181,7 @@ export default function CartView() {
 
   const t = data.totals;
   const left = Math.max(0, FREE_DELIVERY_AT - Number(t.subtotal));
+  const canCheckout = hasPurchasableItem(data.items);
 
   return (
     <div className="mx-auto max-w-[1600px] px-4 py-4">
@@ -317,15 +319,22 @@ export default function CartView() {
           <Button
             variant="yellow"
             wide
-            disabled
-            title="Checkout is the next task; this cart is already server-priced."
+            disabled={!canCheckout}
+            title={canCheckout ? undefined : "None of the items in your cart are currently available."}
             className="mt-4"
+            onClick={() => router.push("/checkout")}
           >
             Proceed to Buy
           </Button>
-          <p className="mt-2 text-center text-xs text-muted">
-            Checkout is not connected yet. Prices, delivery and coupon values above are server-calculated.
-          </p>
+          {canCheckout ? (
+            <p className="mt-2 text-center text-xs text-muted">
+              Prices, delivery and coupon values above are server-calculated.
+            </p>
+          ) : (
+            <p className="mt-2 text-center text-[13px] font-medium text-bad" role="alert">
+              None of the items in your cart are currently available. Remove them or save them for later to continue.
+            </p>
+          )}
         </aside>
       </div>
     </div>

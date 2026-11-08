@@ -2,11 +2,13 @@
 
 import { createContext, useCallback, useContext, useState, type ReactNode } from "react";
 import { apiFetch } from "@/lib/api/client";
+import { updateSellerProfile } from "@/lib/api/sellerApi";
 import type { SellerSummaryDto } from "@/lib/api/sellerOrderDto";
 
 interface SellerLiveValue {
   summary: SellerSummaryDto;
   refresh: () => Promise<void>;
+  setVacationMode: (next: boolean) => Promise<void>;
 }
 
 const Ctx = createContext<SellerLiveValue | null>(null);
@@ -31,5 +33,10 @@ export default function SellerLiveProvider({
     setSummary(response.summary);
   }, []);
 
-  return <Ctx.Provider value={{ summary, refresh }}>{children}</Ctx.Provider>;
+  const setVacationMode = useCallback(async (next: boolean) => {
+    const updated = await updateSellerProfile({ vacationMode: next });
+    setSummary((current) => ({ ...current, vacationMode: updated.vacationMode }));
+  }, []);
+
+  return <Ctx.Provider value={{ summary, refresh, setVacationMode }}>{children}</Ctx.Provider>;
 }

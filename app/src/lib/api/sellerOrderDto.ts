@@ -69,6 +69,12 @@ export interface SellerRulesDto {
   slotsPerDay: number[];
 }
 
+export interface SellerBalanceDto {
+  available: string;
+  pendingRelease: string;
+  frozen: string;
+}
+
 export interface SellerSummaryDto {
   storeName: string;
   city: string;
@@ -80,6 +86,9 @@ export interface SellerSummaryDto {
   review: number;
   failed: number;
   lowStock: number;
+  vacationMode: boolean;
+  score: number;
+  balance: SellerBalanceDto;
 }
 
 export interface SellerOrdersResponse {
@@ -87,4 +96,55 @@ export interface SellerOrdersResponse {
   vehicles: SellerVehicleDto[];
   drivers: SellerDriverDto[];
   rules: SellerRulesDto;
+}
+
+export interface SellerProfileDto {
+  storeName: string;
+  gstin: string;
+  phone: string;
+  city: string;
+  pickupAddress: string;
+  vacationMode: boolean;
+  kyc: {
+    gst: "verified" | "pending";
+    pan: "verified" | "pending";
+    cheque: "verified" | "pending";
+  };
+}
+
+export interface SellerDeliverySettingsDto {
+  rules: SellerRulesDto;
+  serviceAreas: string[];
+}
+
+export interface SellerLedgerEntryDto {
+  id: string;
+  type: string;
+  amount: string;
+  note: string;
+  createdAt: string;
+  orderCode: string | null;
+  shipmentCode: string | null;
+}
+
+export interface SellerPaymentsDto {
+  balance: SellerBalanceDto;
+  totalReleased: string;
+  totalWithdrawn: string;
+  bankRef: string;
+  ledger: SellerLedgerEntryDto[];
+}
+
+export interface SellerPerformanceStatsDto {
+  offered: number;
+  accepted: number;
+  dispatched: number;
+  ontime: number;
+  delivered: number;
+  issues: number;
+}
+
+export interface SellerPerformanceDto {
+  stats: SellerPerformanceStatsDto;
+  score: number;
 }

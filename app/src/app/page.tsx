@@ -1,7 +1,6 @@
-// Placeholder storefront route (TASK 1.1). The full `VIEWS_home` prototype
-// section order is now ported (TASK 4.1): hero, `.tiles` discovery row, the
-// three product rows, recently viewed, trust strip.
-import PrimitiveShowcase from "@/components/ui/PrimitiveShowcase";
+// Storefront home route. The full `VIEWS_home` prototype section order is
+// ported: hero, `.tiles` discovery row, the three product rows, recently
+// viewed, trust strip.
 import Hero from "@/components/home/Hero";
 import CategoryTiles from "@/components/home/CategoryTiles";
 import DealTiles from "@/components/home/DealTiles";
@@ -47,25 +46,6 @@ export default function Home() {
       </div>
 
       <TrustStrip />
-
-      <section
-        aria-label="Build status"
-        className="mt-6 rounded-xl border border-line bg-panel p-6"
-      >
-        <h2 className="font-display text-lg font-bold">Build status</h2>
-        <ul className="mt-2 grid gap-1 text-sm text-ink2 sm:grid-cols-2">
-          <li>✔ Project foundation + approved decisions (Phase&nbsp;0)</li>
-          <li>✔ App scaffold, design tokens, app shell (Phase&nbsp;1 — TASK&nbsp;1.1)</li>
-          <li>Database + API foundation (Phase&nbsp;2 — next)</li>
-          <li>Auth, catalogue, cart, checkout, seller &amp; delivery (Phases&nbsp;3–7)</li>
-        </ul>
-        <p className="mt-3 text-xs text-muted">
-          Progress lives in the repository: see <code>TASKS.md</code> and{" "}
-          <code>HANDOFF.md</code>.
-        </p>
-      </section>
-
-      <PrimitiveShowcase />
     </div>
   );
 }

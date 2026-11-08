@@ -1,10 +1,21 @@
 # HANDOFF.md — current checkpoint for the next IDE
 
-**Last updated:** 2026-11-08 (Final MVP: cancellation + live seller counts + deployment-ready; no cloud URL yet) · **Writer agent:** OpenCode (DeepSeek V4.1 Flash)
+**Last updated:** 2026-11-08 (integration & stabilization: test-cleanup leak fixed, negative-balance display fixed, docs reconciled; **production is live and verified**, uncommitted Phase 1/2 work not yet deployed; ~10 residue rows remain in the local DB — do not delete without owner approval) · **Writer agent:** OpenCode (GLM-5.3-Flash)
+
+## Last completed task (integration & pre-push stabilization — 2026-11-08)
+
+Branch `feature/backend-mvp` @ `2831af7`; the Phase 2 Seller Portal work remains **uncommitted in the working tree** (18 tracked files + untracked new routes/services/tests), preserved exactly as found.
+
+- **Test-data leak fixed (confirmed defect from the 2026-11-08 audit):** cleanup in `src/server/orders/{sellerService,driverService,service}.test.ts` created `Address` and `SellerPincode` rows (plus one seller-scoped `withdrawn` EscrowEntry in the payments test) but never deleted them; Prisma's default `Restrict` FK then made `seller.deleteMany`/`user.deleteMany` fail silently under `.catch(() => {})`, leaking rows on every DB-backed run. Cleanup now also deletes `address` (by userId list), `sellerPincode` (by sellerId list) and, in sellerService.test, `escrowEntry` (by sellerId list). Verified by row-count before/after a full test run: zero new residue. Fix pattern mirrors the already-correct `src/server/seller/delivery.test.ts`.
+- **Negative balance display fixed:** payments page and Overview payouts card flag `available < 0` ("Bank transfers on record exceed escrow released so far") in text-bad tone instead of showing it as a clean withdrawable figure. No clamping — nothing hidden.
+- **Docs reconciled with code:** TASKS.md 6.1/6.3/6.4/6.5/6.6 no longer describe the seller work as client-only preview; each row now records which parts are server-backed (`/api/seller/summary|delivery*|payments|performance|settings`) and what remains preview (vehicles/drivers, KYC upload, seller-attributed reviews, notification prefs, sales charts, top products).
+- **Not touched:** production deployment/Render config, schema/migrations, `artifacts/`, `app/tests/`, `app/.github/` (excluded from staging per owner rule), Phase 1 behavior, seeded DB content.
+- **Production is live (owner-verified, 2026-11-08):** the Render deployment is up and independently verified — homepage returns HTTP 200 and renders in the browser, `GET /api/health` returns HTTP 200 with `database: ok`, and all four referenced CSS/JS assets return HTTP 200. **These checks cover the deployed commit (`2831af7`); the uncommitted Phase 1 (cart/checkout wiring) and Phase 2 (Seller Portal) working-tree changes have NOT been deployed and go live only after review, approve-to-stage, commit/push and redeploy.** No further Render blocker exists for this branch.
+- **Verification (this session):** `tsc --noEmit`, `npm run lint`, `npm run test` and `npm run build` all run after the fixes — see final report.
 
 ## Last completed task (FINAL MVP — order lifecycle closure, live portal counts, deployment-ready — 2026-11-08)
 
-Branch `feature/backend-mvp`. **Phase 1 and Phase 2 complete and verified; Phase 3 deployment is prepared but blocked on cloud account authorization, so no public URL exists yet. No schema change, no seed, no commit/push.**
+Branch `feature/backend-mvp`. **Phase 1 and Phase 2 complete and verified. *(Correction 2026-11-08: this section's "deployment blocked, no public URL" statement is outdated — production is now live and owner-verified; see the stabilization checkpoint above.)*** No schema change, no seed, no commit/push.**
 
 - **Cancellation:** `POST /api/orders/[id]/cancel` (customer-only, strict Zod reason) cancels an order only while every shipment is `new|accepted|packed`. It locks shipments, restores reserved stock exactly once, creates `refund` escrow entries per held entry, writes a customer `ShipmentEvent`, sets `Order.cancelled`, and returns 409 after any dispatch. Customer order detail now has a real cancel dialog, cancellation/refund banner and escrow status.
 - **Stage sync:** new `server/orders/lifecycle.ts` derives parent `Order.stage` from all shipments and is used by customer cancellation, seller accept/pack/reject/dispatch and driver deliver/issue. Mixed deliveries stay `shipped` until every shipment is delivered; all-cancelled/rejected orders are marked cancelled, never delivered.

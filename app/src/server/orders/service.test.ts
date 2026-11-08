@@ -105,7 +105,9 @@ describe.skipIf(!hasDb)("checkout and order placement", { timeout: 30_000 }, () 
     for (const code of created.orders) await cleanupOrder(code).catch(() => {});
     await prisma.cartItem.deleteMany({ where: { cart: { userId: { in: created.users } } } }).catch(() => {});
     await prisma.cart.deleteMany({ where: { userId: { in: created.users } } }).catch(() => {});
+    await prisma.address.deleteMany({ where: { userId: { in: created.users } } }).catch(() => {});
     await prisma.sellerOffer.deleteMany({ where: { id: { in: created.offers } } }).catch(() => {});
+    await prisma.sellerPincode.deleteMany({ where: { sellerId: { in: created.sellers } } }).catch(() => {});
     await prisma.seller.deleteMany({ where: { id: { in: created.sellers } } }).catch(() => {});
     await prisma.user.deleteMany({ where: { id: { in: created.users } } }).catch(() => {});
     await prisma.$disconnect();

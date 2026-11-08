@@ -2,16 +2,22 @@
 // Seller.id; a shipment from another seller is indistinguishable from missing.
 import { Prisma, type PrismaClient } from "@prisma/client";
 import type {
+  SellerLedgerEntryDto,
   SellerLineDto,
   SellerOrdersResponse,
+  SellerPaymentsDto,
+  SellerPerformanceDto,
+  SellerPerformanceStatsDto,
   SellerShipmentDto,
   SellerSummaryDto,
 } from "@/lib/api/sellerOrderDto";
-import { DISPATCH_WINDOW_HOURS, EWAY_THRESHOLD } from "@/lib/seller/rules";
+import { DISPATCH_WINDOW_HOURS, EWAY_THRESHOLD, computeScore } from "@/lib/seller/rules";
 import { encryptOtp, generateOtp, hashOtp } from "@/server/security/otp";
 import { db } from "@/server/db";
 import { ApiError } from "@/server/http";
 import {
+  DELIVERED,
+  SHIPPED,
   refreshOrderStage,
   refundHeldEscrow,
   restoreReservedStock,
@@ -166,12 +172,13 @@ export async function listSellerOrders(sellerId: string): Promise<SellerOrdersRe
 }
 
 export async function sellerSummary(sellerId: string): Promise<SellerSummaryDto> {
-  const [seller, statusRows, offers] = await Promise.all([
+  const [seller, statusRows, offers, payments, performance] = await Promise.all([
     db.seller.findUnique({
       where: { id: sellerId },
       select: {
         storeName: true,
         city: true,
+        vacationMode: true,
         owner: { select: { name: true } },
       },
     }),
@@ -184,6 +191,8 @@ export async function sellerSummary(sellerId: string): Promise<SellerSummaryDto>
       where: { sellerId, status: "active" },
       select: { stock: true, reorderLevel: true },
     }),
+    sellerPaymentsSummary(sellerId),
+    sellerPerformanceStats(sellerId),
   ]);
   if (!seller) throw new ApiError(403, "seller_profile_missing", "No seller profile is linked to this account");
 
@@ -203,6 +212,9 @@ export async function sellerSummary(sellerId: string): Promise<SellerSummaryDto>
     storeName: seller.storeName,
     city: seller.city,
     ownerFirstName: seller.owner.name.split(" ")[0] ?? seller.owner.name,
+    vacationMode: seller.vacationMode,
+    score: performance.score,
+    balance: payments.balance,
     newOrders: count("new"),
     readyToDispatch: count("accepted") + count("packed"),
     late,
@@ -425,6 +437,115 @@ export async function dispatchShipment(
     },
     { timeout: 15_000 },
   );
+}
+
+/**
+ * Real escrow-ledger aggregate (EscrowEntry is the only persisted financial
+ * model — there is no separate Payout/Settlement table). `held` entries are
+ * created when an order is paid (server/orders/service.ts); `commission` and
+ * `released` only appear once a shipment's review window has closed and it
+ * settles (server/orders/lifecycle.ts / prisma/seed.ts); `refund` reverses a
+ * `held` entry for a cancelled/rejected shipment; `withdrawn` is a real bank
+ * transfer out, independent of any single shipment. Nothing here executes a
+ * payout — this only reads what has already happened.
+ */
+export async function sellerPaymentsSummary(sellerId: string): Promise<SellerPaymentsDto> {
+  const [seller, entries] = await Promise.all([
+    db.seller.findUnique({ where: { id: sellerId }, select: { bankRef: true } }),
+    db.escrowEntry.findMany({
+      where: { sellerId },
+      orderBy: { createdAt: "desc" },
+      include: {
+        order: { select: { code: true } },
+        shipment: { select: { code: true, status: true } },
+      },
+    }),
+  ]);
+  if (!seller) throw new ApiError(403, "seller_profile_missing", "No seller profile is linked to this account");
+
+  let totalReleased = 0;
+  let totalWithdrawn = 0;
+  const perShipment = new Map<
+    string,
+    { held: number; commission: number; released: number; refund: number; status: string }
+  >();
+
+  for (const entry of entries) {
+    const amount = Number(entry.amount);
+    if (entry.type === "released") totalReleased += amount;
+    if (entry.type === "withdrawn") totalWithdrawn += amount;
+    if (entry.shipmentId && entry.shipment) {
+      const bucket = perShipment.get(entry.shipmentId) ?? {
+        held: 0,
+        commission: 0,
+        released: 0,
+        refund: 0,
+        status: entry.shipment.status,
+      };
+      if (entry.type === "held") bucket.held += amount;
+      if (entry.type === "commission") bucket.commission += amount;
+      if (entry.type === "released") bucket.released += amount;
+      if (entry.type === "refund") bucket.refund += amount;
+      perShipment.set(entry.shipmentId, bucket);
+    }
+  }
+
+  let pendingRelease = 0;
+  let frozen = 0;
+  for (const bucket of perShipment.values()) {
+    const unresolved = bucket.held - bucket.commission - bucket.released - bucket.refund;
+    if (unresolved <= 0) continue;
+    if (bucket.status === "disputed") frozen += unresolved;
+    else pendingRelease += unresolved;
+  }
+
+  const ledger: SellerLedgerEntryDto[] = entries.map((entry) => ({
+    id: entry.id,
+    type: entry.type,
+    amount: entry.amount.toFixed(2),
+    note: entry.note,
+    createdAt: entry.createdAt.toISOString(),
+    orderCode: entry.order?.code ?? null,
+    shipmentCode: entry.shipment?.code ?? null,
+  }));
+
+  return {
+    balance: {
+      available: (totalReleased - totalWithdrawn).toFixed(2),
+      pendingRelease: pendingRelease.toFixed(2),
+      frozen: frozen.toFixed(2),
+    },
+    totalReleased: totalReleased.toFixed(2),
+    totalWithdrawn: totalWithdrawn.toFixed(2),
+    bankRef: seller.bankRef,
+    ledger,
+  };
+}
+
+/**
+ * Real delivery-performance stats computed from Shipment rows, in the exact
+ * shape `lib/seller/rules.ts`'s computeScore/acceptanceRate/onTimeRate/
+ * issueFreeRate already expect — those formulas are reused unchanged so the
+ * score here matches the Performance page's metric bars exactly.
+ */
+export async function sellerPerformanceStats(sellerId: string): Promise<SellerPerformanceDto> {
+  const shipments = await db.shipment.findMany({
+    where: { sellerId },
+    select: { status: true, late: true, issue: { select: { id: true } } },
+  });
+
+  const decided = shipments.filter((s) => s.status !== "new");
+  const offered = decided.length;
+  const accepted = decided.filter((s) => s.status !== "rejected" && s.status !== "missed").length;
+  const dispatchedShipments = shipments.filter((s) => SHIPPED.has(s.status));
+  const dispatched = dispatchedShipments.length;
+  const ontime = dispatchedShipments.filter((s) => !s.late).length;
+  const deliveredShipments = shipments.filter((s) => DELIVERED.has(s.status));
+  const delivered = deliveredShipments.length;
+  const issues = deliveredShipments.filter((s) => s.issue).length;
+
+  const stats: SellerPerformanceStatsDto = { offered, accepted, dispatched, ontime, delivered, issues };
+  return { stats, score: computeScore(stats) };
 }
 
 export type SellerOrdersDb = Pick<PrismaClient, "shipment" | "shipmentEvent" | "sellerOffer" | "escrowEntry" | "vehicle" | "driver" | "seller">;

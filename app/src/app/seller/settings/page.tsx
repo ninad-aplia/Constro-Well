@@ -1,15 +1,22 @@
 // Seller Hub Settings — port of buildgrid-seller-dashboard.html's
 // viewSettings() (line 388): store profile form (GSTIN/mobile validation),
-// KYC checklist, notification preference toggles.
+// KYC checklist, notification preference toggles. The store-details form and
+// KYC status now read/write the real Seller row through
+// `/api/seller/settings`; notification preferences have no persisted model
+// yet and stay local-only (see PreviewDisclosure below).
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Button from "@/components/ui/Button";
 import Card from "@/components/ui/Card";
 import Pill from "@/components/ui/Pill";
+import { useToast } from "@/components/ui/Toast";
 import PreviewDisclosure from "@/components/seller/PreviewDisclosure";
 import SellerIcon from "@/components/seller/SellerIcon";
 import { useSellerStore } from "@/components/seller/SellerStoreProvider";
+import { ApiClientError } from "@/lib/api/client";
+import { fetchSellerProfile, updateSellerProfile } from "@/lib/api/sellerApi";
+import type { SellerProfileDto } from "@/lib/api/sellerOrderDto";
 import type { NotificationPreferences } from "@/lib/seller/types";
 
 const PREFERENCE_COPY: { key: keyof NotificationPreferences; label: string; sub: string }[] = [
@@ -19,13 +26,51 @@ const PREFERENCE_COPY: { key: keyof NotificationPreferences; label: string; sub:
   { key: "payouts", label: "Payout notifications", sub: "When money is released or transferred" },
 ];
 
+function messageOf(error: unknown): string {
+  if (error instanceof ApiClientError) {
+    if (error.status === 401) return "Sign in as a seller to manage settings.";
+    if (error.status === 403) return "This account does not have a seller profile.";
+    return error.message;
+  }
+  return "Could not reach the settings service. Try again.";
+}
+
+type LoadState = "loading" | "ready" | "error";
+
 export default function SellerSettingsPage() {
-  const { state, saveStoreProfile, verifyKycDoc, togglePreference } = useSellerStore();
-  const [name, setName] = useState(state.store.name);
-  const [gstin, setGstin] = useState(state.store.gstin);
-  const [phone, setPhone] = useState(state.store.phone);
-  const [address, setAddress] = useState(state.store.address);
+  const toast = useToast();
+  const { state, togglePreference } = useSellerStore();
+  const [profile, setProfile] = useState<SellerProfileDto | null>(null);
+  const [loadState, setLoadState] = useState<LoadState>("loading");
+  const [loadError, setLoadError] = useState("");
+  const [name, setName] = useState("");
+  const [gstin, setGstin] = useState("");
+  const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetchSellerProfile()
+      .then((p) => {
+        if (cancelled) return;
+        setProfile(p);
+        setName(p.storeName);
+        setGstin(p.gstin);
+        setPhone(p.phone);
+        setAddress(p.pickupAddress);
+        setLoadState("ready");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        setLoadError(messageOf(err));
+        setLoadState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const submit = () => {
     const next: Record<string, string> = {};
@@ -34,15 +79,27 @@ export default function SellerSettingsPage() {
     if (name.length < 3) next.name = "Enter your business name";
     setErrors(next);
     if (Object.keys(next).length) return;
-    saveStoreProfile({ name, gstin, phone, address });
+    setSaving(true);
+    updateSellerProfile({ storeName: name, gstin, phone, pickupAddress: address })
+      .then((updated) => {
+        setProfile(updated);
+        toast.show("Store details saved");
+      })
+      .catch((err: unknown) => toast.show(messageOf(err)))
+      .finally(() => setSaving(false));
   };
 
-  const kyc = state.store.kyc;
+  if (loadState === "loading") {
+    return <p className="text-muted">Loading settings…</p>;
+  }
+  if (loadState === "error" || !profile) {
+    return <p className="text-bad">{loadError}</p>;
+  }
+
+  const kyc = profile.kyc;
 
   return (
     <div className="grid gap-4">
-      <PreviewDisclosure />
-
       <div>
         <h1 className="font-display text-[clamp(25px,3vw,34px)] font-bold">Settings</h1>
         <p className="mt-1 text-muted">Your store profile, verification and alerts.</p>
@@ -76,15 +133,15 @@ export default function SellerSettingsPage() {
               </label>
               <label className="grid gap-1 text-sm font-semibold">
                 City
-                <input className="h-10 rounded-lg border border-line bg-tint px-2.5 text-muted" value={state.store.city} disabled />
+                <input className="h-10 rounded-lg border border-line bg-tint px-2.5 text-muted" value={profile.city} disabled />
               </label>
             </div>
             <label className="grid gap-1 text-sm font-semibold">
               Pickup address
               <input className="h-10 rounded-lg border border-line bg-panel px-2.5" value={address} onChange={(e) => setAddress(e.target.value)} />
             </label>
-            <Button type="submit" variant="yellow" className="w-fit">
-              Save changes
+            <Button type="submit" variant="yellow" className="w-fit" disabled={saving}>
+              {saving ? "Saving…" : "Save changes"}
             </Button>
           </form>
         </Card>
@@ -93,27 +150,25 @@ export default function SellerSettingsPage() {
           <Card rounded="lg" className="p-[18px]">
             <h2 className="mb-1.5 font-display text-lg font-bold">Verification</h2>
             {([
-              ["GST certificate", "gst", kyc.gst],
-              ["PAN card", "pan", kyc.pan],
-              ["Cancelled cheque", "cheque", kyc.cheque],
-            ] as const).map(([label, doc, status]) => (
+              ["GST certificate", kyc.gst],
+              ["PAN card", kyc.pan],
+              ["Cancelled cheque", kyc.cheque],
+            ] as const).map(([label, status]) => (
               <div key={label} className="flex items-center justify-between gap-3.5 border-b border-line py-2.5 last:border-0">
                 <span className="flex items-center gap-2">
                   <SellerIcon name="doc" size={16} />
                   {label}
                 </span>
-                {status === "Verified" ? (
+                {status === "verified" ? (
                   <Pill tone="ok">
                     <SellerIcon name="check" size={12} /> Verified
                   </Pill>
                 ) : (
-                  <Button size="sm" variant="line" onClick={() => verifyKycDoc(doc)}>
-                    Upload (demo)
-                  </Button>
+                  <Pill tone="info">Pending — document upload isn&rsquo;t available yet</Pill>
                 )}
               </div>
             ))}
-            {kyc.cheque !== "Verified" && (
+            {kyc.cheque !== "verified" && (
               <div className="mt-2.5 flex items-start gap-2.5 rounded-lg border border-warn/40 bg-warn/10 p-2.5 text-sm">
                 <SellerIcon name="alert" size={18} />
                 <div>Payouts to your bank stay on hold until the cancelled cheque is verified.</div>
@@ -123,6 +178,10 @@ export default function SellerSettingsPage() {
 
           <Card rounded="lg" className="p-[18px]">
             <h2 className="mb-1.5 font-display text-lg font-bold">Alerts</h2>
+            <PreviewDisclosure
+              className="mb-2"
+              message="Notification preferences are not yet backed by a database table; toggles below only apply to this browser session."
+            />
             {PREFERENCE_COPY.map(({ key, label, sub }) => (
               <div key={key} className="flex items-center justify-between gap-3.5 border-b border-line py-2.5 last:border-0">
                 <div>
