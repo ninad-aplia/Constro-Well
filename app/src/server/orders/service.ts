@@ -18,7 +18,12 @@ import { getCart, type CartReadClient } from "@/server/cart/service";
 import { ApiError } from "@/server/http";
 import { decryptOtp } from "@/server/security/otp";
 import { getAddress, toAddress } from "./addresses";
-import { refreshOrderStage, refundHeldEscrow, restoreReservedStock } from "./lifecycle";
+import { refreshOrderStage, refundHeldEscrow, restoreReservedStock, cancelCodCollection } from "./lifecycle";
+import type { ReportShipmentIssueInput } from "./validation";
+
+const ISSUE_LABELS: Record<string, string> = {
+  damaged_goods: "Damaged goods",
+};
 
 const D = Prisma.Decimal;
 const STAGE_INDEX = {
@@ -40,6 +45,7 @@ export const orderInclude = {
     include: {
       seller: { select: { storeName: true } },
       events: { orderBy: { at: "asc" } },
+      issue: true,
     },
   },
   escrow: { select: { type: true, amount: true } },
@@ -101,6 +107,13 @@ function toOrderDto(order: OrderWithRelations, includeOtp = false): OrderDto {
       actor: event.actor,
       message: event.message,
     })),
+    issue: shipment.issue
+      ? {
+          type: shipment.issue.type,
+          note: shipment.issue.note,
+          createdAt: shipment.issue.createdAt.toISOString(),
+        }
+      : null,
   }));
 
   const escrow = order.escrow.reduce(
@@ -119,6 +132,7 @@ function toOrderDto(order: OrderWithRelations, includeOtp = false): OrderDto {
     createdAt: order.createdAt.toISOString(),
     stage: STAGE_INDEX[order.stage],
     cancelled: order.cancelled,
+    financeModel: order.financeModel,
     paymentMethod: order.paymentMethod,
     paymentLabel: order.paymentLabel,
     couponCode: order.couponCode,
@@ -283,6 +297,9 @@ export async function placeOrderTx(
       grossTotal: new D(cart.totals.total),
       paymentMethod: "COD",
       paymentLabel: "Cash on delivery",
+      // WP-1: new orders are seller-collected COD (the customer pays the seller
+      // directly; Constro-Well never custodies the proceeds).
+      financeModel: "seller_collected",
       addressSnapshot: {
         label: address.label,
         name: address.name,
@@ -340,7 +357,10 @@ export async function placeOrderTx(
   }
 
   // Allocate the order-level coupon discount proportionally across sellers;
-  // the last seller receives the rounding remainder so the ledger sums exactly.
+  // the last seller receives the rounding remainder so the totals sum exactly.
+  // Each seller's expected COD = their group subtotal − allocated discount +
+  // their delivery fee. Recorded as a CodCollection expectation, not platform
+  // escrow (the seller collects this cash directly from the customer).
   const totalSubtotal = new D(cart.totals.subtotal);
   const totalDiscount = new D(cart.totals.discount);
   let allocated = new D(0);
@@ -356,15 +376,12 @@ export async function placeOrderTx(
           ? totalDiscount.mul(groupSubtotal).div(totalSubtotal).toDecimalPlaces(2, Prisma.Decimal.ROUND_HALF_UP)
           : new D(0);
     allocated = allocated.plus(groupDiscount);
-    await tx.escrowEntry.create({
+    await tx.codCollection.create({
       data: {
-        orderId: order.id,
         shipmentId,
         sellerId: group.sellerId,
-        type: "held",
-        amount: groupSubtotal.minus(groupDiscount).plus(new D(group.deliveryFee)),
-        note: "COD order placed, amount held in escrow",
-        createdAt: now,
+        expectedAmount: groupSubtotal.minus(groupDiscount).plus(new D(group.deliveryFee)),
+        status: "pending",
       },
     });
   }
@@ -462,6 +479,7 @@ export async function cancelOrder(
         }
         await restoreReservedStock(tx, shipment.lines);
         await refundHeldEscrow(tx, shipment, "Order cancelled by customer, held amount refunded", now);
+        await cancelCodCollection(tx, shipment.id);
         await tx.shipmentEvent.create({
           data: {
             shipmentId: shipment.id,
@@ -482,4 +500,98 @@ export async function cancelOrder(
     },
     { timeout: 20_000 },
   );
+}
+
+/** Loads a shipment the given customer owns (via the parent order) and locks its row. */
+async function lockOwnedShipment(
+  tx: Prisma.TransactionClient,
+  userId: string,
+  orderId: string,
+  shipmentId: string,
+): Promise<{ orderPk: string; shipmentPk: string; status: string }> {
+  const order = await tx.order.findFirst({
+    where: { userId, OR: [{ code: orderId }, { id: orderId }] },
+    select: { id: true },
+  });
+  if (!order) throw new ApiError(404, "order_not_found", "Order not found");
+
+  await tx.$queryRaw`SELECT "id" FROM "Shipment" WHERE "id" = ${shipmentId} AND "orderId" = ${order.id} FOR UPDATE`;
+  const shipment = await tx.shipment.findFirst({
+    where: { id: shipmentId, orderId: order.id },
+    select: { id: true, status: true },
+  });
+  if (!shipment) throw new ApiError(404, "shipment_not_found", "Shipment not found");
+  return { orderPk: order.id, shipmentPk: shipment.id, status: shipment.status };
+}
+
+/**
+ * Customer confirms a delivered shipment during its review window — closes
+ * the window early with no dispute. Purely a status/event record today: no
+ * settlement job reacts to "settled" yet (task 7.5), so this never moves
+ * money or commission on its own.
+ */
+export async function confirmShipmentDelivery(
+  userId: string,
+  orderId: string,
+  shipmentId: string,
+): Promise<OrderDto> {
+  return db.$transaction(async (tx) => {
+    const { orderPk, shipmentPk, status } = await lockOwnedShipment(tx, userId, orderId, shipmentId);
+    if (status !== "review") {
+      throw new ApiError(409, "not_reviewable", "This shipment is not awaiting your review");
+    }
+    const now = new Date();
+    await tx.shipment.update({ where: { id: shipmentPk }, data: { status: "settled" } });
+    await tx.shipmentEvent.create({
+      data: { shipmentId: shipmentPk, actor: "customer", message: "Customer confirmed delivery", at: now },
+    });
+    await refreshOrderStage(tx, orderPk);
+    const fresh = await tx.order.findUniqueOrThrow({ where: { id: orderPk }, include: orderInclude });
+    return toOrderDto(fresh);
+  });
+}
+
+/**
+ * Customer reports a problem with a delivered shipment during its review
+ * window. Opens the same `ShipmentIssue` record the driver's auto-shortfall
+ * dispute uses (type "damaged_goods" is the customer-report slot in the
+ * approved vocabulary); an admin resolves it (WP-2, not yet built — gated on
+ * the open refund/adjustment policy decision). This action only records the
+ * report; it does not move money.
+ */
+export async function reportShipmentIssue(
+  userId: string,
+  orderId: string,
+  shipmentId: string,
+  input: ReportShipmentIssueInput,
+): Promise<OrderDto> {
+  return db.$transaction(async (tx) => {
+    const { orderPk, shipmentPk, status } = await lockOwnedShipment(tx, userId, orderId, shipmentId);
+    if (status !== "review") {
+      throw new ApiError(409, "not_reviewable", "This shipment is not awaiting your review");
+    }
+    const now = new Date();
+    try {
+      await tx.shipmentIssue.create({
+        data: { shipmentId: shipmentPk, type: input.type, note: input.note, auto: false, createdAt: now },
+      });
+    } catch (error) {
+      if (isUniqueViolation(error)) {
+        throw new ApiError(409, "issue_already_reported", "An issue was already reported for this shipment");
+      }
+      throw error;
+    }
+    await tx.shipment.update({ where: { id: shipmentPk }, data: { status: "disputed" } });
+    await tx.shipmentEvent.create({
+      data: {
+        shipmentId: shipmentPk,
+        actor: "customer",
+        message: `Customer reported an issue (${ISSUE_LABELS[input.type] ?? input.type}): ${input.note}`,
+        at: now,
+      },
+    });
+    await refreshOrderStage(tx, orderPk);
+    const fresh = await tx.order.findUniqueOrThrow({ where: { id: orderPk }, include: orderInclude });
+    return toOrderDto(fresh);
+  });
 }

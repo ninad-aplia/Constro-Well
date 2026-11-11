@@ -9,7 +9,7 @@ import Dialog from "@/components/ui/Dialog";
 import OrderCard from "./OrderCard";
 import { toOrderPreview } from "./orderAdapters";
 import { useSession } from "@/components/auth/SessionProvider";
-import { cancelOrder, fetchOrder } from "@/lib/api/orderApi";
+import { cancelOrder, confirmShipmentDelivery, fetchOrder, reportShipmentIssue } from "@/lib/api/orderApi";
 import { ApiClientError } from "@/lib/api/client";
 import { inr } from "@/lib/shop/format";
 import { ORDER_STAGES } from "@/lib/shop/types";
@@ -31,6 +31,12 @@ export default function OrderDetailView({ id }: { id: string }) {
   const [cancelReason, setCancelReason] = useState("");
   const [cancelError, setCancelError] = useState("");
   const [cancelling, setCancelling] = useState(false);
+  const [reviewBusyId, setReviewBusyId] = useState<string | null>(null);
+  const [reviewErrors, setReviewErrors] = useState<Record<string, string>>({});
+  const [issueShipmentId, setIssueShipmentId] = useState<string | null>(null);
+  const [issueNote, setIssueNote] = useState("");
+  const [issueSubmitting, setIssueSubmitting] = useState(false);
+  const [issueError, setIssueError] = useState("");
 
   useEffect(() => {
     if (session.status === "guest") router.replace(`/login?next=${encodeURIComponent(`/orders/${id}`)}`);
@@ -125,6 +131,40 @@ export default function OrderDetailView({ id }: { id: string }) {
     }
   };
 
+  const confirmDelivery = async (shipmentId: string) => {
+    setReviewBusyId(shipmentId);
+    setReviewErrors((prev) => ({ ...prev, [shipmentId]: "" }));
+    try {
+      setOrder(await confirmShipmentDelivery(order.code, shipmentId));
+    } catch (err) {
+      setReviewErrors((prev) => ({
+        ...prev,
+        [shipmentId]: err instanceof ApiClientError ? err.message : "Could not confirm this delivery.",
+      }));
+    } finally {
+      setReviewBusyId(null);
+    }
+  };
+
+  const submitIssue = async () => {
+    if (!issueShipmentId) return;
+    setIssueError("");
+    if (issueNote.trim().length < 3) {
+      setIssueError("Describe the issue.");
+      return;
+    }
+    setIssueSubmitting(true);
+    try {
+      setOrder(await reportShipmentIssue(order.code, issueShipmentId, issueNote.trim()));
+      setIssueShipmentId(null);
+      setIssueNote("");
+    } catch (err) {
+      setIssueError(err instanceof ApiClientError ? err.message : "Could not report this issue.");
+    } finally {
+      setIssueSubmitting(false);
+    }
+  };
+
   return (
     <div className="mx-auto max-w-[1200px] px-4 py-4">
       <nav aria-label="Breadcrumb" className="mb-2 text-[13px] text-muted">
@@ -143,11 +183,17 @@ export default function OrderDetailView({ id }: { id: string }) {
         </div>
         {order.cancelled && (
           <div className="mt-2 rounded-lg border border-bad/40 bg-bad/10 p-2.5 text-sm">
-            <b>Cancelled before dispatch.</b> Reserved stock was restored and the internal escrow hold was refunded.
-            Cash on delivery means no money was collected, so there is no card refund to wait for.
+            <b>Cancelled before dispatch.</b> Reserved stock was restored.
+            {order.financeModel === "escrow" && " The internal escrow hold was refunded."} Cash on delivery means no
+            money was collected, so there is no refund to wait for.
           </div>
         )}
-        {!order.cancelled && (
+        {!order.cancelled && order.financeModel === "seller_collected" && (
+          <p className="mt-1 text-[13px] text-muted">
+            Cash on delivery — pay the seller (or their driver) directly when your order arrives.
+          </p>
+        )}
+        {!order.cancelled && order.financeModel === "escrow" && (
           <p className="mt-1 text-[13px] text-muted">
             Escrow: {inr(Number(order.escrow.held))} held
             {Number(order.escrow.refunded) > 0 ? ` · ${inr(Number(order.escrow.refunded))} refunded` : ""}
@@ -218,6 +264,42 @@ export default function OrderDetailView({ id }: { id: string }) {
               <ul className="mt-1 grid gap-0.5 text-[13px] text-muted">
                 {shipment.events.map((event) => <li key={`${event.at}-${event.message}`}>{dStamp(event.at)} · {event.message}</li>)}
               </ul>
+              {shipment.status === "review" && (
+                <div className="mt-2 grid gap-2 rounded-lg border border-ok/40 bg-ok/10 p-2.5 text-[13px]">
+                  <span>Delivered — confirm it&apos;s all good, or report a problem.</span>
+                  <div className="flex flex-wrap gap-2">
+                    <Button
+                      size="sm"
+                      variant="yellow"
+                      disabled={reviewBusyId === shipment.id}
+                      onClick={() => void confirmDelivery(shipment.id)}
+                    >
+                      {reviewBusyId === shipment.id ? "Confirming…" : "Confirm delivery"}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="line"
+                      disabled={reviewBusyId === shipment.id}
+                      onClick={() => {
+                        setIssueShipmentId(shipment.id);
+                        setIssueNote("");
+                        setIssueError("");
+                      }}
+                    >
+                      Report an issue
+                    </Button>
+                  </div>
+                  {reviewErrors[shipment.id] && <p role="alert" className="text-bad">{reviewErrors[shipment.id]}</p>}
+                </div>
+              )}
+              {shipment.status === "disputed" && shipment.issue && (
+                <div className="mt-2 rounded-lg border border-bad/40 bg-bad/10 p-2.5 text-[13px]">
+                  <b>Issue reported.</b> {shipment.issue.note}
+                </div>
+              )}
+              {shipment.status === "settled" && (
+                <p className="mt-2 text-[13px] text-ok">You confirmed this delivery.</p>
+              )}
             </div>
           ))}
         </div>
@@ -261,6 +343,47 @@ export default function OrderDetailView({ id }: { id: string }) {
             </Button>
             <Button type="button" variant="line" disabled={cancelling} onClick={() => setCancelOpen(false)}>
               Keep order
+            </Button>
+          </div>
+        </form>
+      </Dialog>
+
+      <Dialog
+        open={issueShipmentId !== null}
+        onClose={() => {
+          if (!issueSubmitting) setIssueShipmentId(null);
+        }}
+        title="Report an issue"
+      >
+        <form
+          className="grid gap-3 p-5"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void submitIssue();
+          }}
+        >
+          <h2 className="font-display text-lg font-bold">What went wrong?</h2>
+          <p className="text-sm text-muted">
+            This opens a dispute on the delivery for an admin to review. You cannot undo this once submitted.
+          </p>
+          <label className="grid gap-1 text-sm font-semibold">
+            Describe the problem
+            <textarea
+              rows={3}
+              maxLength={500}
+              value={issueNote}
+              onChange={(event) => setIssueNote(event.target.value)}
+              className="rounded-lg border border-line bg-panel p-2.5 text-sm font-normal"
+              placeholder="e.g. Cement bags arrived torn/damaged"
+            />
+          </label>
+          {issueError && <p role="alert" className="rounded-lg border border-bad bg-panel p-2.5 text-[13px] font-medium text-bad">{issueError}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button type="submit" variant="red" disabled={issueSubmitting}>
+              {issueSubmitting ? "Reporting…" : "Report issue"}
+            </Button>
+            <Button type="button" variant="line" disabled={issueSubmitting} onClick={() => setIssueShipmentId(null)}>
+              Cancel
             </Button>
           </div>
         </form>

@@ -49,5 +49,16 @@ export const cancelOrderSchema = z
   })
   .strict();
 
+// Only "damaged_goods" is a customer-initiated issue in the approved
+// ShipmentIssueType vocabulary — "short_quantity" is system/driver-opened at
+// delivery and "failed_attempt" is a pre-delivery driver report.
+export const reportShipmentIssueSchema = z
+  .object({
+    type: z.literal("damaged_goods"),
+    note: z.string().trim().min(3, "Describe the issue").max(500),
+  })
+  .strict();
+
 export type CreateAddressInput = z.infer<typeof createAddressSchema>;
 export type UpdateAddressInput = z.infer<typeof updateAddressSchema>;
+export type ReportShipmentIssueInput = z.infer<typeof reportShipmentIssueSchema>;

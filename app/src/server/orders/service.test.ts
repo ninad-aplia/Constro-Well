@@ -4,7 +4,16 @@ import bcrypt from "bcryptjs";
 import { PrismaClient } from "@prisma/client";
 import { addCartItem } from "@/server/cart/service";
 import { createAddress } from "./addresses";
-import { getOrder, cancelOrder, idempotencyOrderId, placeOrder, placeOrderTx, previewCheckout } from "./service";
+import {
+  getOrder,
+  cancelOrder,
+  confirmShipmentDelivery,
+  idempotencyOrderId,
+  placeOrder,
+  placeOrderTx,
+  previewCheckout,
+  reportShipmentIssue,
+} from "./service";
 import { refreshOrderStage } from "./lifecycle";
 
 const hasDb = Boolean(process.env.DATABASE_URL);
@@ -92,6 +101,8 @@ async function cleanupOrder(code: string) {
   const order = await prisma.order.findUnique({ where: { code }, select: { id: true } });
   if (!order) return;
   await prisma.escrowEntry.deleteMany({ where: { orderId: order.id } });
+  await prisma.codCollection.deleteMany({ where: { shipment: { orderId: order.id } } });
+  await prisma.commissionAssessment.deleteMany({ where: { shipment: { orderId: order.id } } });
   await prisma.shipmentIssue.deleteMany({ where: { shipment: { orderId: order.id } } });
   await prisma.shipmentEvent.deleteMany({ where: { shipment: { orderId: order.id } } });
   await prisma.orderLine.deleteMany({ where: { orderId: order.id } });
@@ -125,7 +136,7 @@ describe.skipIf(!hasDb)("checkout and order placement", { timeout: 30_000 }, () 
       code: string;
       lines: number;
       shipments: number;
-      escrow: number;
+      collections: number;
       total: string;
       firstUnitPrice: string;
     }> = [];
@@ -145,7 +156,7 @@ describe.skipIf(!hasDb)("checkout and order placement", { timeout: 30_000 }, () 
             code: order.code,
             lines: await tx.orderLine.count({ where: { order: { code: order.code } } }),
             shipments: await tx.shipment.count({ where: { order: { code: order.code } } }),
-            escrow: await tx.escrowEntry.count({ where: { order: { code: order.code } } }),
+            collections: await tx.codCollection.count({ where: { shipment: { order: { code: order.code } } } }),
             total: order.totals.total,
             firstUnitPrice: order.lines.find((line) => line.sellerId === offerA.sellerId)?.unitPrice ?? "",
           });
@@ -162,9 +173,11 @@ describe.skipIf(!hasDb)("checkout and order placement", { timeout: 30_000 }, () 
     const capture = observed[0];
     expect(capture.lines).toBe(2);
     expect(capture.shipments).toBe(2);
-    expect(capture.escrow).toBe(2);
+    expect(capture.collections).toBe(2);
     expect(capture.total).toBe("1948.00");
     expect(capture.firstUnitPrice).toBe("110.00");
+    // No platform-held escrow is created for a seller-collected COD order.
+    expect(await prisma!.escrowEntry.count({ where: { order: { code: capture.code } } })).toBe(0);
     expect(await prisma!.order.count({ where: { id: idempotencyOrderId(user.id, "rollback-key") } })).toBe(0);
     const offers = await prisma!.sellerOffer.findMany({
       where: { id: { in: [offerA.id, offerB.id] } },
@@ -199,22 +212,33 @@ describe.skipIf(!hasDb)("checkout and order placement", { timeout: 30_000 }, () 
     const order = await placeOrder(user.id, address.id, null, `cancel-${randomUUID()}`);
     created.orders.push(order.code);
 
-    const held = order.escrow.held;
     const cancelled = await cancelOrder(user.id, order.code, "Ordered by mistake");
     expect(cancelled.cancelled).toBe(true);
     expect(cancelled.shipments.every((shipment) => shipment.status === "cancelled")).toBe(true);
-    expect(cancelled.escrow.refunded).toBe(held);
+    // Seller-collected COD: no platform-held escrow to refund; the COD
+    // expectation is cancelled instead.
+    expect(cancelled.escrow.held).toBe("0.00");
+    expect(cancelled.escrow.refunded).toBe("0.00");
 
     const stocks = await prisma!.sellerOffer.findMany({
       where: { id: { in: [offerA.id, offerB.id] } },
       select: { stock: true },
     });
     expect(stocks.map((offer) => offer.stock).sort()).toEqual([20, 20]);
-    expect(await prisma!.escrowEntry.count({ where: { order: { code: order.code }, type: "refund" } })).toBe(2);
+    const collections = await prisma!.codCollection.findMany({
+      where: { shipment: { order: { code: order.code } } },
+      select: { status: true },
+    });
+    expect(collections).toHaveLength(2);
+    expect(collections.every((collection) => collection.status === "cancelled")).toBe(true);
 
     await expect(cancelOrder(user.id, order.code, "Again")).rejects.toMatchObject({ status: 409 });
     await expect(cancelOrder(other.id, order.code, "Not mine")).rejects.toMatchObject({ status: 404 });
-    expect(await prisma!.escrowEntry.count({ where: { order: { code: order.code }, type: "refund" } })).toBe(2);
+    const stillCancelled = await prisma!.codCollection.findMany({
+      where: { shipment: { order: { code: order.code } } },
+      select: { status: true },
+    });
+    expect(stillCancelled.every((collection) => collection.status === "cancelled")).toBe(true);
   });
 
   it("refuses cancellation after any shipment is dispatched", async () => {
@@ -304,5 +328,57 @@ describe.skipIf(!hasDb)("checkout and order placement", { timeout: 30_000 }, () 
       orderBy: { id: "asc" },
     });
     expect(stocks.map((offer) => offer.stock)).toEqual([12, 12]);
+  });
+
+  it("lets the customer confirm a delivered shipment during its review window", async () => {
+    const user = await customer();
+    const other = await customer();
+    const address = await addressFor(user.id);
+    const offer = await sellerWithOffer(0, "100.00");
+    await addCartItem(user.id, offer.id, 1);
+    const order = await placeOrder(user.id, address.id, null, `confirm-${randomUUID()}`);
+    created.orders.push(order.code);
+    const shipmentId = order.shipments[0]!.id;
+    await prisma!.shipment.update({ where: { id: shipmentId }, data: { status: "review" } });
+
+    await expect(confirmShipmentDelivery(other.id, order.code, shipmentId)).rejects.toMatchObject({ status: 404 });
+
+    const confirmed = await confirmShipmentDelivery(user.id, order.code, shipmentId);
+    expect(confirmed.shipments[0]!.status).toBe("settled");
+    const events = await prisma!.shipmentEvent.findMany({ where: { shipmentId }, orderBy: { at: "asc" } });
+    expect(events.at(-1)).toMatchObject({ actor: "customer", message: "Customer confirmed delivery" });
+
+    // Already settled: confirming again is rejected, not silently re-accepted.
+    await expect(confirmShipmentDelivery(user.id, order.code, shipmentId)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("lets the customer report an issue during the review window, once", async () => {
+    const user = await customer();
+    const address = await addressFor(user.id);
+    const offer = await sellerWithOffer(0, "100.00");
+    await addCartItem(user.id, offer.id, 1);
+    const order = await placeOrder(user.id, address.id, null, `issue-${randomUUID()}`);
+    created.orders.push(order.code);
+    const shipmentId = order.shipments[0]!.id;
+
+    // Not yet in review (still "new"): reporting is rejected.
+    await expect(
+      reportShipmentIssue(user.id, order.code, shipmentId, { type: "damaged_goods", note: "Too early" }),
+    ).rejects.toMatchObject({ status: 409 });
+
+    await prisma!.shipment.update({ where: { id: shipmentId }, data: { status: "review" } });
+    const disputed = await reportShipmentIssue(user.id, order.code, shipmentId, {
+      type: "damaged_goods",
+      note: "Two cement bags arrived torn",
+    });
+    expect(disputed.shipments[0]!.status).toBe("disputed");
+    expect(disputed.shipments[0]!.issue).toMatchObject({ type: "damaged_goods", note: "Two cement bags arrived torn" });
+
+    // Already disputed: a second report is rejected rather than overwriting the first.
+    await expect(
+      reportShipmentIssue(user.id, order.code, shipmentId, { type: "damaged_goods", note: "Again" }),
+    ).rejects.toMatchObject({ status: 409 });
+    const issues = await prisma!.shipmentIssue.findMany({ where: { shipmentId } });
+    expect(issues).toHaveLength(1);
   });
 });

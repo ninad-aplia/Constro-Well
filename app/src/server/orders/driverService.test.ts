@@ -132,6 +132,8 @@ async function cleanup() {
     const order = await prisma.order.findUnique({ where: { code }, select: { id: true } });
     if (!order) continue;
     await prisma.escrowEntry.deleteMany({ where: { orderId: order.id } });
+    await prisma.codCollection.deleteMany({ where: { shipment: { orderId: order.id } } });
+    await prisma.commissionAssessment.deleteMany({ where: { shipment: { orderId: order.id } } });
     await prisma.shipmentIssue.deleteMany({ where: { shipment: { orderId: order.id } } });
     await prisma.shipmentEvent.deleteMany({ where: { shipment: { orderId: order.id } } });
     await prisma.orderLine.deleteMany({ where: { orderId: order.id } });
@@ -228,6 +230,9 @@ describe.skipIf(!hasDb)("driver delivery lifecycle", { timeout: 45_000 }, () => 
       where: { orderId: orderRow.id, type: { in: ["released", "refund"] } },
     });
     expect(released).toBe(0);
+    // Delivery (even a disputed one) does not confirm cash collection.
+    const collection = await prisma!.codCollection.findUnique({ where: { shipmentId } });
+    expect(collection?.status).toBe("pending");
   });
 
   it("reports an issue without marking the shipment delivered", async () => {

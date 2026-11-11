@@ -93,3 +93,14 @@ export async function refundHeldEscrow(
     });
   }
 }
+
+/** Marks a seller-collected COD expectation as cancelled (pre-dispatch cancel/reject). */
+export async function cancelCodCollection(
+  tx: Prisma.TransactionClient,
+  shipmentId: string,
+): Promise<void> {
+  await tx.codCollection.updateMany({
+    where: { shipmentId, status: "pending" },
+    data: { status: "cancelled" },
+  });
+}

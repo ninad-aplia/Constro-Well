@@ -40,6 +40,12 @@ export interface OrderShipmentEventDto {
   message: string;
 }
 
+export interface OrderShipmentIssueDto {
+  type: string;
+  note: string;
+  createdAt: string;
+}
+
 export interface OrderShipmentDto {
   id: string;
   code: string;
@@ -51,6 +57,8 @@ export interface OrderShipmentDto {
   /** Only populated for the owning customer while this shipment is on the road. */
   otp: string | null;
   events: OrderShipmentEventDto[];
+  /** Present once a dispute has been opened (driver shortfall or customer report). */
+  issue: OrderShipmentIssueDto | null;
 }
 
 export interface OrderEscrowDto {
@@ -65,6 +73,7 @@ export interface OrderDto {
   createdAt: string;
   stage: number;
   cancelled: boolean;
+  financeModel: "escrow" | "seller_collected";
   paymentMethod: string;
   paymentLabel: string;
   couponCode: string | null;

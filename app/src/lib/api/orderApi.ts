@@ -52,3 +52,30 @@ export async function cancelOrder(id: string, reason: string, baseUrl = ""): Pro
   );
   return response.order;
 }
+
+export async function confirmShipmentDelivery(
+  id: string,
+  shipmentId: string,
+  baseUrl = "",
+): Promise<OrderDto> {
+  const response = await apiFetch<{ order: OrderDto }>(
+    `/api/orders/${encodeURIComponent(id)}/shipments/${encodeURIComponent(shipmentId)}/confirm`,
+    { method: "POST" },
+    baseUrl,
+  );
+  return response.order;
+}
+
+export async function reportShipmentIssue(
+  id: string,
+  shipmentId: string,
+  note: string,
+  baseUrl = "",
+): Promise<OrderDto> {
+  const response = await apiFetch<{ order: OrderDto }>(
+    `/api/orders/${encodeURIComponent(id)}/shipments/${encodeURIComponent(shipmentId)}/report-issue`,
+    { method: "POST", body: JSON.stringify({ type: "damaged_goods", note }) },
+    baseUrl,
+  );
+  return response.order;
+}
