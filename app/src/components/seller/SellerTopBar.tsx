@@ -38,7 +38,7 @@ export default function SellerTopBar() {
       <form
         role="search"
         aria-label="Search orders"
-        className="flex h-[42px] max-w-[460px] flex-1 items-center gap-2 rounded-xl border border-line bg-panel px-3 text-muted focus-within:outline-3 focus-within:outline-hi"
+        className="flex h-[42px] min-w-0 max-w-[460px] flex-1 items-center gap-2 rounded-xl border border-line bg-panel px-3 text-muted focus-within:outline-3 focus-within:outline-hi"
         onSubmit={(e) => {
           e.preventDefault();
           const q = (e.currentTarget.elements.namedItem("q") as HTMLInputElement).value.trim();

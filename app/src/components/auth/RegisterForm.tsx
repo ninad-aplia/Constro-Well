@@ -65,7 +65,8 @@ export default function RegisterForm({ next }: { next?: string | null }) {
   };
 
   return (
-    <form className="grid gap-3.5" onSubmit={submit} noValidate>
+    // method="post" is the pre-hydration fallback only; keeps the password out of the URL.
+    <form className="grid gap-3.5" method="post" onSubmit={submit} noValidate>
       <label htmlFor="register_name" className="grid gap-1 text-sm font-semibold">
         Full name
         <input

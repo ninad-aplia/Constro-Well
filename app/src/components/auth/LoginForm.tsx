@@ -59,8 +59,10 @@ export default function LoginForm({ next }: { next?: string | null }) {
     }
   };
 
+  // method="post" is only the pre-hydration fallback: without it a click before
+  // React attaches would submit the password in the query string.
   return (
-    <form className="grid gap-3.5" onSubmit={submit} noValidate>
+    <form className="grid gap-3.5" method="post" onSubmit={submit} noValidate>
       <label htmlFor="login_email" className="grid gap-1 text-sm font-semibold">
         Email
         <input
