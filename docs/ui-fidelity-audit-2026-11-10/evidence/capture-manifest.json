@@ -1,0 +1,384 @@
+[
+  {
+    "file": "app-customer-home-1440x900.png",
+    "note": "customer home",
+    "url": "http://localhost:64704/",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "productHref": "/product/46"
+  },
+  {
+    "file": "app-customer-home2-1440x900.png",
+    "note": "home after href probe",
+    "url": "http://localhost:64704/",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-customer-search-1440x900.png",
+    "note": "customer search",
+    "url": "http://localhost:64704/search",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-customer-cart-1440x900.png",
+    "note": "customer cart (guest/empty)",
+    "url": "http://localhost:64704/login?next=/cart",
+    "title": "Sign in | Constro Well"
+  },
+  {
+    "file": "app-customer-orders-guest-1440x900.png",
+    "note": "orders page unauthenticated",
+    "url": "http://localhost:64704/login?next=/orders",
+    "title": "Sign in | Constro Well"
+  },
+  {
+    "file": "app-customer-checkout-guest-1440x900.png",
+    "note": "checkout page unauthenticated",
+    "url": "http://localhost:64704/login?next=/checkout",
+    "title": "Sign in | Constro Well"
+  },
+  {
+    "file": "app-admin-route-1440x900.png",
+    "note": "admin route attempt",
+    "url": "http://localhost:64704/admin",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-login-landing-1440x900.png",
+    "note": "post-login landing",
+    "url": "http://localhost:64704/seller",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-overview-1440x900.png",
+    "note": "seller overview",
+    "url": "http://localhost:64704/seller",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-orders-1440x900.png",
+    "note": "seller orders",
+    "url": "http://localhost:64704/seller/orders",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-products-1440x900.png",
+    "note": "seller products",
+    "url": "http://localhost:64704/seller/products",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-delivery-1440x900.png",
+    "note": "seller delivery",
+    "url": "http://localhost:64704/seller/delivery",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-payments-1440x900.png",
+    "note": "seller payments",
+    "url": "http://localhost:64704/seller/payments",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-performance-1440x900.png",
+    "note": "seller performance",
+    "url": "http://localhost:64704/seller/performance",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-settings-1440x900.png",
+    "note": "seller settings",
+    "url": "http://localhost:64704/seller/settings",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 404 (Not Found)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ],
+    "scope": "app-1440x900"
+  },
+  {
+    "file": "app-delivery-landing-driver.png",
+    "note": "driver post-login landing",
+    "url": "http://localhost:64704/delivery",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-delivery-home-driver.png",
+    "note": "driver portal home",
+    "url": "http://localhost:64704/delivery",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-delivery-jobs-driver.png",
+    "note": "driver jobs",
+    "url": "http://localhost:64704/delivery/jobs",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-delivery-history-driver.png",
+    "note": "driver history",
+    "url": "http://localhost:64704/delivery/history",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-delivery-settings-driver.png",
+    "note": "driver settings",
+    "url": "http://localhost:64704/delivery/settings",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ],
+    "scope": "app-driver"
+  },
+  {
+    "file": "proto-shop-home-390x844.png",
+    "note": "prototype shop view home",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-shop.html#/home",
+    "title": "BuildGrid.shop: building materials online | BuildGrid.shop"
+  },
+  {
+    "file": "proto-shop-search-390x844.png",
+    "note": "prototype shop view search",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-shop.html#/search",
+    "title": "Search | BuildGrid.shop"
+  },
+  {
+    "file": "proto-shop-product-1-390x844.png",
+    "note": "prototype shop view product/1",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-shop.html#/product/1",
+    "title": "Rajdhani PPC Cement, 50 kg Bag | BuildGrid.shop"
+  },
+  {
+    "file": "proto-shop-cart-390x844.png",
+    "note": "prototype shop view cart",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-shop.html#/cart",
+    "title": "Shopping cart | BuildGrid.shop"
+  },
+  {
+    "file": "proto-shop-wishlist-390x844.png",
+    "note": "prototype shop view wishlist",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-shop.html#/wishlist",
+    "title": "Your wish list | BuildGrid.shop"
+  },
+  {
+    "file": "proto-shop-account-390x844.png",
+    "note": "prototype shop view account",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-shop.html#/account",
+    "title": "Your account | BuildGrid.shop"
+  },
+  {
+    "file": "proto-shop-orders-390x844.png",
+    "note": "prototype shop view orders",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-shop.html#/orders",
+    "title": "Your orders | BuildGrid.shop"
+  },
+  {
+    "file": "proto-seller-overview-390x844.png",
+    "note": "prototype seller view overview",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-seller-dashboard.html",
+    "title": "Overview · BuildGrid Seller Hub"
+  },
+  {
+    "file": "proto-seller-orders-390x844.png",
+    "note": "prototype seller view orders",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-seller-dashboard.html",
+    "title": "Orders · BuildGrid Seller Hub"
+  },
+  {
+    "file": "proto-seller-products-390x844.png",
+    "note": "prototype seller view products",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-seller-dashboard.html",
+    "title": "Products · BuildGrid Seller Hub"
+  },
+  {
+    "file": "proto-seller-delivery-390x844.png",
+    "note": "prototype seller view delivery",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-seller-dashboard.html",
+    "title": "Delivery · BuildGrid Seller Hub"
+  },
+  {
+    "file": "proto-seller-payments-390x844.png",
+    "note": "prototype seller view payments",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-seller-dashboard.html",
+    "title": "Payments · BuildGrid Seller Hub"
+  },
+  {
+    "file": "proto-seller-performance-390x844.png",
+    "note": "prototype seller view performance",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-seller-dashboard.html",
+    "title": "Performance · BuildGrid Seller Hub"
+  },
+  {
+    "file": "proto-seller-settings-390x844.png",
+    "note": "prototype seller view settings",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-seller-dashboard.html",
+    "title": "Settings · BuildGrid Seller Hub"
+  },
+  {
+    "file": "proto-delivery-flow-390x844.png",
+    "note": "prototype delivery tab flow",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-delivery-workflow.html",
+    "title": "BuildGrid delivery workflow demo"
+  },
+  {
+    "file": "proto-delivery-customer-390x844.png",
+    "note": "prototype delivery tab customer",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-delivery-workflow.html",
+    "title": "BuildGrid delivery workflow demo"
+  },
+  {
+    "file": "proto-delivery-vendor-390x844.png",
+    "note": "prototype delivery tab vendor",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-delivery-workflow.html",
+    "title": "BuildGrid delivery workflow demo"
+  },
+  {
+    "file": "proto-delivery-driver-390x844.png",
+    "note": "prototype delivery tab driver",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-delivery-workflow.html",
+    "title": "BuildGrid delivery workflow demo"
+  },
+  {
+    "file": "proto-delivery-admin-390x844.png",
+    "note": "prototype delivery tab admin",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-delivery-workflow.html",
+    "title": "BuildGrid delivery workflow demo"
+  },
+  {
+    "file": "proto-admin-overview-390x844.png",
+    "note": "prototype admin view overview",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-platform-admin.html",
+    "title": "Overview · BuildGrid Platform Admin"
+  },
+  {
+    "file": "proto-admin-approvals-390x844.png",
+    "note": "prototype admin view approvals",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-platform-admin.html",
+    "title": "Approvals · BuildGrid Platform Admin"
+  },
+  {
+    "file": "proto-admin-deliveries-390x844.png",
+    "note": "prototype admin view deliveries",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-platform-admin.html",
+    "title": "Deliveries · BuildGrid Platform Admin"
+  },
+  {
+    "file": "proto-admin-payouts-390x844.png",
+    "note": "prototype admin view payouts",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-platform-admin.html",
+    "title": "Payouts · BuildGrid Platform Admin"
+  },
+  {
+    "file": "proto-admin-vendors-390x844.png",
+    "note": "prototype admin view vendors",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-platform-admin.html",
+    "title": "Sellers · BuildGrid Platform Admin"
+  },
+  {
+    "file": "proto-admin-users-390x844.png",
+    "note": "prototype admin view users",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-platform-admin.html",
+    "title": "Users · BuildGrid Platform Admin"
+  },
+  {
+    "file": "proto-admin-log-390x844.png",
+    "note": "prototype admin view log",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-platform-admin.html",
+    "title": "Activity log · BuildGrid Platform Admin"
+  },
+  {
+    "file": "proto-admin-settings-390x844.png",
+    "note": "prototype admin view settings",
+    "url": "file:///C:/Users/NINAD/MyWorkspace/Constro-Well/buildgrid-platform-admin.html",
+    "title": "Settings · BuildGrid Platform Admin"
+  },
+  {
+    "file": "app-customer-home-390x844.png",
+    "note": "customer home mobile",
+    "url": "http://localhost:64704/",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-customer-search-390x844.png",
+    "note": "customer search mobile",
+    "url": "http://localhost:64704/search",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-login-landing-390x844.png",
+    "note": "seller landing mobile",
+    "url": "http://localhost:64704/seller",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-overview-390x844.png",
+    "note": "seller overview mobile",
+    "url": "http://localhost:64704/seller",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-products-390x844.png",
+    "note": "seller products mobile",
+    "url": "http://localhost:64704/seller/products",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ],
+    "scope": "app-390x844"
+  },
+  {
+    "file": "app-customer-home-1024x768.png",
+    "note": "customer home tablet",
+    "url": "http://localhost:64704/",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-login-landing-1024x768.png",
+    "note": "seller landing tablet",
+    "url": "http://localhost:64704/seller",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "file": "app-seller-overview-1024x768.png",
+    "note": "seller overview tablet",
+    "url": "http://localhost:64704/seller",
+    "title": "Constro Well: building materials online"
+  },
+  {
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)",
+      "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+    ],
+    "scope": "app-1024x768"
+  }
+]

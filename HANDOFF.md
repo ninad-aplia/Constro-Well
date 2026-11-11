@@ -1,6 +1,599 @@
-# HANDOFF.md — current checkpoint for the next IDE
+# HANDOFF.md - current checkpoint for the next IDE
 
-**Last updated:** 2026-11-08 (integration & stabilization: test-cleanup leak fixed, negative-balance display fixed, docs reconciled; **production is live and verified**, uncommitted Phase 1/2 work not yet deployed; ~10 residue rows remain in the local DB — do not delete without owner approval) · **Writer agent:** OpenCode (GLM-5.3-Flash)
+**Last updated:** 2026-11-11 (seller failed-delivery reassignment checkpoint) · **Writer agent:** Claude Code
+
+## Last completed task (seller failed-delivery recovery — task 7.2b — 2026-11-11)
+
+Branch `feature/backend-mvp` @ `1f0f61f` — nothing committed, staged, reset, stashed, pushed or deployed.
+
+### Concurrent-IDE note (read this before touching files)
+
+This repo is actively shared with at least one other IDE/agent session right now (per
+`AGENTS.md`'s multi-IDE rule). Observed and left untouched this session:
+`app/src/components/auth/LoginForm.tsx`, `RegisterForm.tsx` (a `method="post"`
+pre-hydration-fallback fix) and `app/src/components/seller/SellerTopBar.tsx` — all
+modified by someone else, not reviewed or touched here. A concurrent `next build` was
+also running and blocked this checkpoint's own build-verification attempt twice (see
+below). Before editing, diff `git status` against the file list in this section to spot
+anything new.
+
+### What shipped
+
+Picked as the next highest-priority unblocked item after task 7.3 (previous checkpoint):
+`docs/feature-parity-assessment-2026-11-11/BUSINESS_WORKFLOW_GAPS.md` workflow #4
+("Failed delivery, reassignment & retry") named a concrete, confirmed dead end —
+**nothing** ever happened to a shipment once it reached `status: "failed"` (3 wrong OTP
+tries at delivery, or a driver's "failed attempt" report). No reassignment, no retry, and
+the `missed` enum value (already modeled in `lifecycle.ts`'s `TERMINAL_CANCEL` set) was
+never reachable. This needs no owner policy decision — it's a pure logistics-recovery gap,
+unlike the goods-condition (`disputed`) branch which is correctly left alone (WP-2 admin
+resolution, gated on the refund/adjustment policy decision).
+
+- `POST /api/seller/orders/[shipmentId]/redispatch` — seller reassigns a (possibly
+  different) vehicle/driver and retries: `failed → dispatched`, same vehicle/docs
+  validation as the original `dispatchShipment`, a **fresh OTP** generated, `otpTries`
+  reset to 0, and the resolved `ShipmentIssue` row deleted (it's the schema's "current
+  dispute per shipment" slot, not permanent history — the narrative survives in the
+  append-only `ShipmentEvent` log). 409s if the shipment isn't currently `failed`.
+- `POST /api/seller/orders/[shipmentId]/missed` — seller gives up: `failed → missed`,
+  reusing the **exact same** `restoreReservedStock`/`refundHeldEscrow`/`cancelCodCollection`
+  helpers `rejectShipment` already uses (goods never reached the customer, no COD cash was
+  ever collected, so there's nothing to refund). 409s if not currently `failed`.
+- Both: ownership-scoped through `Seller.id`, in `src/server/orders/sellerService.ts`
+  right alongside `dispatchShipment`/`rejectShipment` (same transaction/row-update-count
+  pattern, not a new abstraction).
+- Frontend: `/seller/orders` row actions and the order drawer (`OrderDrawer.tsx`) show
+  "Reassign" / "Mark missed" only for `failed` shipments. Two new dialogs —
+  `ReassignDialog.tsx` (same field set as `DispatchDialog`, different copy: no existing
+  dialog fit without misleading text — `RejectDialog`'s reasons are pre-dispatch-specific
+  and its copy mentions "escrow hold refunded", neither of which fits a post-delivery-
+  failure action) and `MissedDialog.tsx` (same shape as `RejectDialog`, failure-appropriate
+  reasons: "Customer unreachable after repeated attempts", "Customer declined the
+  delivery", "Address could not be located", "Other").
+- **Deliberately not touched:** `lib/seller/selectors.ts` (`ORDER_FILTERS`,
+  `getNeedsAttention`) — it's explicitly a prototype-ported file (`ORDER_FILTERS` header
+  comment: "ported from buildgrid-seller-dashboard.html") and `AGENTS.md`'s fidelity policy
+  requires written justification before touching navigation/IA. A `failed` shipment is
+  still fully visible and actionable today under the existing "On the road" and "All"
+  filters — it just doesn't additionally surface in the Overview's "needs attention" tiles.
+  Flagged as a known, intentionally-deferred follow-up, not fixed here.
+- **Test-infra fix in the same file:** `sellerService.test.ts`'s `afterAll` cleanup hook
+  (now deleting rows for 10 sellers/customers across 6 tests) was flaking on Vitest's
+  default 10s hook timeout under concurrent DB load — observed twice this session, in two
+  *different* test files (`seller/profile.test.ts` last checkpoint, this one this
+  checkpoint), always passing cleanly on an immediate isolated rerun. Bumped this hook to
+  30s (matching the describe block's own test timeout); confirmed clean on rerun.
+
+### Verified results
+
+| Check | Command | Result |
+|---|---|---|
+| New targeted tests | `vitest run src/server/orders/sellerService.test.ts` | **6/6 passed** (2 new: reassign — cross-seller 404, OTP hash/tries reset, issue cleared, re-reassign 409; missed — cross-seller 404, stock restored, COD collection cancelled, re-mark 409) |
+| TypeScript | `npx tsc --noEmit` | exit 0 |
+| ESLint (touched files) | `npx eslint <10 changed/added files>` | exit 0, 0 problems |
+| Full Vitest suite | `npx vitest run` | **158/162 on the first pass** — 4 files failed with `Can't reach database server at 127.0.0.1:5433` / a 5s test-timeout (none in files this checkpoint touched). Re-ran all 4 (`driverService.test.ts`, orders `service.test.ts`, catalog `service.test.ts`, cart `service.test.ts`): 3 passed clean immediately; the 4th (`cart/service.test.ts`) still showed one timeout under load, then passed 3/3 in isolation. All four confirmed transient DB-connectivity/contention flakes, not regressions — consistent with the same pattern noted in the prior checkpoint. |
+| Production build | `npm run build` | **Not verified this round.** Hit `⨯ Another next build process is already running` twice in a row (the concurrent IDE session noted above). Did not force a third attempt or touch the other process — relying on the clean `tsc`/ESLint/Vitest results instead. **Next session: run `npm run build` once no concurrent build is active.** |
+| Prisma schema | — | No schema change this round (no new migration needed). |
+| Whitespace/conflict check | `git diff --check` | exit 0 (CRLF-normalization warnings only, pre-existing) |
+
+### Docs updated
+
+- `TASKS.md`: new row **7.2b** (DONE); **7.1** downgraded from its stale "NOT STARTED" to
+  PARTIAL with an accurate note (side-branches now resolve; automatic deadline-based
+  transitions still need WP-5 background jobs — 7.1 had never been revisited despite 7.2's
+  and 7.3's work already covering most of its scope).
+- `docs/feature-parity-assessment-2026-11-11/BUSINESS_WORKFLOW_GAPS.md`: workflow #4
+  marked partially resolved, with the still-open sub-gaps (automatic timeout, `disputed`
+  resolution, cross-seller reassignment) spelled out so a future session doesn't redo this
+  or assume more is covered than actually is.
+- `docs/feature-parity-assessment-2026-11-11/FEATURE_PARITY_MATRIX.md`: C6 evidence note
+  extended (same COMPLETE status — this was a side-branch completion, not a new
+  capability).
+
+### Next unblocked candidates (not started this round)
+
+In rough priority order, all unblocked by owner decisions:
+- **C5 Pickup confirmation** (MISSING) — no transition in the state machine between
+  seller dispatch and driver delivery; would need a new `ShipmentStatus` enum value
+  (schema migration, but not a policy question).
+- **D6 Shipment/delivery oversight** (PARTIAL) — dedicated admin view, reusing the 9.11/
+  9.12 read-pattern; no owner decision needed.
+- **D8 Admin actor investigation** (PARTIAL) — per-administrator audit drill-down, reusing
+  existing audit-log data; no owner decision needed.
+- **B8 Bulk pricing** (PARTIAL) — per-offer bulk-tier edit UI; `Product.bulkFlag` exists,
+  the edit surface doesn't.
+- C4's "driver reject" (declining an *assigned* job, distinct from this checkpoint's
+  seller-side failed-delivery recovery) is a smaller, separate gap worth a quick look.
+
+## Prior task (customer review-window confirm/dispute — task 7.3 / WP-2 start — 2026-11-11)
+
+Branch `feature/backend-mvp` @ `1f0f61f` — nothing committed, staged, reset, stashed, pushed or deployed.
+
+### What shipped
+
+Picked as the highest-priority unfinished P0 item from `TASKS.md` (7.3) /
+`docs/feature-parity-assessment-2026-11-11/FEATURE_PARITY_MATRIX.md` (A13 "customer
+dispute initiation missing") that does **not** depend on any open owner decision — unlike
+the rest of WP-2 (admin resolution), this is pure engineering execution:
+
+- A shipment that reaches `status: "review"` (full delivery recorded by the driver, no
+  shortfall) previously had no customer-facing action at all — the review window just sat
+  there with nothing able to move it forward.
+- `POST /api/orders/[id]/shipments/[shipmentId]/confirm` — customer confirms delivery:
+  `review → settled` + one `ShipmentEvent`. Rejects (409 `not_reviewable`) unless the
+  shipment is currently `review`, so confirming twice is a no-op-with-an-error, not a
+  silent re-accept.
+- `POST /api/orders/[id]/shipments/[shipmentId]/report-issue` — customer reports a
+  problem: creates `ShipmentIssue{type:"damaged_goods", auto:false}` (the schema comment
+  already reserved `damaged_goods` as "(customer report)" — `short_quantity` is
+  system/driver-opened at delivery, `failed_attempt` is a pre-delivery driver report, so
+  neither is customer-selectable) + `review → disputed` + one `ShipmentEvent`. Guarded by
+  `ShipmentIssue.shipmentId` being `@unique`: a second report attempt gets 409
+  `issue_already_reported` instead of overwriting the first (verified at the DB level, not
+  just pre-checked, so two concurrent reports can't both win).
+- Both actions: ownership-scoped through `Order.userId` (never a client-supplied id),
+  `SELECT ... FOR UPDATE` on the shipment row inside the same transaction as the status
+  write, matching the existing `cancelOrder` pattern exactly (`app/src/server/orders/service.ts`).
+- Frontend: `OrderDetailView.tsx` shows "Confirm delivery" / "Report an issue" buttons
+  while a shipment is `review`, a "You confirmed this delivery" line once `settled`, and
+  the reported note once `disputed`. Report opens a small dialog (reused `Dialog`
+  component, same shape as the existing cancel dialog).
+- **Correction to existing code, same file:** the customer order-detail page still showed
+  legacy `Escrow: ₹X held/refunded/released` copy unconditionally — meaningless for WP-1
+  `seller_collected` orders, which write zero `EscrowEntry` rows by design. `OrderDto`
+  gained a `financeModel` field; the page now shows the correct seller-collected-COD line
+  ("pay the seller/driver directly on delivery") and only shows the escrow line for
+  pre-cutover `escrow`-model orders. The cancellation banner's "escrow hold was refunded"
+  claim is likewise now conditional on `financeModel === "escrow"`.
+- **What this deliberately does not do:** the original task 7.3 acceptance criterion
+  ("report freezes vendor payout in ledger") is written against the retired
+  platform-custody escrow model. Task 7.5's payout-release job was never built, and WP-1
+  superseded it entirely — commission is assessed from a confirmed `CodCollection`
+  independently of shipment status, so there is no "vendor payout" in a ledger to freeze.
+  No payout-freeze behavior was invented to satisfy the old wording. Admin *resolution* of
+  the resulting `ShipmentIssue` (refund amount, who bears it, reassignment) is WP-2's
+  remaining half and is gated on `OPEN_OWNER_DECISIONS.md` #3 (refund/adjustment policy) —
+  not attempted here.
+
+### Verified results (all executed this session)
+
+| Check | Command | Result |
+|---|---|---|
+| New targeted tests | `vitest run src/server/orders/service.test.ts` | **8/8 passed** (2 new: confirm happy-path + re-confirm 409; report happy-path + pre-review 409 + duplicate-report 409 with DB-row count check) |
+| TypeScript | `npx tsc --noEmit` | exit 0 |
+| ESLint (touched files) | `npx eslint <7 changed/added files>` | exit 0, 0 problems |
+| Full Vitest suite | `npx vitest run` | **160 passed** (158 prior + 2 new) / 1 file failed on a `hookTimeout` in `src/server/seller/profile.test.ts` (unrelated — re-ran that file alone immediately after and it passed 3/3; concurrent DB load from running the full suite and this isolated check back-to-back, not a regression from this change) |
+| Production build | `npm run build` (Turbopack) | exit 0, twice in a row; both new routes (`/api/orders/[id]/shipments/[shipmentId]/{confirm,report-issue}`) listed as `ƒ` (dynamic) |
+| Prisma schema | `npx prisma validate` | valid (no schema change — `ShipmentIssue`, `Order.financeModel` already existed) |
+| Migrations | `npx prisma migrate status` | 6 migrations, "Database schema is up to date!" |
+| Full FastAPI suite (incl. the never-recorded finance-hardening pass below) | `pytest -q` | **328 passed**, 1 skipped-on-rerun (catalogue contract-equivalence vs a live Next dev server — pre-existing, environmental, unrelated to finance/orders), 2 skipped |
+| Whitespace/conflict check | `git diff --check` | exit 0 (CRLF-normalization warnings only, pre-existing across the repo) |
+
+### Backfilled: the finance-hardening pass this checkpoint found already done but unrecorded
+
+A prior session (compacted mid-work) had already implemented and verified a full "Package
+2: Finance Hardening" pass but never wrote it to `TASKS.md`/`HANDOFF.md`. Found on disk and
+re-verified this session, now recorded in `TASKS.md` under WP-1 ("Admin bulk commission
+assessment", "Finance hardening test suites", "Playwright finance E2E" rows):
+
+- `POST /api/admin/finance/assessments/run` (bulk commission assessment — service existed,
+  the route did not) + Next client + Admin UI button.
+- `backend/tests/finance/{test_authorization,test_integrity,test_assessment_run,
+  test_concurrency_transitions}.py` — 19-endpoint role matrix, cross-seller/adjustment
+  reference rejection, no-audit-on-failure, DB-enforced reversal uniqueness, assessment-run
+  idempotency/concurrency, concurrent-reverse and concurrent-confirm each leaving exactly
+  one winner.
+- `app/tests/finance-fixtures.ts` + `app/tests/finance-flows.spec.ts` — 7 authenticated
+  Playwright flows against isolated seeded data (not smoke/render-only checks).
+
+### Playwright mobile finance test — investigated, recorded, not re-opened as blocking
+
+`finance-flows.spec.ts`'s `"finance pages stay usable on a mobile viewport"` test was
+flaky earlier in this engagement. It was **fully root-caused in a prior turn this
+session** (see the transcript around the "authenticated server-rendering issue"
+investigation) as an **environment/process-hygiene problem, not a product or test defect**:
+
+- The frontend dev port was being served by a stale `next start` (production) process
+  whose in-memory build manifest no longer matched the files on disk in
+  `.next/static/chunks/*` after a later `next build` ran without restarting it. The
+  browser was handed HTML referencing deleted chunk files, those requests 500'd, client
+  hydration failed, and React fell back to the nearest ancestor Suspense/error boundary —
+  the *root* `loading.tsx`/`error.tsx` (catalogue-flavored copy), not anything
+  finance-specific. Confirmed directly: `curl .../_next/static/chunks/<name>.js` → bare
+  `500`, and that filename does not appear anywhere in the current `.next/build-manifest.json`.
+- **This session, `:3000` is again being served by a `next start`/`npm run start` process**
+  (PID 47812 / 27600 at the time of writing, started ~15:49, i.e. **not started by this
+  checkpoint's work** — this repo is shared across OpenCode/Antigravity/Freebuff per
+  `AGENTS.md`, so another IDE/agent appears to be using it live right now). Running
+  `npm run build` for this checkpoint's own verification (above) will have made that
+  mismatch worse for whoever owns that process, exactly as previously diagnosed. Per the
+  multi-IDE rule ("one IDE writes at a time"), this checkpoint did **not** stop or restart
+  that process, and did **not** attempt to re-run the mobile Playwright test against it —
+  doing so would both race with the other session and reproduce a known-bad state rather
+  than test real behavior.
+- **Recommendation for whoever next verifies finance Playwright specs:** confirm no other
+  IDE/agent is using the shared dev port, then run a single clean `npm run build && npm run
+  dev` (or just `npm run dev` for iteration) before re-running
+  `npx playwright test tests/finance-flows.spec.ts`. The test itself needs no changes — all
+  7 cases, including the mobile one, passed cleanly in the session that authored them once
+  the server was healthy.
+
+## Prior task (stabilisation verification checkpoint — 2026-11-11)
+
+Branch `feature/backend-mvp` @ `1f0f61f` — nothing committed, staged, reset, stashed, pushed or deployed.
+Verification-only pass; the only code change is a two-token TypeScript annotation fix (below).
+
+### Verified results (all executed this session)
+
+| Check | Command | Result |
+|---|---|---|
+| Catalogue contract file | `pytest tests/catalog/test_contract_equivalence.py` | **14 passed** (Next.js dev server reachable on :3000) |
+| Four contract edge cases, individually | `category=cement`, `sort=newest`, `page=999`, `/products/10/offers` | **1 passed each (4/4)** |
+| Full FastAPI suite | `.venv/Scripts/python.exe -m pytest` | **204 passed**, 0 failed, 177 warnings, 28.3 s |
+| Full Vitest suite | `npm run test` | **158 passed / 27 files** |
+| TypeScript | `npx tsc --noEmit` | **exit 0** (clean after the fix below) |
+| ESLint | `npm run lint` + `npx eslint tests/finance-smoke.spec.ts` | **exit 0**, 0 problems |
+| Production build | `npm run build` (Turbopack) | **exit 0**, all routes emitted, Proxy (Middleware) present |
+| Prisma schema | `npx prisma validate` | valid |
+| Migrations | `npx prisma migrate status` | **6 migrations**, "Database schema is up to date!" (127.0.0.1:5433/constrowell) |
+| Whitespace/conflict check | `git diff --check` | **exit 0** |
+
+### Fix made (verified regression, stabilisation-scoped)
+
+`app/tests/finance-smoke.spec.ts` (added by the WP-1B pass) failed `tsc --noEmit` with
+`TS7006` on two parameters of its local `login()` helper — Playwright types are not inferred
+for a hand-written helper's parameters, so `page` and the `waitForURL` callback `url` were
+implicitly `any`. Fixed by importing `type Page` and annotating `login(page: Page, ...)`.
+No test logic, assertion or behaviour changed. Two lines.
+
+### Configuration check (task item 8)
+
+- `app/.env` keys present: `DATABASE_URL`, `FINANCE_API_URL`, `OTP_ENCRYPTION_KEY`, `SESSION_SECRET`.
+- `FINANCE_API_URL="http://127.0.0.1:8000"` — set, and it is the finance-only switch
+  (`lib/api/financeProxy.ts`). `FASTAPI_BASE_URL` is **absent**, which is exactly the
+  intended split: `lib/api/catalogSource.ts` gates the catalogue cutover on
+  `FASTAPI_BASE_URL`, so the catalogue stays on the Next.js/Prisma reader with no
+  `CATALOG_SOURCE` override needed.
+- Live confirmation: FastAPI on :8000 (`/health` 200, `/docs` 200, `/openapi.json` 200);
+  `GET :3000/api/seller/finance/statement` returns **401** unauthenticated (proxy reaches
+  FastAPI — a 503 would mean misconfiguration); `GET :3000/api/categories` 200 from the
+  Next.js/Prisma path.
+- Correction to the previous checkpoint's wording: it says `FASTAPI_BASE_URL` was added to
+  `app/.env`. It was not — `FINANCE_API_URL` was, which is the correct variable for a
+  finance-only cutover. The code and `.env.example` agree; only that sentence was wrong.
+
+### Remaining failures
+
+**None in any suite.** Non-failing warnings observed: Prisma 7 deprecation for
+`package.json#prisma`; httpx per-request `cookies=` deprecation in the finance tests;
+Starlette `TestClient`/`httpx` deprecation. All are upstream warnings, not project defects.
+
+Known non-blocking state, unchanged and not investigated further per scope: `@example.test`
+test residue in the dev DB from earlier sessions; owner decisions still open for commission
+rate/basis, remittance method/frequency and refund/adjustment policy.
+
+### Readiness for finance hardening
+
+**Ready to proceed.** Both suites are green, the schema and all 6 migrations are applied and
+validated, the build is clean, and the finance BFF/authorization path is confirmed reachable
+with enforcement intact. The blockers that remain are **product decisions, not defects** —
+commission rate/basis, remittance method and frequency, refund/adjustment policy — plus a
+live-data browser walkthrough of the finance screens, which this pass did not perform
+(no browser verification was in scope).
+
+## Prior task (WP-1B finance hardening + frontend — 2026-11-11)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed — no commit/push/deploy/branch switch).
+
+**Part A — hardening:**
+- **Migration `20261111200000_relax_allocation_pair_index`** drops the over-strict partial
+  unique index so a remittance may allocate to the same assessment repeatedly (partial
+  allocations) and a later remittance may top up a partially-allocated assessment. Over-
+  allocation is still prevented by `with_for_update()` row locks + balance re-checks.
+- **Statement fix:** `outstandingCommission = assessed − netAllocated`; customer-refund
+  adjustments are now reported separately and no longer (incorrectly) reduce commission
+  owed. New tests: repeated partial allocations, later-remittance top-up, returned
+  remittance excluded from platform cash, reverse-one-of-many-partial allocations.
+
+**Part B/C — frontend (BFF to FastAPI):**
+- Thin proxy route handlers `app/src/app/api/{seller,admin}/finance/[...path]/route.ts`
+  (forward `cw_session` to FastAPI; FastAPI stays the auth boundary).
+- Seller `/seller/finance` (statement, collections + confirm + discrepancy, remittances +
+  initiate, refund adjustments) and Admin `/admin/finance` (discrepancies + dispute,
+  remittance verify/fail/return + allocate/reverse, commission + policy, adjustment
+  apply/reverse).
+- Added admin list endpoints (`/api/admin/finance/{collections,remittances,assessments,adjustments}`)
+  with seller `storeName`.
+
+**Part D — legacy relabel:** seller payments tab and Admin overview/detail escrow are now
+labelled "Legacy escrow (pre-cutover)".
+
+**Verified:** FastAPI **200 passed / 4 failed** (the 4 failures are catalog
+`test_contract_equivalence` — they compare against a running Next.js dev server and are
+environmental, not finance-related); Vitest **158/158**; `tsc` clean; ESLint clean;
+production build OK; `prisma validate` OK; 5 migrations applied. `FASTAPI_BASE_URL` added to
+the local `app/.env` so the finance BFF can reach FastAPI (uncommitted). FastAPI dev server
+running on :8000, Next.js dev server restarted on :3000.
+
+## Next work package
+
+Owner decisions for production commission/remittance configuration (none invented), plus a
+live-data browser walkthrough of the new finance screens.
+
+---
+
+## Prior checkpoint (WP-1 seller-collected COD finance foundation — 2026-11-11)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed — no commit/push/deploy/branch switch).
+
+**Implemented (backend foundation + order cutover):**
+
+- **Prisma migration `20261110222135_add_seller_collected_cod_finance`** (additive, applied):
+  `FinanceModel` enum + `Order.financeModel` (default `escrow`), plus `CodCollection`,
+  `CommissionAssessment`, `Remittance`, `RemittanceAllocation`, `SellerAdjustment`,
+  `CommissionPolicy`. A partial unique index (`RemittanceAllocation_one_open_per_pair`)
+  enforces one open allocation per (remittance, assessment). Legacy `EscrowEntry` is
+  untouched and preserved.
+- **FastAPI finance domain** (`domains/finance/service.py`, `routers/finance.py`,
+  `models/finance.py`, `schemas/finance.py`, wired in `main.py`) — 19 endpoints:
+  - Seller: `GET /api/seller/finance/statement`, `collections`, `collections/{id}/confirm`,
+    `remittances` (GET/POST), `adjustments` (GET/POST).
+  - Driver (seller's agent): `POST /api/driver/finance/collections/{id}/confirm`.
+  - Admin: collection discrepancies/dispute, commission assess/waive, remittance
+    verify/fail/return, allocation create/reverse/list, adjustment apply/reverse, policy
+    create, seller statement.
+  - Decimal-only money; commission is policy-driven (fail-closed — no rate invented);
+    `with_for_update()` row locks + partial index guard concurrent allocation; every
+    financial write is audited via the append-only `AuditEvent`.
+- **Next.js cutover**: `placeOrderTx` now writes a `CodCollection` expectation +
+  `financeModel:"seller_collected"` and stops writing `held` escrow; cancel/reject mark the
+  collection `cancelled` (`lifecycle.cancelCodCollection`). `sellerPaymentsSummary` is
+  relabelled as legacy (pre-cutover) read-only history.
+
+**Verified:** FastAPI **200/200** (43 new finance tests incl. a genuine two-connection
+concurrency test); Vitest **158/158** (order tests updated to the new model); `tsc` clean;
+ESLint clean; production build OK; `prisma validate` OK; `migrate status` up to date (4
+migrations); `git diff --check` clean. Migration is additive — existing `Order`/`EscrowEntry`
+data preserved (verified no rows modified).
+
+**Known notes:** a small amount of pre-existing `@example.test` test residue exists in the
+dev DB from prior sessions (not created by this task — re-running the test suites leaves
+the counts unchanged). No seller/Admin frontend screens were added (next package).
+
+## Next work package (WP-1 frontend integration)
+
+Wire the seller portal and Admin console to the finance endpoints above; relabel the legacy
+escrow payments tab. Owner decisions still open: commission rate/basis, remittance
+method/frequency, refund/adjustment policy — none invented.
+
+---
+
+## Prior checkpoint (feature-parity reconciliation + seller-collected COD architecture - 2026-11-11)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed). Planning only — no code,
+schema, business-data, branch or deploy changes.
+
+- Produced `docs/feature-parity-assessment-2026-11-11/` (11 documents) reconciling all four
+  portals + shared platform against live code, tests and existing audits. Tally: **31
+  COMPLETE / 27 PARTIAL / 14 MISSING / 6 BLOCKED** across 78 capabilities. Financial
+  semantics validated in `FINANCIAL_ARCHITECTURE_VALIDATION.md` (legacy positive-amount /
+  type-signed escrow, retained read-only) and the target seller-collected COD domain
+  specified in `SELLER_COLLECTED_COD_ARCHITECTURE.md`.
+- **Owner-confirmed (2026-11-11):** COD is collected by the **seller** directly; an assigned
+  driver may collect cash as the seller's agent; **Constro-Well does not collect or custody
+  COD proceeds.** This replaces the platform-custody escrow/payout model — the target is now
+  commission receivable → seller remittance → allocation → reconciliation.
+- Key blockers: no commission receivable/remittance/reconciliation (Constro-Well cannot
+  collect its commission), no dispute/refund resolution, no KYC document/decision lifecycle,
+  no file storage, no notifications, no background jobs; customer gaps: wishlist, review
+  submission, guest cart, account page.
+- Next work package: **WP-1 (commission receivable + remittance + reconciliation —
+  seller-collected COD)** — gated on owner decisions in `OPEN_OWNER_DECISIONS.md`
+  (commission rate/basis, remittance frequency/method, refund/adjustment policy).
+- All tasks 9.1–9.14 remain DONE and preserved. No schema/business data touched; servers
+  not started for this planning task.
+
+
+## Last completed task (TASK 9.14 - Admin activity log filters - 2026-11-11)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed).
+
+- **Backend:** `GET /api/admin/audit-events` accepts `action` (exact), `actorId` (exact), `from` (inclusive), `to` (exclusive) plus page/pageSize. Dates are parsed as ISO 8601; naive values are treated as UTC and normalized to Prisma's naive-UTC storage; `from >= to` and malformed dates → `400 validation_error`. Filters apply in SQL before count/offset, ordering `createdAt DESC, id DESC` unchanged. New `GET /api/admin/audit-events/filters` returns bounded distinct actions + actor `{id,name}` from real audit rows — a non-auditing UI helper; the filtered list read still writes exactly one `admin.audit_events.list` event, fail-closed.
+- **Frontend:** `/admin/activity` has a server-rendered GET form (action select, administrator select, From/To date inputs, Apply, Clear); filters live in the URL, pagination links retain them, the filtered empty state explains no matches (Clear link), and a note states “To” is inclusive with the API receiving next-day 00:00 UTC. Options failing degrade to empty selects without breaking the page. Table metadata whitelist and Admin shell unchanged; responsive.
+- **Files created:** `backend/tests/admin/test_audit_filters.py`, `app/src/lib/admin/activityFilters.ts` + test. **Modified:** `backend/fastapi_app/domains/admin/service.py`, `schemas/admin.py`, `routers/admin.py`, `app/src/lib/api/adminApi.ts`, `app/src/app/admin/activity/page.tsx`, `app/src/components/admin/AdminAuditTable.tsx`, `backend/README.md`, `TASKS.md`, `HANDOFF.md`.
+- **Verification:** FastAPI **157/157** (10 new: auth, exact action/actor, inclusive/exclusive boundaries, combined, invalid/reversed, filtered pagination + tie-break, empty, filter options, audit-once, rollback). Vitest **158/158**; `tsc`, full ESLint, production build, `git diff --check` clean. Live API: 7 action options / 1 actor, action total 11, actor total 88, invalid & reversed dates 400. Browser: action apply, actor apply (90 entries/page 1 of 5), pagination keeps `actorId`, combined action+date view, Clear resets, mobile 390 no overflow, guest login, customer notice, backend down “Activity couldn’t load”; all Admin pages still 200; no sensitive strings or backend URL.
+- **Data:** 0 smoke users/sessions after cleanup; `AuditEvent` now 109 append-only verification rows; no business records modified.
+- **Known limits:** filter values themselves are not written to the audit metadata (safe whitelist only page/pageSize/total); action/actor options are capped at 200 distinct values; date filtering is by UTC day boundaries (UI converts To to next-day exclusive); no saved filter presets or free-text search.
+- **Next recommendation:** Admin **audit metadata safety review + actor activity profile** (per-administrator drill-down reusing the same filters) or, if the owner approves schema additions, the KYC document/decision slice — the latter remains blocked without a schema change.
+
+## Last completed task (TASK 9.13 - Admin overview dashboard - 2026-11-11)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed). `/admin` is no longer a redirect; it is the real dashboard.
+
+### Metric definitions (as implemented)
+
+| Metric | DB definition | Window | Rules | Type |
+|---|---|---|---|---|
+| Users total | `COUNT("User")` | all time | every role | current |
+| New users | `COUNT("User" WHERE "createdAt" >= now-30d)` | rolling 30×24h UTC | same | period |
+| Sellers total / new | `COUNT("Seller")` / `createdAt >= now-30d` | all / rolling 30d | all sellers | current / period |
+| Orders total / new | `COUNT("Order")` / `createdAt >= now-30d` | all / rolling 30d | includes cancelled | current / period |
+| Cancelled orders | `COUNT("Order" WHERE cancelled)` | all time | stored flag only | current |
+| Order stage distribution | `COUNT(*) GROUP BY stage` | all time | 5 enum values incl zeros | current |
+| Shipment status distribution | `COUNT(*) GROUP BY "Shipment".status` | all time | 11 enum values incl zeros; per seller shipment, not order | current |
+| Orders per day | `COUNT(*) GROUP BY CAST("createdAt" AS date)` | 30 UTC days ending today | zero-filled buckets | period |
+| Escrow by type | `COUNT(*), SUM(amount) GROUP BY type` | all time | actual ledger rows; includes seller-level withdrawals; not revenue/settlement | current ledger |
+| KYC pending | `COUNT("Seller")` per flag = `pending` | all time | GST/PAN/cheque counted independently; no overall approval state | current |
+
+Query count: **7 SELECTs** + 1 audit INSERT + COMMIT.
+
+- **Endpoint:** `GET /api/admin/overview` → `{generatedAt, windows, totals, last30Days, orderStages, shipmentsByStatus, ordersPerDay, escrowByType, kycPending}`. `require_admin`; 7 aggregate queries; explicit UTC boundaries; Decimal sums as exact 2dp strings; zero-safe. Read + `admin.overview.read` (`targetType="AdminOverview"`, targetId null) commit together; failure rolls back to 500.
+- **Frontend:** `/admin` Server Component forwards `cw_session`; KPI cards, order-stage/shipment-status bar lists, 30-day CSS bar chart with visually hidden data table, escrow table, KYC pending tiles, definitions/limitations note; Overview nav enabled; loading/error/unauthorized/forbidden states; responsive (no mobile overflow).
+- **Files created:** `backend/tests/admin/test_admin_overview.py`, `app/src/lib/admin/overview.ts` + `.test.ts`. **Modified:** `backend/fastapi_app/domains/admin/service.py`, `schemas/admin.py`, `routers/admin.py`, `app/src/lib/api/adminApi.ts`, `app/src/app/admin/page.tsx` (was a redirect), `app/src/app/admin/loading.tsx`, `app/src/components/admin/nav.ts`, `backend/README.md`, `TASKS.md`, `HANDOFF.md`.
+- **Verification:** FastAPI **147/147** (9 new: 401/403 roles, DB-equivalence, 30-day exclusion of a 40-day fixture, distributions, escrow decimals, KYC, audit-once, rollback, unchanged records). Vitest **153/153**; `tsc`, full ESLint, production build, `git diff --check` all clean. Browser: `/admin` 200 with values matching API (91 users / 37 sellers / 16 orders / 0 cancelled), active Overview nav, all sections, mobile 390 no overflow, customer access notice, guest login, backend-down “Dashboard couldn’t load”; Users/Activity/Sellers/Seller-detail/Orders/Order-detail all 200; no sensitive strings or backend URL.
+- **Data:** 0 smoke users/sessions after cleanup; `AuditEvent` now 87 append-only verification rows; no business records modified.
+- **Known limits:** no revenue/GMV/active-user/conversion/payout/dispute metrics (no defensible schema definition); `ordersPerDay` uses UTC calendar days while `last30Days` is a rolling 30×24h window (both labelled in UI); KYC is per-document flags only; escrow ledger totals are not settlement.
+- **Next recommendation:** **Admin KYC review read slice (per-seller document/decision view) only if the owner approves a Prisma schema addition for KYC documents/decisions** — currently impossible without inventing data. Without that approval, the next cohesive read-only feature is an Admin **audit-log filters** enhancement (action/actor/date filters) because it reuses the existing table, needs no schema change and improves investigation of the workflows now exposed.
+
+## Last completed task (TASK 9.12 - Admin order detail - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed).
+
+- **API:** `GET /api/admin/orders/{id}` → `{order, customer, money, lines, shipments(+events), financialRecords}`. `require_admin`; 401/403/404 `order_not_found` (no audit); 5 bounded queries; stored order/line/escrow snapshots only (no current prices); Decimal→exact 2dp strings; shipments ordered `createdAt ASC`, events `at ASC`, lines/escrow stable; no addressSnapshot/bank/credentials. Read + `admin.orders.detail` (`targetType="Order"`, `targetId`) commit together; audit failure rolls back to 500.
+- **Orders list:** rows now link to `/admin/orders/[id]` via “View details”.
+- **Frontend:** `/admin/orders/[id]` sections — order overview, customer (name/ID/email; address intentionally hidden), totals, items, each seller shipment with status/timestamps and recorded events, escrow ledger rows, and an explicit “history may be incomplete / no implied settlement” note. Back link, loading/error/not-found states; responsive (min-w-0 fixes on table cards removed mobile overflow).
+- **404:** unknown orders return a real HTTP 404 via a Proxy existence check (`GET /api/admin/orders/{id}/exists`, non-auditing); the customer 403 now passes through to the access notice instead of a misleading 404.
+- **Files created:** `backend/tests/admin/test_order_detail.py`, `app/src/app/admin/orders/[id]/{page,loading,error,not-found}.tsx`, `app/src/lib/admin/orders.ts` + `.test.ts`. **Modified:** `backend/fastapi_app/models/orders.py` (detail fields/entities), `domains/admin/service.py` (+`get_order_detail`), `schemas/admin.py`, `routers/admin.py` (+detail/exists), `backend/tests/admin/conftest.py` (line/event/escrow fixtures), `app/src/proxy.ts` (orders matcher, 403 pass-through), `app/src/lib/api/adminApi.ts`, `app/src/components/admin/AdminOrdersTable.tsx`, `backend/README.md`, `TASKS.md`, `HANDOFF.md`.
+- **Verification:** FastAPI **138/138** (10 new detail tests incl. snapshot values, multi-shipment, event order, escrow, audit-once, rollback, unchanged records). Vitest **150/150** (one transient failure on the first run, clean rerun); `tsc`, full ESLint, production build OK; `git diff --check` clean. HTTP/browser: admin orders list → detail → back, sections/money/line snapshots/events/financial visible, unknown order 404 with links, customer notice, guest login, backend down “Order couldn’t load”, mobile no overflow; users/activity/sellers/seller-detail still work; no sensitive strings or backend URL.
+- **Database:** 0 `test_%` orders/lines/shipments/events/escrow/users/sessions after cleanup; `AuditEvent` now 74 append-only verification rows; no business rows modified.
+- **Known limits:** shipment events/escrow reflect stored rows only (seeded history may be sparse); address snapshots deliberately hidden; no order actions, disputes, refunds or escrow operations; proxy adds one lightweight existence request per detail navigation (non-auditing).
+- **Next:** owner review before any order mutations, dispute/refund workflows or escrow operations.
+
+## Last completed task (TASK 9.11 - Admin order monitoring - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed). Includes the verified TASK 9.10 404 correction.
+
+- **9.10 correction:** unknown sellers now return **HTTP 404** (known seller 200). The root `loading.tsx` streams a shell before `notFound()` can set a status, so `app/src/proxy.ts` performs a fast, non-auditing existence check (`GET /api/admin/sellers/{id}/exists`) and returns a self-contained 404 document with Back/View-all links; the page still performs the single audited read. Removed the now-unused detail `loading.tsx`; guest/customer/backend-down behaviour unchanged.
+- **9.11 backend:** `GET /api/admin/orders` → `{orders:[{id,code,customer:{id,name},stage,cancelled,grossTotal,lineCount,shipmentCount,shipments:[{code,sellerName,status}],createdAt}], pagination}`; `require_admin`; ordered `createdAt DESC, id DESC`; 4 bounded queries (orders+customer, line counts, shipments+sellers); stored `OrderStage` + `cancelled` and raw `ShipmentStatus` values, no invented unified status; Decimal→2dp strings. Read + `admin.orders.list` commit together (500 rollback on audit failure).
+- **9.11 frontend:** `/admin/orders` server page forwards `cw_session`; Orders nav enabled desktop+mobile; responsive table (order, customer, stage/cancelled, total, lines, per-seller shipment chips, placed), pagination, out-of-range message, loading/empty/error/unauthorized states. No mutations.
+- **Files created:** `backend/fastapi_app/models/orders.py`, `backend/tests/admin/test_admin_orders.py`, `app/src/proxy.ts`, `app/src/app/admin/orders/{page,loading,error}.tsx`, `app/src/components/admin/AdminOrdersTable.tsx`. **Modified:** `backend/fastapi_app/domains/admin/service.py`, `schemas/admin.py`, `routers/admin.py` (+exists), `app/src/lib/api/adminApi.ts`, `app/src/lib/admin/pagination.ts` + test, `app/src/components/admin/nav.ts`, `AdminIcon.tsx`, `app/src/app/admin/sellers/[id]/page.tsx` (generateMetadata + cached loader, real-404 handoff), removed `app/src/app/admin/sellers/[id]/loading.tsx`, `backend/README.md`, `TASKS.md`, `HANDOFF.md`.
+- **Verification:** FastAPI **128/128** (9 new order tests + existing). Vitest **148/148**; `tsc` clean; full ESLint clean; production build OK. HTTP: seller known=200 / unknown=404 with links; orders 200 (“16 orders · page 1 of 1”), page 2 out-of-range, customer/guest blocked, backend-down honest, users/activity/sellers/detail still 200. Playwright desktop 1440 (orders table, 404 status via navigation, seller detail → Back) and mobile 390 (sidebar hidden, bottom nav, scroll) passed; no sensitive strings or backend URL in HTML.
+- **Data:** real seeded orders are single-seller (16 orders, 1 shipment each); multi-seller representation is covered by isolated tests. 0 `test_%` users/sessions/sellers/orders/shipments after cleanup; `AuditEvent` now 60 append-only rows from verification; no business rows modified.
+- **Known limits:** proxy existence check adds one lightweight request per detail navigation/prefetch; the 404 document is standalone (not the React shell) because of the streaming constraint; no order detail page (not supported by an existing contract); no cancellation/refund/escrow views; escrow intentionally omitted.
+- **Next:** owner decision needed for order detail/actions, disputes/escrow, or KYC document schema.
+
+## Last completed task (TASK 9.10 - Admin seller detail - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed).
+
+- **API:** `GET /api/admin/sellers/{seller_id}` → `{seller:{id,storeName,city,phone,vacationMode,kycGst,kycPan,kycCheque,createdAt}, owner:{id,name,email,createdAt}, auditHistory:[last 5 seller-scoped events]}`. `require_admin`; 401/403/404 `seller_not_found`; no GSTIN/bank/pickup/documents; KYC values are the stored enum only. The read + `admin.sellers.detail` (`targetType="Seller"`, `targetId=seller_id`) commit together; 404 writes no audit; audit failure rolls back to 500. No seller/user rows mutate.
+- **History limitation:** only audit rows with `targetType='Seller'` **and** a `targetId` are shown (currently seller detail reads). List views are not seller-scoped and prior activity predates the feature — the UI labels this as incomplete, and it is not a business history.
+- **Frontend:** `/admin/sellers/[id]` server page forwards `cw_session`; cards for profile, owner, KYC checks and recorded admin activity; Back-to-sellers link; loading, not-found, unauthorized, forbidden, unconfigured and backend-down states; responsive 2-column grid. `AdminSellersTable` rows gained a “View details” link. No approval/mutation controls, no documents.
+- **Files created:** `backend/tests/admin/test_seller_detail.py`, `app/src/app/admin/sellers/[id]/{page,loading,error}.tsx`, `app/src/lib/admin/sellers.ts` + `.test.ts`. **Modified:** `backend/fastapi_app/models/seller.py` (+phone), `domains/admin/service.py`, `schemas/admin.py`, `routers/admin.py`, `backend/tests/admin/test_seller_detail.py` (new), `app/src/lib/api/adminApi.ts`, `app/src/components/admin/AdminSellersTable.tsx`, `backend/README.md`, `TASKS.md`, `HANDOFF.md`.
+- **Verification:** FastAPI **117/117** (10 new detail tests: 401/403, contract, owner linkage, KYC, 404-not-audited, audit-once, bounded history, audit failure, unchanged records). Vitest **148/148**; `tsc` clean; full ESLint clean; production build OK. Production smoke: admin detail 200 with store/owner/KYC/history and Back link; unknown → “Seller not found”; customer → access notice; guest → login; FastAPI stopped → “Seller couldn’t load”; users/activity/sellers still 200; `/`, `/product/0`, `/cart`, `/seller`, `/delivery`, `/orders` all 200. Playwright desktop 1440 (list → detail → Back) and mobile 390 (no horizontal overflow, bottom nav) passed; no sensitive strings or backend URL in HTML.
+- **Database:** 0 `test_%` sellers/users/sessions after cleanup; `AuditEvent` now **44** append-only rows from verification reads; no seller/user records modified.
+- **Limits:** no KYC documents/decisions exist in the schema, so no document viewer or approval is possible; phone/email are shown as business contact (admin-only). Detail history is incomplete by design.
+- **Next:** owner decision required before any seller/KYC approval workflow (needs document/decision schema); otherwise 9.11 admin order monitoring or dispute read slice.
+
+## Last completed task (TASK 9.9 - Admin sellers/KYC read slice - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed). Includes the TASK 9.8 pagination correction verified first.
+
+- **9.8 correction:** out-of-range activity pages no longer render "page 2 of 1". `listPageState(page,total,totalPages)` returns `empty` / `out-of-range` / `page`; the page shows an explicit “requested page N is outside the available range (1–M)” message, the empty component keeps a working “Back to latest activity” link, and zero records show “No activity recorded yet” with no page count. Backend contract and audit transaction untouched. Admin layout guest redirect changed to `/login?next=/admin` (the layout cannot see the requested path; the old hardcoded `next=/admin/users` was wrong for other admin pages).
+- **9.9 backend:** `GET /api/admin/sellers` → `{sellers:[{id,storeName,ownerUserId,ownerName,city,vacationMode,kycGst,kycPan,kycCheque,createdAt}], pagination}`; `require_admin`; ordered `createdAt DESC, id DESC`; 2 queries; KYC = stored enum values only; no GSTIN/bank/pickup/documents; read + `admin.sellers.list` audit commit together (500 on audit failure). SQLAlchemy `Seller` mapping gained `kycGst/kycPan/kycCheque/createdAt` (read-only, no DDL).
+- **9.9 frontend:** `/admin/sellers` server page forwards `cw_session`; Sellers nav enabled (desktop + mobile); responsive table (store, owner, city, KYC pills, vacation, joined), pagination, loading/empty/error/unauthorized states; KYC pills show actual enum values with no inferred labels.
+- **Files created:** `backend/tests/admin/test_admin_sellers.py`, `app/src/app/admin/sellers/{page,loading,error}.tsx`, `app/src/components/admin/AdminSellersTable.tsx`. **Modified:** `backend/fastapi_app/models/seller.py`, `domains/admin/service.py`, `schemas/admin.py`, `routers/admin.py`, `backend/tests/admin/conftest.py` (seller fixture) + `test_audit_events.py` (delta-based audit assertions), `app/src/lib/admin/pagination.ts` + test, `app/src/lib/api/adminApi.ts`, `app/src/components/admin/nav.ts`, `app/src/app/admin/activity/page.tsx`, `app/src/components/admin/AdminAuditTable.tsx`, `app/src/app/admin/layout.tsx`, `backend/README.md`, `TASKS.md`, `HANDOFF.md`.
+- **Verification:** FastAPI **106/106** (11 new sellers tests incl. 401/403, contract, KYC, ordering/tie-break, bounds, audit-once, audit failure, unchanged records). Vitest **145/145**; `tsc` + full ESLint clean; production build OK. Production smoke: sellers 200 with 20 rows, “37 sellers · page 1 of 2”, page 2 valid, page 3 out-of-range with link; customer blocked; guest → `/login?next=/admin`; backend down → honest error; users/activity still 200. Playwright desktop 1440 and mobile 390 (sidebar hidden, bottom nav, table scroll) passed; no sensitive strings or backend URL in HTML.
+- **Schema findings / limits:** `KycStatus` has only `verified | pending`; there is no KYC document table, no review/decision record, no seller onboarding-status column and no overall “verified seller” flag. The list therefore exposes only the three stored KYC flags; nothing is inferred. No approval/rejection actions, document viewer or seller mutations were built.
+- **Database:** 0 smoke users/sessions after cleanup; `AuditEvent` now 29 append-only rows (verification reads); no seller/user rows changed.
+- **Next:** 9.10 — seller detail/KYC review read slice, or explicit owner decision on adding KYC documents/decisions (schema change) before any approval workflow.
+
+## Last completed task (TASK 9.8 - Admin activity log - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed).
+
+- **API:** `GET /api/admin/audit-events?page=1&pageSize=20` → `{events:[{id,action,actor:{id,name},targetType,targetId,metadata,createdAt}], pagination:{page,pageSize,total,totalPages}}`; `require_admin`; newest first (`createdAt DESC, id DESC`); 2 queries; metadata whitelisted to `page`/`pageSize`/`total` (drops tokens, passwords, nested/unknown keys); the read and its `admin.audit_events.list` row commit in one transaction (500 + rollback on audit failure). Append-only triggers still reject UPDATE/DELETE/TRUNCATE.
+- **Frontend:** `/admin/activity` server page forwards `cw_session` to FastAPI; Activity log nav item enabled; table shows when, administrator (name + id), action (label + code), target, safe details; windowed pagination; loading/empty/error/unauthorized/forbidden states. Shared `AdminNotice` extracted; users page unchanged behaviour.
+- **Files created:** `backend/tests/admin/test_audit_events.py`, `app/src/app/admin/activity/{page,loading,error}.tsx`, `app/src/components/admin/{AdminAuditTable,AdminNotice}.tsx`, `app/src/lib/admin/activity.ts` + `activity.test.ts`. **Modified:** `backend/fastapi_app/{domains/admin/service.py,schemas/admin.py,routers/admin.py}`, `backend/tests/admin/test_admin_users.py` (pre-existing audit rows now counted by delta), `app/src/lib/api/adminApi.ts`, `app/src/lib/admin/pagination.ts` + test, `app/src/components/admin/nav.ts`, `app/src/app/admin/users/page.tsx` (shared notice), `backend/README.md`, `TASKS.md`, `HANDOFF.md`.
+- **Verification:** FastAPI **95/95** (11 new). Frontend Vitest **141/141** (23 files), `tsc --noEmit` clean, full ESLint clean, `npm run build` succeeded. Production smoke: admin page 200 with header “8 entries · page 1 of 1”, safe details (`page 1 · pageSize 20 · total 91`), page 2 → empty-page state, customer → access notice, FastAPI stopped → “Activity couldn’t load” (no mock data), `/admin/users` still 200. Browser (Playwright): desktop 1440 (11 rows, active “Activity log” nav, safe details, no backend URL), mobile 390 (sidebar hidden, bottom nav, table scrolls), non-admin blocked.
+- **Database:** 0 smoke users/sessions after cleanup. `AuditEvent` now holds 14 legitimate append-only rows (the 8 from 9.7 plus 6 from verification reads); none modified or deleted.
+- **Known limits:** no filters/search/date range; page size fixed 20; audit metadata outside the whitelist is hidden by design; viewing the log adds an entry (expected). The user list remains a separate slice.
+- **Next:** 9.9 — next Admin read slice (sellers + KYC status) or extend audit-log filtering, owner to choose.
+
+## Last completed task (TASK 9.7 - Admin console frontend - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed).
+
+- **Routes:** `/admin` redirects to `/admin/users`; `/admin/users` is a Server Component that forwards the existing `cw_session` cookie to FastAPI `GET /api/admin/users`. The layout gates on the Next session role for UX only; FastAPI `require_admin` remains the authorization boundary (no client-side role trust).
+- **UI:** dark-navy admin sidebar + mobile bottom nav matching the seller/driver shells; prototype IA preserved (Overview, Approvals, Deliveries, Payouts, Sellers, Users, Activity log, Settings) with unimplemented items visibly disabled and titled “Available in a later task”; no fabricated metrics. Users table shows name, ID, email, phone, role pill and joined date; page size fixed at 20; windowed pagination; loading skeleton, empty page, error (backend down / unconfigured), unauthorized and forbidden states.
+- **API config:** `FASTAPI_BASE_URL` is read server-side only (never `NEXT_PUBLIC_`); no mock fallback.
+- **Files created:** `app/src/app/admin/{layout,page}.tsx`, `app/src/app/admin/users/{page,loading,error}.tsx`, `app/src/components/admin/{AdminIcon,AdminSidebar,AdminBottomNav,AdminTopBar,AdminAccessNotice,AdminUsersTable}.tsx`, `app/src/components/admin/nav.ts`, `app/src/lib/admin/pagination.ts` + `.test.ts`, `app/src/lib/api/adminApi.ts`. **Modified:** `TASKS.md`, `HANDOFF.md`, `backend/README.md`.
+- **Verification:** `tsc --noEmit` clean; ESLint clean on all new/changed files; `npm run build` succeeded (`/admin`, `/admin/users` in the route manifest); Vitest **137/137** (22 files; two consecutive clean runs — the first full run had one transient failure that did not reproduce, likely the DB concurrency test). Production `next start` smoke: guest → `/login?next=/admin/users`; customer → “Administrator account required” with no table; admin → 20 rows, “91 accounts · page 1 of 5”, page 2 via link; FastAPI stopped → “Users couldn’t load”, no mock data; page-size/pagination query handling; no `FASTAPI_BASE_URL`/backend URL in HTML. Browser (Playwright, installed): desktop 1440 (table, 20 rows, page 2 click) and mobile 390 (sidebar hidden, bottom nav visible, table horizontally scrollable). Existing portals `/`, `/product/0`, `/cart`, `/search`, `/seller`, `/delivery`, `/orders` all 200.
+- **Data note:** verification created **8 legitimate `AuditEvent` rows** (`admin.users.list`) against a real admin session; they are append-only and were intentionally left in place. Temporary smoke sessions/customer were deleted (0 residue). No real user rows modified.
+- **Known limits:** only the Users slice exists; no search/filter/sort, no user actions (edit/suspend/roles), no other admin destinations; page size fixed at 20; `page` beyond the end renders the empty state with a link back.
+- **Next:** 9.8 — next Admin read slice (e.g. sellers + KYC status with the same audit pattern) or admin audit-log browsing, owner to choose.
+
+## Last completed task (TASK 9.6 - Admin users slice + audit - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed). The approved AuditEvent migration is applied to the local DB only.
+
+- **Endpoint:** `GET /api/admin/users?page=1&pageSize=20` → `{users:[{id,email,name,phone,role,createdAt}], pagination:{page,pageSize,total,totalPages}}`. Protected by `require_admin` (401 `unauthenticated` / 403 `forbidden`); page 1–10000, `pageSize` 1–50 (default 20), invalid input → 400 `validation_error`; deterministic `createdAt DESC, id DESC`; 2 queries (count + page), no N+1; no password hashes/tokens/emails beyond the admin overview fields.
+- **Audit:** new SQLAlchemy mapping `models/audit.py` (no DDL; `metadata` column mapped as `audit_metadata`). `domains/admin/service.py` writes one `admin.users.list` event per successful read with actor from `require_admin`, `targetType="User"`, metadata `{page,pageSize,total}` only, `db.flush()` and **no internal commit**. The router commits the read + audit together in the request session; any failure rolls back and returns 500 `internal_error` without internals. Append-only triggers make the row immutable.
+- **Files created:** `backend/fastapi_app/models/audit.py`, `domains/admin/{__init__,service}.py`, `schemas/admin.py`, `routers/admin.py`, `tests/admin/{conftest,test_admin_users}.py`. **Modified:** `fastapi_app/main.py` (router + tag), `TASKS.md`, `HANDOFF.md`, `backend/README.md`.
+- **Verification:** new admin tests **15/15**; full FastAPI suite **84/84**; auth suite still green. Fixtures use one outer transaction + savepoint join so the endpoint's commit only releases a savepoint; after the run: **0** `AuditEvent` rows and **0** `test_admin_*` users/sessions. `compileall` exit 0; `git diff --check` exit 0. `ruff`/`mypy` are not installed in the backend venv (no Python lint/type tool configured). No browser or production verification.
+- **Known limits:** this is the first Admin vertical slice only — no frontend, no dispute resolution, no seller/KYC/audit-log browsing. `page` beyond the last page returns an empty list with the true total (no clamp), consistent with the catalogue API. Audit metadata is unvalidated JSONB at the DB level; the service keeps it minimal.
+- **Next:** 9.7 — next Admin read slice (e.g. paginated sellers + KYC status with the same audit pattern), or migrate the remaining catalogue write paths; owner to choose.
+
+## Last completed task (TASK 9.5 - reviews + rating histogram read path - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed).
+
+- **Contract finding (important):** the Next.js app has **no HTTP route** for reviews or the rating histogram — `/product/[id]` calls `server/catalog/service.ts#listProductReviews` / `getReviewHistogram` directly. The preserved contract is therefore the existing service DTO (`ProductReviewDto`, `number[5]`), not a legacy endpoint. Recorded in `backend/README.md`; no Next.js endpoint was invented as "legacy".
+- **New FastAPI endpoints:** `GET /api/products/{id}/reviews` → `{reviews:[{name,stars,title,body,postedOn}]}`; `GET /api/products/{id}/rating` → `{histogram:[5★..1★]}`. Lookup by id **or** code, 404 `product_not_found`, 400 `validation_error` for an over-long id, newest-first ordering, en-IN date, `5−stars` buckets, JS `Math.round` percentages, batched queries (no N+1). Read-only.
+- **Facade:** `catalogDb.getProductReviews` / `getRatingBreakdown` call FastAPI when `FASTAPI_BASE_URL` is set; a FastAPI 404 maps to the existing `[]` / `[0,0,0,0,0]` (no fallback), other failures use the existing `catalogSource.ts` fallback and log label + error name only.
+- **Files created:** `backend/tests/catalog/test_reviews.py`. **Modified:** `backend/fastapi_app/models/catalog.py` (Review fields), `schemas/catalog.py`, `domains/catalog/service.py`, `routers/catalog.py`, `backend/tests/catalog/test_contract_equivalence.py` (default Next URL → `:3000`), `backend/README.md`, `app/src/lib/api/catalogApi.ts`, `app/src/lib/api/catalogDb.ts`, `TASKS.md`, `HANDOFF.md`.
+- **Verification:** FastAPI **69/69** (14 live catalogue contract cases vs Next on :3000, 10 new review tests). Next Vitest **132/132**. `tsc --noEmit` clean; ESLint clean; `git diff --check` clean. Cutover-vs-Prisma probe on products 0 and 10: **byte-identical** (`reviews:2`, histogram `[50,0,50,0,0]`, dates `5 November 2026`/`26 October 2026`), unknown product → `[]`/zeros. FastAPI stopped + fallback on → identical data; fallback off → `TypeError`. PDP HTML 200 with the review section rendered; no `127.0.0.1:8001`/`FASTAPI_BASE_URL` in the HTML. **No browser/visual inspection was performed.**
+- **Known gaps:** the running Next dev server on :3000 was pre-existing and not restarted with cutover env, so the cutover was verified through the exact facade functions the page calls, not via page-level FastAPI traffic (uvicorn logs do confirm the probe's requests). Review writes, moderation and helpful votes remain unimplemented/Next-side.
+- **Next:** 9.6 — Start the net-new Admin slice in FastAPI (`GET /api/admin/...` with `require_admin`, audit logging), per `MIGRATION_ROADMAP` Phase 1 "Workflow 12 minimal slice".
+
+## Last completed task (TASK 04 - frontend catalogue cutover - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed).
+
+- **Data flow before:** page → `lib/api/catalogDb.ts` → `server/catalog/service.ts` → Prisma → PostgreSQL.
+- **Data flow after:** page → `catalogDb` → (FastAPI HTTP `/api/products*`, `/api/categories`) when `FASTAPI_BASE_URL` is set → SQLAlchemy → PostgreSQL. On network/5xx failure it logs `[catalogue] FastAPI <label> request failed; using the Next.js implementation` (label + error name only, never the URL) and calls the unchanged Prisma path.
+- **Files:** new `app/src/lib/api/catalogSource.ts` (config + fallback), new `app/src/lib/api/catalogSource.test.ts`; modified `app/src/lib/api/catalogDb.ts` (list/detail/offers + `getCategories`, FBT/similar now use the shared detail loader), `app/src/app/api/categories/route.ts` (delegates to `catalogDb.getCategories`), `app/.env.example`, `TASKS.md`, `HANDOFF.md`.
+- **Config (server-only, never `NEXT_PUBLIC_`):** `FASTAPI_BASE_URL` (empty ⇒ old behaviour), `CATALOG_SOURCE=next` (force rollback), `CATALOG_FALLBACK=off` (surface FastAPI errors).
+- **Unchanged:** all public facade signatures/types, query params, DTO shapes, not-found → `null`/`[]` semantics, and the Prisma implementation (kept as fallback). Reviews, rating histogram, recently-viewed batch lookup and search facets stay on Prisma.
+- **Verification:** Next Vitest **132/132** (21 files, +7 fallback tests); FastAPI **59/59**; `tsc --noEmit` clean; ESLint clean on changed files; `git diff --check` clean. Live run with FastAPI on :8001 and Next on :3000 under cutover env: home 200 with product rows, `/search?q=cement` 200, `/search?cat=Cement` 200, `/product/0` 200 with seller offers and buy box; uvicorn access log showed the `/api/products` traffic (proves FastAPI served it). FastAPI stopped → home still 200 via fallback. Direct facade probe: fallback OFF + dead URL throws (`TypeError`), fallback ON returns 10 deals rows + product detail. No `127.0.0.1:8001`/`FASTAPI_BASE_URL` string in rendered HTML. No visual/browser-screenshot check was performed.
+- **Known gaps:** search facets and reviews not migrated; FastAPI must be reachable at `FASTAPI_BASE_URL` in each environment (deployment config not set); recently-viewed cards still use the Prisma batch lookup.
+- **Next:** 9.5 — migrate reviews/rating histogram read path (workflow 2 remainder) or start Workflow 12 admin slice; roadmap next listed item is `GET /api/products/[id]` reviews + rating histogram.
+
+## Last completed task (TASK 03 - catalogue read-side in FastAPI - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed).
+
+- **Endpoints (paths/envelopes identical to Next.js):** `GET /api/categories`; `GET /api/products` (`q`, `category` by id or name case-insensitive, `sort` = relevance/price_asc/price_desc/name_asc/newest, `page`, `pageSize` 1–50 default 12); `GET /api/products/{id}` (id **or** code); `GET /api/products/{id}/offers` (offers duplicated at top level and inside `product`). Invalid input → `400 validation_error`; unknown product → `404 product_not_found`.
+- **New files:** `fastapi_app/models/catalog.py` (Category, Product, SellerOffer, SellerPincode, Review), `fastapi_app/domains/catalog/service.py`, `fastapi_app/schemas/catalog.py`, `fastapi_app/routers/catalog.py`, `tests/catalog/{test_catalog_api,test_contract_equivalence}.py`. Modified: `main.py` (router), `tests/conftest.py` (shared `db`/`api_client` fixtures, moved from auth conftest), `README.md`, `TASKS.md`, `HANDOFF.md`.
+- **Parity preserved:** public-offer rule (active + stock ≥ 1 + seller not on vacation), cheapest-offer price/stock/min/lead time, offerCount filter, price sorts computed over the full filtered set then paginated, `total` counted before the offerCount filter for non-price sorts (the existing quirk), exact 2-decimal money strings, no private seller fields.
+- **Queries:** batched per request (products → offers → review aggregate → pincodes); no N+1. Status enum compared as text because PostgreSQL `ProductStatus` has no implicit `=` varchar operator.
+- **Verification:** FastAPI suite **59/59** (27 previous + 32 catalogue). **14/14 live contract-equivalence cases matched the running Next.js dev API** (`127.0.0.1:64704`) with deep JSON equality after normalising pincode order. Existing Vitest catalogue suite **4/4**. Read-only: no Next.js change, no Prisma change, no schema mutation.
+- **Known gaps:** catalogue writes, reviews, wishlist, search facets (brand/price/rating) and the frontend cutover are still Next.js; price sorts still load the full filtered set (same trade-off as today, fine at 48 rows); contract test skips if no Next API is running.
+- **Next:** 9.4 — cut the Next.js catalogue facade (`lib/api/catalogDb.ts`) over to the FastAPI endpoints behind configuration, keeping the Vitest suite green.
+
+## Last completed task (TASK 02 - authentication read-side parity - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed). Foundation from TASK 01 unchanged.
+
+- **New:** `fastapi_app/models/{base,identity,seller}.py` (read-only SQLAlchemy mappings of `User`, `Session`, `Seller`, `Driver` — exact quoted camelCase columns, no DDL), `fastapi_app/core/security.py` (cookie/token/bcrypt/role deps), `fastapi_app/schemas/auth.py`, `fastapi_app/routers/auth.py`, `tests/auth/{conftest,test_me,test_security,test_dependencies}.py`. Modified: `fastapi_app/main.py` (router + tag), `requirements.txt` (+bcrypt), `pyproject.toml` (session-scoped asyncio loops for the shared async engine), `README.md`.
+- **Behaviour:** validates the existing `cw_session` cookie by `sha256(token)` against the shared `Session` row, strict future-expiry (no renewal), naive Prisma timestamps treated as UTC, returns the exact Next `PublicUser` contract. `require_user`, `require_customer`, `require_role`, `require_seller`→`(user,seller)`, `require_driver`→`(user,driver)`, `require_admin` mirror `session.ts`/`current.ts` error codes. bcrypt hashes verified as-is (bcryptjs `$2b$12$` vector passes); login/register/logout untouched and still Next.js.
+- **Tests:** **27/27 passed**. New coverage: valid/missing/invalid/expired/revoked session, all four roles, seller+driver profile scoping, contract shape (no `passwordHash`/token leakage), Node sha256 token vector, bcryptjs/Python bcrypt round-trip, malformed-hash fail-closed, naive/aware expiry. Fixtures create `test_*` rows and delete them; residue check after the run: 0 User/Session/Seller/Driver test rows.
+- **Live check:** `/api/auth/me` → `401 {"error":{"code":"unauthenticated",...}}` without a cookie, `401` with a bogus cookie; OpenAPI lists `/health`, `/health/db`, `/api/auth/me`.
+- **Files:** `backend/fastapi_app/{models,core/security.py,schemas/auth.py,routers/auth.py,main.py}`, `backend/tests/auth/**`, `backend/{requirements.txt,pyproject.toml,README.md}`, `TASKS.md`, `HANDOFF.md`. No Prisma/Next.js/audit change; no schema mutation; no commit/push/deploy.
+- **Next:** 9.3 catalogue domain in FastAPI (categories, product list/detail/offers) with contract-equivalence tests.
+
+## Last completed task (TASK 01 - FastAPI foundation - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed). Target architecture is owner-confirmed (`docs/architecture-assessment-2026-11-10/`); this is its first implementation step, not another audit.
+
+- **Created `backend/`** (Python 3.12.4, venv-local deps): `fastapi_app/main.py` (app factory, CORS, exception handlers, lifespan), `core/{config,db,errors,logging}.py`, `routers/health.py`, `tests/` (4 files), `requirements.txt`, `requirements-dev.txt`, `pyproject.toml`, `README.md`, `.env.example`, `.gitignore`.
+- **Config:** reads `DATABASE_URL` from `backend/.env` then the existing `app/.env` (same contract as Next.js); Prisma URL query params (`schema`, `connection_limit`, …) are stripped and the scheme rewritten to `postgresql+asyncpg`. Credentials are never logged or returned.
+- **Endpoints:** `GET /health` (liveness), `GET /health/db` (executes `SELECT 1`; 503 when unreachable or unconfigured). `/docs` and `/openapi.json` generated.
+- **Conventions:** error body `{"error":{code,message,field?}}` matching `apiFetch`; single-line JSON logs with `x-request-id`; CORS origins from `CORS_ORIGINS`.
+- **Schema:** untouched. Prisma remains the only migration authority; Alembic deliberately not initialised, no migrations run.
+- **Verification:** `.venv\Scripts\python.exe -m pytest` → **6/6 passed** (includes the real-DB `/health/db` test). Live uvicorn run: `/health` 200, `/health/db` 200 `{"status":"ok","database":"ok","latency_ms":381}`, `/docs` 200, `/openapi.json` 200 with paths `/health`, `/health/db`. Server stopped afterwards; port 8000 released.
+- **Files:** all under `backend/` plus `TASKS.md`, `HANDOFF.md`. No Next.js, Prisma, production config or audit file touched. No commit/push/deploy.
+- **Next:** 9.2 auth read-side parity (bcrypt + shared `Session` validation, `GET /api/auth/me` equivalent), per `AUTHENTICATION_MIGRATION_PLAN.md`.
+
+## Last completed task (Phase 04B - WP-UI-01 product-card Add to cart - 2026-11-10)
+
+Branch `feature/backend-mvp` @ `1f0f61f` (nothing committed). Baseline: accepted Phase 04A audit in `docs/ui-fidelity-audit-2026-11-10/` (11/11 deliverables, 130 evidence files). The earlier "Fix card Add to cart - 19 files changed" Freebuff claim was verified as **false** in the prior checkpoint; the card CTA was still `disabled` at HEAD.
+
+- **What changed:** `ProductSummaryDto` now exposes the cheapest purchasable offer (`offerId`, `stock`, `minOrderQty`, `purchasable`), derived in `summarize()` from the offers query that already ran - no schema, migration, endpoint or cart-rule change. `catalogDb.cardOf` copies them onto `ProductCardData`; `ProductCard` (still a server component) renders a new client `AddToCartButton`.
+- **Behaviour:** adds the seller's `minOrderQty` via the existing `addCartItem`/`RemoteCartProvider`; header badge updates from the returned cart. Guests redirect to `/login?next=<current path>`; signed-in non-customers get a toast; unavailable cards are disabled and read "Out of stock"; duplicate clicks blocked while in flight; server 409/422 messages (stock, min qty, paused listing) shown verbatim. PDP buy box untouched.
+- **Tests:** new `src/lib/cart/cardAddToCart.test.ts` (9 cases: success, min-qty clamp, unavailable, guest redirect, role refusal, duplicate, session loading, server error, unknown error) plus 4 assertions on the summary offer fields in `server/catalog/service.test.ts`. Full suite **125/125**, `eslint src` clean, `tsc --noEmit` clean.
+- **Not verified:** no browser click-through this pass (per task instruction not to repeat captures); the audit's CUST-09 finding is addressed in code and unit tests only. Legacy local `CartProvider` (unused by any view) would render mock-facade cards as "Out of stock" - dead code path, no user-facing surface.
+- **Files:** `app/src/server/catalog/service.ts`, `app/src/lib/api/{dto,catalog,catalogDb}.ts`, `app/src/components/home/ProductCard.tsx`, new `app/src/components/cart/AddToCartButton.tsx`, new `app/src/lib/cart/cardAddToCart.ts`, new `app/src/lib/cart/cardAddToCart.test.ts`, `app/src/server/catalog/service.test.ts`, `TASKS.md`, `HANDOFF.md`. No commit, push or deploy. Stop before WP-UI-02.
 
 ## Last completed task (integration & pre-push stabilization — 2026-11-08)
 
