@@ -7,10 +7,29 @@ import {
   getProductById as getProductDtoById,
   getProductSummariesByCodes,
   getReviewHistogram,
+  listCategories,
   listProductReviews,
   listProducts,
 } from "@/server/catalog/service";
 import { ApiError } from "@/server/http";
+import {
+  fetchCategories,
+  fetchProduct,
+  fetchProductReviews,
+  fetchProducts,
+  fetchRatingHistogram,
+  type ProductListParams,
+  type ProductListResponse,
+} from "./catalogApi";
+import {
+  catalogueApiEnabled,
+  catalogueFallbackEnabled,
+  fastApiBaseUrl,
+  isNotFound,
+  reportCatalogueFallback,
+  withCatalogueFallback,
+} from "./catalogSource";
+import type { CategoryDto, ProductDetailDto } from "./dto";
 import { BULK } from "@/lib/shop/pricing";
 import { CATEGORIES, type Category } from "@/lib/shop/types";
 import type { ProductSummaryDto } from "@/lib/api/dto";
@@ -66,6 +85,10 @@ function cardOf(product: ProductSummaryDto): ProductCardData {
     best: false,
     hue: HUE[category],
     art: ART[category],
+    offerId: product.offerId,
+    stock: product.stock,
+    minOrderQty: product.minOrderQty,
+    purchasable: product.purchasable,
   };
 }
 
@@ -105,12 +128,54 @@ function offerOf(offer: OfferDto): ProductOffer {
 }
 
 async function allProducts(): Promise<ProductSummaryDto[]> {
-  const result = await listProducts({
+  const result = await listSummaries({
     sort: "relevance",
     page: 1,
     pageSize: ALL_PRODUCTS_PAGE_SIZE,
   });
   return result.products;
+}
+
+/**
+ * Product listing source: FastAPI when `FASTAPI_BASE_URL` is configured,
+ * otherwise (or on failure, unless `CATALOG_FALLBACK=off`) the existing
+ * Next.js/Prisma service. Both paths return the same DTO contract.
+ */
+async function listSummaries(params: ProductListParams): Promise<ProductListResponse> {
+  return withCatalogueFallback(
+    "product list",
+    () => fetchProducts(params, fastApiBaseUrl()),
+    () =>
+      listProducts({
+        q: params.q,
+        category: params.category,
+        sort: params.sort ?? "relevance",
+        page: params.page ?? 1,
+        pageSize: params.pageSize ?? 12,
+      }),
+  );
+}
+
+/**
+ * Product detail source. A FastAPI 404 maps to `null` (the same not-found
+ * behaviour the Prisma path has) instead of triggering a pointless fallback.
+ */
+async function loadProduct(id: string): Promise<ProductDetailDto | null> {
+  if (catalogueApiEnabled()) {
+    try {
+      return await fetchProduct(id, fastApiBaseUrl());
+    } catch (error) {
+      if (isNotFound(error)) return null;
+      reportCatalogueFallback("product detail", error);
+      if (!catalogueFallbackEnabled()) throw error;
+    }
+  }
+  try {
+    return await getProductDtoById(id);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 404) return null;
+    throw error;
+  }
 }
 
 function discounted(products: ProductSummaryDto[]) {
@@ -138,7 +203,7 @@ export async function getDealTiles(): Promise<DealTile[]> {
 async function byCategories(categories: Category[], perCategory: number): Promise<ProductSummaryDto[]> {
   const results = await Promise.all(
     categories.map((category) =>
-      listProducts({ category, sort: "relevance", page: 1, pageSize: perCategory }),
+      listSummaries({ category, sort: "relevance", page: 1, pageSize: perCategory }),
     ),
   );
   const byCode = new Map<string, ProductSummaryDto>();
@@ -244,64 +309,60 @@ export async function searchProducts(query: SearchQuery): Promise<SearchResult> 
 }
 
 export async function getProductById(id: string | number): Promise<ProductDetail | null> {
-  try {
-    return detailOf(await getProductDtoById(String(id)));
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return null;
-    throw error;
-  }
+  const product = await loadProduct(String(id));
+  return product ? detailOf(product) : null;
 }
 
 export async function getSellerOffers(id: string | number): Promise<ProductOffer[]> {
-  try {
-    const product = await getProductDtoById(String(id));
-    return product.offers.map(offerOf);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return [];
-    throw error;
-  }
+  const product = await loadProduct(String(id));
+  return product ? product.offers.map(offerOf) : [];
+}
+
+export async function getCategories(): Promise<CategoryDto[]> {
+  return withCatalogueFallback(
+    "categories",
+    () => fetchCategories(fastApiBaseUrl()),
+    () => listCategories(),
+  );
 }
 
 export async function getFrequentlyBoughtTogether(id: string | number): Promise<ProductCardData[]> {
-  try {
-    const current = await getProductDtoById(String(id));
-    const category = asCategory(current.category);
-    const related = await byCategories([category, ...PAIR[category]], 4);
-    const seen = new Set([current.code]);
-    const picks: ProductSummaryDto[] = [current];
-    for (const product of related) {
-      if (seen.has(product.code)) continue;
-      seen.add(product.code);
-      picks.push(product);
-      if (picks.length >= 4) break;
-    }
-    return picks.map(cardOf);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return [];
-    throw error;
+  const current = await loadProduct(String(id));
+  if (!current) return [];
+  const category = asCategory(current.category);
+  const related = await byCategories([category, ...PAIR[category]], 4);
+  const seen = new Set([current.code]);
+  const picks: ProductSummaryDto[] = [current];
+  for (const product of related) {
+    if (seen.has(product.code)) continue;
+    seen.add(product.code);
+    picks.push(product);
+    if (picks.length >= 4) break;
   }
+  return picks.map(cardOf);
 }
 
 export async function getSimilarProducts(id: string | number): Promise<ProductCardData[]> {
-  try {
-    const current = await getProductDtoById(String(id));
-    const category = asCategory(current.category);
-    const same = await listProducts({ category, sort: "relevance", page: 1, pageSize: 10 });
-    const seen = new Set([current.code]);
-    const picks = same.products.filter((product) => product.code !== current.code);
-    for (const product of picks) seen.add(product.code);
-    if (picks.length < 10) {
-      const all = await allProducts();
-      const fillers = all
-        .filter((product) => !seen.has(product.code))
-        .sort((a, b) => b.reviewCount - a.reviewCount);
-      picks.push(...fillers.slice(0, 10 - picks.length));
-    }
-    return picks.sort((a, b) => b.reviewCount - a.reviewCount).slice(0, 10).map(cardOf);
-  } catch (error) {
-    if (error instanceof ApiError && error.status === 404) return [];
-    throw error;
+  const current = await loadProduct(String(id));
+  if (!current) return [];
+  const category = asCategory(current.category);
+  const same = await listSummaries({
+    category,
+    sort: "relevance",
+    page: 1,
+    pageSize: 10,
+  });
+  const seen = new Set([current.code]);
+  const picks = same.products.filter((product) => product.code !== current.code);
+  for (const product of picks) seen.add(product.code);
+  if (picks.length < 10) {
+    const all = await allProducts();
+    const fillers = all
+      .filter((product) => !seen.has(product.code))
+      .sort((a, b) => b.reviewCount - a.reviewCount);
+    picks.push(...fillers.slice(0, 10 - picks.length));
   }
+  return picks.sort((a, b) => b.reviewCount - a.reviewCount).slice(0, 10).map(cardOf);
 }
 
 export async function getProductCardsByIds(ids: number[]): Promise<ProductCardData[]> {
@@ -310,6 +371,15 @@ export async function getProductCardsByIds(ids: number[]): Promise<ProductCardDa
 }
 
 export async function getProductReviews(id: string | number): Promise<ProductReview[]> {
+  if (catalogueApiEnabled()) {
+    try {
+      return await fetchProductReviews(String(id), fastApiBaseUrl());
+    } catch (error) {
+      if (isNotFound(error)) return [];
+      reportCatalogueFallback("product reviews", error);
+      if (!catalogueFallbackEnabled()) throw error;
+    }
+  }
   try {
     return await listProductReviews(String(id));
   } catch (error) {
@@ -319,6 +389,15 @@ export async function getProductReviews(id: string | number): Promise<ProductRev
 }
 
 export async function getRatingBreakdown(id: string | number): Promise<number[]> {
+  if (catalogueApiEnabled()) {
+    try {
+      return await fetchRatingHistogram(String(id), fastApiBaseUrl());
+    } catch (error) {
+      if (isNotFound(error)) return [0, 0, 0, 0, 0];
+      reportCatalogueFallback("rating histogram", error);
+      if (!catalogueFallbackEnabled()) throw error;
+    }
+  }
   try {
     return await getReviewHistogram(String(id));
   } catch (error) {

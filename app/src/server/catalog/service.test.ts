@@ -66,6 +66,11 @@ describe.skipIf(!hasDb)("catalogue service", () => {
     expect(offer).not.toHaveProperty("gstin");
     expect(offer).not.toHaveProperty("ownerUserId");
     expect(Array.isArray(offer.serviceablePincodes)).toBe(true);
+    // The card CTA targets the cheapest purchasable offer serialized here.
+    expect(detail.offerId).toBe(offer.id);
+    expect(detail.minOrderQty).toBe(offer.minOrderQty);
+    expect(detail.stock).toBe(offer.stock);
+    expect(detail.purchasable).toBe(detail.available);
 
     const offers = await listProductOffers("0");
     expect(offers.offers.length).toBe(detail.offers.length);

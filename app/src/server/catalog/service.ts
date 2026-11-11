@@ -38,7 +38,11 @@ const productInclude = {
   category: { select: { id: true, name: true } },
   offers: {
     where: publicOfferWhere,
-    orderBy: { price: "asc" as const },
+    // `id` breaks price ties deterministically. Several sellers quote the same
+    // price; without a secondary key Postgres may return ties in any order, so
+    // the "cheapest offer" (and its displayed stock) could differ per request and
+    // from the FastAPI reader (catalogue contract test).
+    orderBy: [{ price: "asc" as const }, { id: "asc" as const }],
     include: { seller: { select: offerSellerSelect } },
   },
   reviews: { select: { stars: true } },
@@ -84,6 +88,10 @@ function summarize(product: Prisma.ProductGetPayload<{ include: typeof productIn
     bulkFlag: product.bulkFlag,
     imageUrl: product.imageUrl,
     specs: specsOf(product.specs),
+    offerId: cheapest?.id ?? null,
+    stock: cheapest?.stock ?? 0,
+    minOrderQty: cheapest?.minOrderQty ?? 1,
+    purchasable: Boolean(cheapest),
   };
 }
 
@@ -148,14 +156,14 @@ function productWhere(query: ProductListQuery): Prisma.ProductWhereInput {
   return { AND: and };
 }
 
-function orderByFor(sort: ProductSort): Prisma.ProductOrderByWithRelationInput {
+function orderByFor(sort: ProductSort): Prisma.ProductOrderByWithRelationInput[] {
   switch (sort) {
-    case "name_asc":
-      return { name: "asc" };
     case "newest":
-      return { createdAt: "desc" };
+      // `id` is a deterministic tie-break (seed rows share created_at).
+      return [{ createdAt: "desc" }, { id: "asc" }];
+    case "name_asc":
     default:
-      return { name: "asc" };
+      return [{ name: "asc" }, { id: "asc" }];
   }
 }
 
@@ -173,6 +181,9 @@ export async function listProducts(
     const items = rows
       .map(summarize)
       .filter((product) => product.offerCount > 0)
+      // Sort by id first, then by price, so equal prices keep a stable order that
+      // matches the FastAPI reader instead of whatever order the DB returned.
+      .sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
       .sort((a, b) => {
         const compared = new Prisma.Decimal(a.price).comparedTo(new Prisma.Decimal(b.price));
         return query.sort === "price_asc" ? compared : -compared;

@@ -56,3 +56,33 @@ export async function fetchProductOffers(
     baseUrl,
   );
 }
+
+export interface ProductReview {
+  name: string;
+  stars: number;
+  title: string;
+  body: string;
+  postedOn: string;
+}
+
+export async function fetchProductReviews(
+  id: string,
+  baseUrl = "",
+): Promise<ProductReview[]> {
+  const response = await apiFetch<{ reviews: ProductReview[] }>(
+    `/api/products/${encodeURIComponent(id)}/reviews`,
+    {},
+    baseUrl,
+  );
+  return response.reviews;
+}
+
+/** Five buckets, 5★ → 1★, as integer percentages. */
+export async function fetchRatingHistogram(id: string, baseUrl = ""): Promise<number[]> {
+  const response = await apiFetch<{ histogram: number[] }>(
+    `/api/products/${encodeURIComponent(id)}/rating`,
+    {},
+    baseUrl,
+  );
+  return response.histogram;
+}

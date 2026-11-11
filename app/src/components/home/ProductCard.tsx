@@ -9,20 +9,26 @@
 // results), where the card has no fixed width and stretches to fill its
 // track. Card contents/artwork/badges/typography are identical either way.
 //
-// Deliberate deviations from the prototype (mock-data safety, D14):
-// - Wishlist ("heart") and "Add to cart" are rendered disabled. Neither
-//   capability exists anywhere in this app yet (no cart/wishlist state) —
-//   wiring fake success would misrepresent what the app can do. Native
-//   `disabled` correctly removes both from the keyboard tab order (verified:
-//   calling .focus() on either does not move document.activeElement) — that
-//   is the honest result here, not an oversight. A focusable-but-inert
-//   control would mislead keyboard/AT users more than one that's skipped.
+// "Add to cart" reuses the existing cart API through AddToCartButton; the
+// offer it adds is the cheapest purchasable seller offer behind the card's
+// price (see catalogDb.cardOf). Cards with no purchasable offer keep the
+// control disabled and read "Out of stock".
+//
+// Deliberate deviation from the prototype (mock-data safety, D14):
+// - Wishlist ("heart") is rendered disabled. The capability does not exist
+//   yet (owner decision pending) — wiring fake success would misrepresent
+//   what the app can do. Native `disabled` correctly removes it from the
+//   keyboard tab order (verified: calling .focus() does not move
+//   document.activeElement) — that is the honest result here, not an
+//   oversight. A focusable-but-inert control would mislead keyboard/AT users
+//   more than one that's skipped.
 // - The prototype's delivery-estimate line (depends on a real pincode/zone)
-//   and "Only N left in stock" line (implies live inventory) are both
-//   omitted: this mock catalogue has no real logistics or live stock behind
-//   either claim.
+//   and "Only N left in stock" line are both omitted: the card does not
+//   resolve a pincode or print an inventory count; stock is only checked
+//   server-side when the CTA is clicked.
 import Link from "next/link";
 import Stars from "@/components/ui/Stars";
+import AddToCartButton from "@/components/cart/AddToCartButton";
 import { fmt, inr } from "@/lib/shop/format";
 import type { ProductCardData } from "@/lib/api/catalog";
 
@@ -37,6 +43,9 @@ export default function ProductCard({
   best,
   hue,
   art,
+  offerId,
+  purchasable,
+  minOrderQty,
   layout = "scroll",
 }: ProductCardData & { layout?: "scroll" | "grid" }) {
   return (
@@ -104,14 +113,7 @@ export default function ProductCard({
           </span>{" "}
           <span className="text-[13px] font-semibold text-deal">{off}% off</span>
         </div>
-        <button
-          type="button"
-          disabled
-          title="Cart isn't implemented yet"
-          className="mt-auto inline-flex min-h-8 items-center justify-center rounded-lg bg-hi px-3 text-[13px] font-semibold text-hiink disabled:opacity-50"
-        >
-          Add to cart
-        </button>
+        <AddToCartButton offerId={offerId} purchasable={purchasable} minOrderQty={minOrderQty} />
       </div>
     </article>
   );

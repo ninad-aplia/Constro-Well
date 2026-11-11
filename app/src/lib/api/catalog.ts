@@ -63,7 +63,7 @@ export async function getBulkTiers(): Promise<readonly [number, number][]> {
   return BULK;
 }
 
-/** Fields a product-card row needs — no stock/delivery/brand data (see ProductCard for why). */
+/** Fields a product-card row needs. The offer fields are optional so mock-fixture callers stay valid; DB-backed rows always set them. */
 export interface ProductCardData {
   id: number;
   name: string;
@@ -76,6 +76,11 @@ export interface ProductCardData {
   best: boolean;
   hue: string;
   art: string;
+  /** Purchasable seller offer behind `price` (DB rows only; absent on mock fixtures). */
+  offerId?: string | null;
+  stock?: number;
+  minOrderQty?: number;
+  purchasable?: boolean;
 }
 
 export function toCardData(p: Product): ProductCardData {

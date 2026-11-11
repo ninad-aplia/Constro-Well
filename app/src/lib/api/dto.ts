@@ -44,6 +44,11 @@ export interface ProductSummaryDto {
   bulkFlag: boolean;
   imageUrl: string | null;
   specs: string[];
+  /** Cheapest purchasable offer (active seller, in stock) — the card CTA's add target. */
+  offerId: string | null;
+  stock: number;
+  minOrderQty: number;
+  purchasable: boolean;
 }
 
 export interface ProductDetailDto extends ProductSummaryDto {
