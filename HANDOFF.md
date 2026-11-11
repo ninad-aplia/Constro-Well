@@ -2,6 +2,12 @@
 
 **Last updated:** 2026-11-11 (seller failed-delivery reassignment checkpoint) · **Writer agent:** Claude Code
 
+## Release checkpoint (2026-11-11 - pushed)
+
+`feature/backend-mvp` synchronized to `origin/feature/backend-mvp` (fast-forward `1f0f61f` -> `e979357`, 11 commits): AuditEvent + seller-collected COD schema/migrations; FastAPI backend (auth/catalog/admin/finance); Admin console incl. D6 `/admin/shipments`; seller + Admin COD finance consoles; seller-collected COD placement + customer review-window confirm/report; seller failed-delivery redispatch/missed; catalogue cutover + card add-to-cart; auth pre-hydration/header fixes; architecture/UI-fidelity/parity docs; Admin prototype; WP-2 confirm/report endpoints.
+
+Left uncommitted by design (local only): `artifacts/`, `app/tests/` (Playwright incl. finance E2E), `app/.github/`, `app/check-db.cjs`, `app/check-login.cjs`, `app/tmp-diag.cjs`, `app/tmp-overflow.cjs`. No deploy performed - Render/Supabase untouched.
+
 ## Last completed task (seller failed-delivery recovery — task 7.2b — 2026-11-11)
 
 Branch `feature/backend-mvp` @ `1f0f61f` — nothing committed, staged, reset, stashed, pushed or deployed.
