@@ -104,6 +104,64 @@ enum EscrowEntryType {
   withdrawn
 }
 
+// Seller-collected COD finance domain (WP-1). The customer pays the seller
+// directly; Constro-Well never custodies COD proceeds. Commission is a seller
+// obligation; remittances become platform cash only after receipt verification.
+// No invented rates or policies — the CommissionPolicy table is the configurable
+// boundary (an assessment fails closed when no active policy exists).
+enum FinanceModel {
+  escrow // legacy platform-custody escrow (pre-cutover), read-only
+  seller_collected // COD collected by the seller; commission receivable model
+}
+
+enum CodCollectionStatus {
+  pending
+  confirmed
+  disputed
+  cancelled
+}
+
+enum CodCollector {
+  seller
+  agent
+}
+
+enum CommissionBasis {
+  order_value
+  collected_cod
+}
+
+enum CommissionStatus {
+  assessed
+  partially_remitted
+  remitted
+  waived
+}
+
+enum RemittanceStatus {
+  initiated
+  received
+  allocated
+  failed
+  returned
+}
+
+enum RemittanceAllocationKind {
+  allocation
+  reversal
+}
+
+enum SellerAdjustmentType {
+  customer_refund
+  adjustment
+  reversal
+}
+
+enum SellerAdjustmentStatus {
+  open
+  applied
+}
+
 model User {
   id           String   @id @default(cuid())
   email        String   @unique
@@ -122,6 +180,7 @@ model User {
   orders        Order[]
   driverProfile Driver?        @relation("DriverUser")
   sellerProfile Seller?
+  auditEvents   AuditEvent[]   @relation("AuditActor")
 }
 
 model Session {
@@ -158,15 +217,19 @@ model Seller {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
 
-  owner         User            @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
-  pincodes      SellerPincode[]
-  vehicles      Vehicle[]
-  drivers       Driver[]
-  offers        SellerOffer[]
-  shipments     Shipment[]
-  escrow        EscrowEntry[]
-  notifications Notification[]
-  orderLines    OrderLine[]
+  owner                 User                   @relation(fields: [ownerUserId], references: [id], onDelete: Restrict)
+  pincodes              SellerPincode[]
+  vehicles              Vehicle[]
+  drivers               Driver[]
+  offers                SellerOffer[]
+  shipments             Shipment[]
+  escrow                EscrowEntry[]
+  notifications         Notification[]
+  orderLines            OrderLine[]
+  codCollections        CodCollection[]
+  commissionAssessments CommissionAssessment[]
+  remittances           Remittance[]
+  sellerAdjustments     SellerAdjustment[]
 
   @@index([city])
 }
@@ -368,30 +431,35 @@ model Coupon {
 }
 
 model Order {
-  id              String     @id @default(cuid())
-  code            String     @unique // "BG-######", generated server-side at checkout
+  id              String       @id @default(cuid())
+  code            String       @unique // "BG-######", generated server-side at checkout
   userId          String
   // Totals snapshot (PROJECT_CONTEXT §7): GST-inclusive amounts (D8).
-  itemValue       Decimal    @db.Decimal(14, 2) // subtotal before discount
-  discount        Decimal    @default(0) @db.Decimal(14, 2)
+  itemValue       Decimal      @db.Decimal(14, 2) // subtotal before discount
+  discount        Decimal      @default(0) @db.Decimal(14, 2)
   couponCode      String?
-  deliveryFee     Decimal    @db.Decimal(14, 2)
-  taxAmount       Decimal    @default(0) @db.Decimal(14, 2) // GST component inside the total
-  taxRate         Decimal    @default(0.18) @db.Decimal(7, 6)
-  grossTotal      Decimal    @db.Decimal(14, 2) // final customer total
-  paymentMethod   String     @default("COD") // D3/D4: COD-only; enforced at checkout from TASK 5
-  paymentLabel    String     @default("Cash on delivery")
+  deliveryFee     Decimal      @db.Decimal(14, 2)
+  taxAmount       Decimal      @default(0) @db.Decimal(14, 2) // GST component inside the total
+  taxRate         Decimal      @default(0.18) @db.Decimal(7, 6)
+  grossTotal      Decimal      @db.Decimal(14, 2) // final customer total
+  paymentMethod   String       @default("COD") // D3/D4: COD-only; enforced at checkout from TASK 5
+  paymentLabel    String       @default("Cash on delivery")
   // Customer lifecycle = the shop prototype's STAGES + cancelled flag.
-  stage           OrderStage @default(ordered)
-  cancelled       Boolean    @default(false)
+  stage           OrderStage   @default(ordered)
+  cancelled       Boolean      @default(false)
+  // Distinguishes legacy platform-custody escrow orders from seller-collected
+  // COD orders (WP-1). Default `escrow` keeps every pre-cutover order readable
+  // as before; new orders are written as `seller_collected`.
+  financeModel    FinanceModel @default(escrow)
   addressSnapshot Json // point-in-time delivery address (order survives address edits)
-  createdAt       DateTime   @default(now())
-  updatedAt       DateTime   @default(now()) @updatedAt
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @default(now()) @updatedAt
 
-  user      User          @relation(fields: [userId], references: [id], onDelete: Restrict)
-  lines     OrderLine[]
-  shipments Shipment[]
-  escrow    EscrowEntry[]
+  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
+  lines             OrderLine[]
+  shipments         Shipment[]
+  escrow            EscrowEntry[]
+  sellerAdjustments SellerAdjustment[]
 
   @@index([userId, createdAt])
 }
@@ -458,10 +526,13 @@ model Shipment {
   vehicle Vehicle? @relation(fields: [vehicleId], references: [id], onDelete: SetNull)
   driver  Driver?  @relation(fields: [driverId], references: [id], onDelete: SetNull)
 
-  events        ShipmentEvent[]
-  issue         ShipmentIssue?
-  escrowEntries EscrowEntry[]
-  lines         OrderLine[]
+  events               ShipmentEvent[]
+  issue                ShipmentIssue?
+  escrowEntries        EscrowEntry[]
+  lines                OrderLine[]
+  codCollection        CodCollection?
+  commissionAssessment CommissionAssessment?
+  sellerAdjustments    SellerAdjustment[]
 
   @@index([sellerId, status])
   @@index([orderId])
@@ -509,6 +580,151 @@ model EscrowEntry {
   @@index([shipmentId])
 }
 
+// ---------------------------------------------------------------------------
+// Seller-collected COD finance domain (WP-1). Append-only in practice: rows are
+// created and status-transitioned, never silently rewritten; corrections use
+// compensating records (RemittanceAllocation kind=reversal, SellerAdjustment
+// type=reversal). All money is exact Decimal(14,2); rates are Decimal(7,6).
+// ---------------------------------------------------------------------------
+
+// One COD expectation per seller-shipment. The customer pays the seller (or the
+// seller's assigned driver as agent) directly; this row records that collection,
+// never platform custody of the cash.
+model CodCollection {
+  id              String              @id @default(cuid())
+  shipmentId      String              @unique
+  sellerId        String
+  expectedAmount  Decimal             @db.Decimal(14, 2)
+  collectedAmount Decimal?            @db.Decimal(14, 2)
+  collectedBy     CodCollector?
+  collectorUserId String?
+  status          CodCollectionStatus @default(pending)
+  evidenceRef     String?
+  note            String?
+  confirmedAt     DateTime?
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @default(now()) @updatedAt
+
+  shipment Shipment @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  seller   Seller   @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+
+  @@index([sellerId, status])
+  @@index([sellerId, createdAt])
+}
+
+// One commission assessment per seller-shipment: the seller's obligation to
+// Constro-Well, independent of whether the seller has collected the COD. The
+// basis and rate come from the active CommissionPolicy (never hardcoded).
+model CommissionAssessment {
+  id               String           @id @default(cuid())
+  sellerId         String
+  shipmentId       String           @unique
+  basis            CommissionBasis  @default(order_value)
+  basisAmount      Decimal          @db.Decimal(14, 2)
+  rate             Decimal          @db.Decimal(7, 6)
+  commissionAmount Decimal          @db.Decimal(14, 2)
+  status           CommissionStatus @default(assessed)
+  assessedByUserId String? // null = system assessment
+  assessedAt       DateTime         @default(now())
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @default(now()) @updatedAt
+
+  seller      Seller                 @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  shipment    Shipment               @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  allocations RemittanceAllocation[]
+
+  @@index([sellerId, status])
+  @@index([sellerId, createdAt])
+}
+
+// A seller-to-platform remittance. `initiated` is NOT platform cash; the amount
+// only counts as received after an admin verifies receipt (initiated -> received).
+model Remittance {
+  id                String           @id @default(cuid())
+  sellerId          String
+  amount            Decimal          @db.Decimal(14, 2)
+  method            String
+  reference         String // seller-supplied external reference (e.g. UTR)
+  status            RemittanceStatus @default(initiated)
+  initiatedByUserId String?
+  initiatedAt       DateTime         @default(now())
+  receivedAt        DateTime?
+  verifiedByUserId  String?
+  note              String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @default(now()) @updatedAt
+
+  seller      Seller                 @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  allocations RemittanceAllocation[]
+
+  @@unique([sellerId, reference])
+  @@index([sellerId, status])
+  @@index([sellerId, createdAt])
+}
+
+// Splits a verified remittance across commission assessments. `amount` is a
+// positive magnitude; `kind` carries direction (reversal = compensating record).
+// A partial unique index (migration SQL) enforces at most one open allocation
+// per (remittance, assessment).
+model RemittanceAllocation {
+  id              String                   @id @default(cuid())
+  remittanceId    String
+  assessmentId    String
+  amount          Decimal                  @db.Decimal(14, 2)
+  kind            RemittanceAllocationKind @default(allocation)
+  reversesId      String? // the allocation this row reverses (compensating record)
+  createdByUserId String?
+  createdAt       DateTime                 @default(now())
+
+  remittance Remittance           @relation(fields: [remittanceId], references: [id], onDelete: Restrict)
+  assessment CommissionAssessment @relation(fields: [assessmentId], references: [id], onDelete: Restrict)
+
+  @@index([remittanceId])
+  @@index([assessmentId])
+  @@index([reversesId])
+}
+
+// Seller-side financial adjustments (customer refunds, admin adjustments,
+// compensating reversals). `amount` is a positive magnitude; direction is
+// carried by `type`. Never a platform payout.
+model SellerAdjustment {
+  id              String                 @id @default(cuid())
+  sellerId        String
+  shipmentId      String?
+  orderId         String?
+  type            SellerAdjustmentType
+  amount          Decimal                @db.Decimal(14, 2)
+  reason          String
+  evidenceRef     String?
+  status          SellerAdjustmentStatus @default(open)
+  createdByUserId String?
+  appliedByUserId String?
+  appliedAt       DateTime?
+  reversesId      String? // the adjustment this row reverses (compensating record)
+  createdAt       DateTime               @default(now())
+  updatedAt       DateTime               @default(now()) @updatedAt
+
+  seller   Seller    @relation(fields: [sellerId], references: [id], onDelete: Restrict)
+  shipment Shipment? @relation(fields: [shipmentId], references: [id], onDelete: Restrict)
+  order    Order?    @relation(fields: [orderId], references: [id], onDelete: Restrict)
+
+  @@index([sellerId, status])
+  @@index([sellerId, createdAt])
+}
+
+// Configurable commission policy boundary. An assessment requires an active
+// policy; with none present it fails closed rather than inventing a rate.
+model CommissionPolicy {
+  id            String          @id @default(cuid())
+  basis         CommissionBasis @default(order_value)
+  rate          Decimal         @db.Decimal(7, 6)
+  isActive      Boolean         @default(true)
+  effectiveFrom DateTime        @default(now())
+  createdAt     DateTime        @default(now())
+
+  @@index([isActive, effectiveFrom])
+}
+
 model Notification {
   id        String   @id @default(cuid())
   sellerId  String
@@ -519,4 +735,29 @@ model Notification {
   seller Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
   @@index([sellerId, createdAt])
+}
+
+// Administrative audit trail (TASK 9.6). Append-only: UPDATE/DELETE/TRUNCATE
+// are rejected by database triggers added in migration
+// 20261110201000_add_audit_event (see docs/AUDIT_EVENT_DESIGN.md). Prisma's
+// model is the reviewable source of truth for columns/indexes; the trigger is
+// extra SQL in the migration and is intentionally invisible to Prisma.
+//
+// `metadata` must never contain credentials, session tokens, request bodies or
+// unnecessary personal data - only small, non-sensitive context.
+model AuditEvent {
+  id          String   @id @default(cuid())
+  actorUserId String
+  action      String // machine-readable, e.g. "admin.users.list"
+  targetType  String // resource type, e.g. "User"
+  targetId    String? // optional affected record
+  metadata    Json?
+  createdAt   DateTime @default(now())
+
+  actor User @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([actorUserId, createdAt])
+  @@index([action, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([createdAt])
 }
