@@ -1,0 +1,6 @@
+# Local artifacts — never committed.
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.env

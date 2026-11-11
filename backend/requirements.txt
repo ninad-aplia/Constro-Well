@@ -1,0 +1,8 @@
+# Runtime dependencies for the Constro Well FastAPI backend.
+# Version ranges are deliberately narrow: bump them deliberately, not implicitly.
+fastapi>=0.115,<1.0
+uvicorn[standard]>=0.32,<1.0
+SQLAlchemy[asyncio]>=2.0.36,<2.1
+asyncpg>=0.30,<1.0
+pydantic-settings>=2.6,<3.0
+bcrypt>=4.2,<5.0
