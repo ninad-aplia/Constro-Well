@@ -21,3 +21,35 @@ services:
         sync: false
       - key: OTP_ENCRYPTION_KEY
         sync: false
+      # Server-side only. Point at the FastAPI service URL below; never
+      # NEXT_PUBLIC_*, so the backend URL never reaches the browser.
+      - key: FASTAPI_BASE_URL
+        sync: false
+      # Optional: falls back to FASTAPI_BASE_URL when unset.
+      - key: FINANCE_API_URL
+        sync: false
+
+  # Production FastAPI (finance + admin/dispute reads). Same repository and
+  # branch as the web service; it must point at the SAME Supabase database.
+  - type: web
+    name: constro-well-api
+    runtime: python
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn fastapi_app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health/db
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: ENVIRONMENT
+        value: production
+      - key: LOG_LEVEL
+        value: INFO
+      # Same value as the web service's DATABASE_URL (same Supabase project).
+      - key: DATABASE_URL
+        sync: false
+      # Browser origins allowed to call the API directly. The Next.js BFF calls
+      # it server-to-server, so this is defence in depth, not the auth boundary.
+      - key: CORS_ORIGINS
+        value: https://constro-well.onrender.com
