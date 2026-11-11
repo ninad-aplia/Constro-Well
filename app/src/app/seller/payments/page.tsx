@@ -84,8 +84,8 @@ export default function SellerPaymentsPage() {
     <div className="grid gap-4">
       <div className="flex flex-wrap items-end justify-between gap-3.5">
         <div>
-          <h1 className="font-display text-[clamp(25px,3vw,34px)] font-bold">Payments</h1>
-          <p className="mt-1 text-muted">Money is held in escrow, then released to you after delivery is accepted and the review window ends. These figures come from your real escrow ledger.</p>
+          <h1 className="font-display text-[clamp(25px,3vw,34px)] font-bold">Legacy escrow</h1>
+          <p className="mt-1 text-muted">Historical platform-custody escrow records from before the seller-collected COD cutover. These are pre-cutover history — they do not reflect current COD cash.</p>
         </div>
         <div className="flex gap-2">
           <Button
@@ -109,7 +109,7 @@ export default function SellerPaymentsPage() {
       <div className="flex items-start gap-2.5 rounded-lg border border-warn/40 bg-warn/10 p-2.5 text-sm">
         <SellerIcon name="alert" size={18} />
         <div>
-          Withdrawal to a bank account is not yet implemented. The balance below reflects what your escrow ledger shows has been released to you, minus any transfers already on record — it is a calculated summary, not a completed payout.
+          Legacy escrow (pre-cutover) — these balances are the old platform-custody model and are not current COD money. Your current finance (COD collections, commission and remittances) lives in <a href="/seller/finance" className="font-semibold text-hi hover:underline">Finance</a>.
         </div>
       </div>
 
@@ -139,7 +139,7 @@ export default function SellerPaymentsPage() {
       </div>
 
       <Card rounded="lg" className="p-[18px]">
-        <h2 className="mb-2 font-display text-lg font-bold">Escrow ledger</h2>
+        <h2 className="mb-2 font-display text-lg font-bold">Legacy escrow ledger (pre-cutover)</h2>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] border-collapse">
             <thead>

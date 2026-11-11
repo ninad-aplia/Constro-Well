@@ -25,7 +25,7 @@ export default function SellerSidebar() {
   const badgeFor = (href: string) => {
     if (href === "/seller/orders" && newOrders) return { text: String(newOrders), tone: "bad" as const };
     if (href === "/seller/products" && lowStock) return { text: String(lowStock), tone: "neutral" as const };
-    if (href === "/seller/payments" && disputes) return { text: "!", tone: "bad" as const };
+    if (href === "/seller/finance" && disputes) return { text: "!", tone: "bad" as const };
     return null;
   };
 
