@@ -8,7 +8,7 @@ export const ORDER_FILTERS: { key: string; label: string; statuses: SellerOrderS
   { key: "all", label: "All", statuses: null },
   { key: "new", label: "New", statuses: ["new"] },
   { key: "todo", label: "To dispatch", statuses: ["accepted", "packed"] },
-  { key: "road", label: "On the road", statuses: ["dispatched", "failed"] },
+  { key: "road", label: "On the road", statuses: ["dispatched", "picked_up", "failed"] },
   { key: "review", label: "In review", statuses: ["review"] },
   { key: "issue", label: "Issues", statuses: ["disputed", "missed", "rejected"] },
   { key: "done", label: "Paid", statuses: ["settled"] },

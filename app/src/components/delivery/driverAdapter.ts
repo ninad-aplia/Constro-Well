@@ -1,7 +1,7 @@
 import type { DeliveryJob, DeliveryState, DeliveryStatus } from "@/lib/delivery/types";
 import type { DriverJobDto, DriverJobsResponse } from "@/lib/api/driverDto";
 
-const STATUSES = new Set<DeliveryStatus>(["dispatched", "failed", "review", "disputed", "settled"]);
+const STATUSES = new Set<DeliveryStatus>(["dispatched", "picked_up", "failed", "review", "disputed", "settled"]);
 
 function dateLabel(value: string | null): string | undefined {
   if (!value) return undefined;

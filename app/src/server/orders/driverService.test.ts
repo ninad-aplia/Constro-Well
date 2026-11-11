@@ -5,10 +5,12 @@ import { PrismaClient } from "@prisma/client";
 import { addCartItem } from "@/server/cart/service";
 import { decryptOtp } from "@/server/security/otp";
 import { createAddress } from "./addresses";
-import { placeOrder } from "./service";
+import { placeOrder, getOrder } from "./service";
 import { acceptShipment, dispatchShipment } from "./sellerService";
 import {
   acceptDriverJob,
+  confirmDriverPickup,
+  declineDriverJob,
   deliverDriverShipment,
   getDriverJob,
   listDriverJobs,
@@ -123,7 +125,7 @@ async function setup(qty = 1, index = 1) {
   const row = await prisma.shipment.findUniqueOrThrow({ where: { id: shipmentId } });
   const otp = decryptOtp(row.otpEncrypted);
   if (!otp) throw new Error("OTP encryption failed");
-  return { ...seller, order, shipmentId, otp, qty };
+  return { ...seller, order, shipmentId, otp, qty, customer };
 }
 
 async function cleanup() {
@@ -178,6 +180,125 @@ describe.skipIf(!hasDb)("driver delivery lifecycle", { timeout: 45_000 }, () => 
     const accepted = await acceptDriverJob(driver.id, shipmentId);
     expect(accepted.events.filter((event) => event.message.startsWith("Driver accepted delivery job"))).toHaveLength(1);
     expect((await prisma!.sellerOffer.findUniqueOrThrow({ where: { id: offer.id } })).stock).toBe(stock);
+  });
+
+  it("confirms pickup idempotently, keeping the customer OTP and shipped stage", async () => {
+    const { driver, shipmentId, otp, customer, order } = await setup(1, 7);
+
+    const picked = await confirmDriverPickup(driver.id, shipmentId);
+    expect(picked.status).toBe("picked_up");
+
+    const again = await confirmDriverPickup(driver.id, shipmentId);
+    expect(again.status).toBe("picked_up");
+    const pickupEvents = await prisma!.shipmentEvent.count({
+      where: { shipmentId, message: { contains: "pickup" } },
+    });
+    expect(pickupEvents).toBe(1);
+
+    const row = await prisma!.shipment.findUniqueOrThrow({
+      where: { id: shipmentId },
+      select: { orderId: true, otpEncrypted: true },
+    });
+    expect(row.otpEncrypted).not.toBeNull();
+    const orderRow = await prisma!.order.findUniqueOrThrow({ where: { id: row.orderId }, select: { stage: true } });
+    expect(orderRow.stage).toBe("shipped");
+
+    const customerOrder = await getOrder(customer.id, order.id);
+    expect(customerOrder.shipments[0].status).toBe("picked_up");
+    expect(customerOrder.shipments[0].otp).toBe(otp);
+  });
+
+  it("delivers a picked-up shipment with the customer OTP", async () => {
+    const { driver, shipmentId, otp } = await setup(1, 8);
+    await confirmDriverPickup(driver.id, shipmentId);
+    const delivered = await deliverDriverShipment(driver.id, shipmentId, { otp, deliveredQty: 1 });
+    expect(delivered.status).toBe("review");
+  });
+
+  it("scopes pickup to the assigned driver and rejects a non-dispatched job", async () => {
+    const first = await setup(1, 9);
+    const second = await setup(1, 10);
+
+    await expect(confirmDriverPickup(second.driver.id, first.shipmentId)).rejects.toMatchObject({ status: 404 });
+
+    await deliverDriverShipment(first.driver.id, first.shipmentId, { otp: first.otp, deliveredQty: 1 });
+    await expect(confirmDriverPickup(first.driver.id, first.shipmentId)).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("declines a dispatched job, clears the assignment/OTP and returns it to packed", async () => {
+    const { driver, seller, vehicle, shipmentId } = await setup(1, 11);
+
+    const declined = await declineDriverJob(driver.id, shipmentId, "Vehicle breakdown");
+    expect(declined.status).toBe("packed");
+    expect(declined.driverName).toBe("");
+    expect(declined.vehicleId).toBeNull();
+
+    const row = await prisma!.shipment.findUniqueOrThrow({
+      where: { id: shipmentId },
+      select: {
+        status: true,
+        driverId: true,
+        vehicleId: true,
+        otpHash: true,
+        otpEncrypted: true,
+        otpTries: true,
+        orderId: true,
+      },
+    });
+    expect(row.status).toBe("packed");
+    expect(row.driverId).toBeNull();
+    expect(row.vehicleId).toBeNull();
+    expect(row.otpHash).toBeNull();
+    expect(row.otpEncrypted).toBeNull();
+    expect(row.otpTries).toBe(0);
+
+    // COD expectation and stock stay intact; only the assignment moved back.
+    expect((await prisma!.codCollection.findUniqueOrThrow({ where: { shipmentId } })).status).toBe("pending");
+    const orderRow = await prisma!.order.findUniqueOrThrow({ where: { id: row.orderId }, select: { stage: true } });
+    expect(orderRow.stage).toBe("packed");
+    const events = await prisma!.shipmentEvent.findMany({ where: { shipmentId }, select: { message: true } });
+    expect(events.some((event) => event.message.includes("Vehicle breakdown"))).toBe(true);
+
+    // The seller can dispatch the shipment again to another driver/vehicle.
+    const redispatched = await dispatchShipment(seller.id, shipmentId, {
+      vehicleId: vehicle.id,
+      slot: "Tomorrow, 8 am to 12",
+      challan: true,
+      invoice: true,
+      weighbridge: "WB-4321",
+    });
+    expect(redispatched.status).toBe("dispatched");
+  });
+
+  it("rejects duplicate declines, non-assigned drivers and declines after delivery", async () => {
+    const first = await setup(1, 12);
+    const second = await setup(1, 13);
+
+    await expect(
+      declineDriverJob(second.driver.id, first.shipmentId, "Not my route"),
+    ).rejects.toMatchObject({ status: 404 });
+
+    await declineDriverJob(first.driver.id, first.shipmentId, "Route mismatch");
+    // The assignment is cleared, so a repeat decline is indistinguishable from
+    // a job that is no longer this driver's (404), never a silent success.
+    await expect(
+      declineDriverJob(first.driver.id, first.shipmentId, "Again"),
+    ).rejects.toMatchObject({ status: 404 });
+
+    const picked = await setup(1, 15);
+    await confirmDriverPickup(picked.driver.id, picked.shipmentId);
+    await expect(
+      declineDriverJob(picked.driver.id, picked.shipmentId, "After pickup"),
+    ).rejects.toMatchObject({ status: 409 });
+
+    const delivered = await setup(1, 14);
+    await deliverDriverShipment(delivered.driver.id, delivered.shipmentId, {
+      otp: delivered.otp,
+      deliveredQty: 1,
+    });
+    await expect(
+      declineDriverJob(delivered.driver.id, delivered.shipmentId, "Too late"),
+    ).rejects.toMatchObject({ status: 409 });
   });
 
   it("increments OTP attempts and fails the delivery after three wrong codes", async () => {

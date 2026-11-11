@@ -101,7 +101,7 @@ function toOrderDto(order: OrderWithRelations, includeOtp = false): OrderDto {
     status: shipment.status,
     deliveredAt: shipment.deliveredAt?.toISOString() ?? null,
     reviewEnds: shipment.reviewEnds?.toISOString() ?? null,
-    otp: includeOtp && shipment.status === "dispatched" ? decryptOtp(shipment.otpEncrypted) : null,
+    otp: includeOtp && (shipment.status === "dispatched" || shipment.status === "picked_up") ? decryptOtp(shipment.otpEncrypted) : null,
     events: shipment.events.map((event) => ({
       at: event.at.toISOString(),
       actor: event.actor,

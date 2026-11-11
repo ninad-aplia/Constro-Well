@@ -9,6 +9,7 @@ import type {
   ProductDetailDto,
   ProductSummaryDto,
 } from "@/lib/api/dto";
+import { normalizeBulkTiers } from "@/lib/shop/pricing";
 
 export type CatalogDb = Pick<PrismaClient, "product" | "category">;
 
@@ -109,6 +110,7 @@ function serializeOffer(
     verified: offer.verified,
     rating: offer.rating,
     serviceablePincodes: offer.seller.pincodes.map((pincode) => pincode.pin),
+    bulkTiers: normalizeBulkTiers(offer.bulkTiers),
     purchasable: offer.status === "active" && offer.stock >= offer.minOrderQty,
   };
 }

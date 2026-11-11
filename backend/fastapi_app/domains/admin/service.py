@@ -29,6 +29,7 @@ ADMIN_ORDERS_LIST = "admin.orders.list"
 ADMIN_ORDER_DETAIL = "admin.orders.detail"
 ADMIN_OVERVIEW_READ = "admin.overview.read"
 ADMIN_SHIPMENTS_LIST = "admin.shipments.list"
+ADMIN_ACTOR_DETAIL = "admin.actors.detail"
 
 ORDER_STAGES = ("ordered", "packed", "shipped", "out_for_delivery", "delivered")
 SHIPMENT_STATUSES = (
@@ -36,6 +37,7 @@ SHIPMENT_STATUSES = (
     "accepted",
     "packed",
     "dispatched",
+    "picked_up",
     "failed",
     "review",
     "disputed",
@@ -43,6 +45,7 @@ SHIPMENT_STATUSES = (
     "rejected",
     "missed",
     "cancelled",
+    "refunded",
 )
 
 # Only deliberately whitelisted, non-sensitive metadata keys are exposed by the
@@ -170,6 +173,73 @@ async def list_audit_filter_options(
         )
     ).all()
     return list(actions), [(row[0], row[1]) for row in actors]
+
+
+ACTOR_RECENT_EVENTS = 20
+ACTOR_ACTION_LIMIT = 20
+
+
+async def get_admin_actor(db: AsyncSession, actor_id: str) -> User | None:
+    """Only administrator accounts can be investigated (audit actors are admins).
+
+    The role check stays in Python: `User.role` is a native PostgreSQL enum, and
+    comparing it to a VARCHAR bind in SQL raises asyncpg's operator error.
+    """
+    user = (
+        await db.execute(select(User).where(User.id == actor_id))
+    ).scalar_one_or_none()
+    if user is None or user.role != "admin":
+        return None
+    return user
+
+
+async def get_actor_activity(db: AsyncSession, actor_id: str):
+    """Bounded audit profile for one administrator: totals, top actions, recent rows."""
+    total, first_seen, last_seen = (
+        await db.execute(
+            select(
+                func.count(AuditEvent.id),
+                func.min(AuditEvent.created_at),
+                func.max(AuditEvent.created_at),
+            ).where(AuditEvent.actor_user_id == actor_id)
+        )
+    ).one()
+    distinct_actions = (
+        await db.execute(
+            select(func.count(func.distinct(AuditEvent.action))).where(
+                AuditEvent.actor_user_id == actor_id
+            )
+        )
+    ).scalar_one()
+    actions = (
+        await db.execute(
+            select(
+                AuditEvent.action,
+                func.count(AuditEvent.id).label("event_count"),
+            )
+            .where(AuditEvent.actor_user_id == actor_id)
+            .group_by(AuditEvent.action)
+            .order_by(func.count(AuditEvent.id).desc(), AuditEvent.action.asc())
+            .limit(ACTOR_ACTION_LIMIT)
+        )
+    ).all()
+    events = (
+        await db.execute(
+            select(AuditEvent, User)
+            .join(User, User.id == AuditEvent.actor_user_id)
+            .where(AuditEvent.actor_user_id == actor_id)
+            .order_by(AuditEvent.created_at.desc(), AuditEvent.id.desc())
+            .limit(ACTOR_RECENT_EVENTS)
+        )
+    ).all()
+    return (
+        int(total or 0),
+        int(distinct_actions or 0),
+        first_seen,
+        last_seen,
+        list(actions),
+        list(events),
+    )
 
 
 async def list_sellers(

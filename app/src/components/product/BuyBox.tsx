@@ -20,6 +20,7 @@ export default function BuyBox({
   id,
   offerId,
   price,
+  bulkTiers,
   unit,
   sellerName,
   minOrderQty = 1,
@@ -29,6 +30,7 @@ export default function BuyBox({
   id: number;
   offerId: string;
   price: number;
+  bulkTiers?: [number, number][];
   unit: string;
   sellerName: string;
   minOrderQty?: number;
@@ -37,7 +39,7 @@ export default function BuyBox({
 }) {
   const [qty, setQty] = useState(minOrderQty);
   const [adding, setAdding] = useState(false);
-  const tier = bulkTier(qty);
+  const tier = bulkTier(qty, bulkTiers);
   const unitPrice = Math.round(price * (1 - (tier ? tier[1] : 0) / 100));
   const cart = useRemoteCart();
   const session = useSession();

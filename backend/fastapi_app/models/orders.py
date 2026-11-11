@@ -56,7 +56,7 @@ class Shipment(Base):
     # it — same fix as `fastapi_app/models/finance.py`'s enum columns.
     status: Mapped[str] = mapped_column(
         ENUM(
-            "new", "accepted", "packed", "dispatched", "failed", "review",
+            "new", "accepted", "packed", "dispatched", "picked_up", "failed", "review",
             "disputed", "settled", "rejected", "missed", "cancelled", "refunded",
             name="ShipmentStatus", create_type=False,
         )
@@ -81,6 +81,20 @@ class ShipmentEvent(Base):
     )
     message: Mapped[str] = mapped_column(Text)
     at: Mapped[datetime] = mapped_column("at", DateTime)
+
+
+class ShipmentIssue(Base):
+    """Current dispute per shipment (schema: shipmentId is unique)."""
+
+    __tablename__ = "ShipmentIssue"
+
+    id: Mapped[str] = mapped_column(Text, primary_key=True)
+    shipment_id: Mapped[str] = mapped_column("shipmentId", Text)
+    type: Mapped[str] = mapped_column(Text)
+    note: Mapped[str] = mapped_column(Text)
+    claim: Mapped[Decimal | None] = mapped_column(Numeric(14, 2), nullable=True)
+    auto: Mapped[bool] = mapped_column(Boolean)
+    created_at: Mapped[datetime] = mapped_column("createdAt", DateTime)
 
 
 class EscrowEntry(Base):

@@ -32,7 +32,7 @@ const ISSUE_OPTIONS: { value: DriverIssueType; label: string }[] = [
 ];
 
 export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob | null; onClose: () => void }) {
-  const { state, busyId, acceptJob, confirmDelivery, reportIssue } = useDeliveryStore();
+  const { state, busyId, acceptJob, confirmPickup, confirmDelivery, reportIssue } = useDeliveryStore();
   const [otp, setOtp] = useState(["", "", "", ""]);
   const [photoConfirmed, setPhotoConfirmed] = useState(false);
   const [qty, setQty] = useState<number | "">("");
@@ -44,7 +44,7 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
   if (!job) return null;
 
   const status = DELIVERY_STATUS[job.status];
-  const canComplete = job.status === "dispatched";
+  const canComplete = job.status === "dispatched" || job.status === "picked_up";
   const busy = busyId === job.shipmentId;
   const issueType = ISSUE_OPTIONS[issueOption]?.value ?? "failed_attempt";
 
@@ -72,6 +72,15 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
     setError("");
     try {
       await acceptJob(job);
+    } catch (err) {
+      setError(messageOf(err));
+    }
+  };
+
+  const pickup = async () => {
+    setError("");
+    try {
+      await confirmPickup(job);
     } catch (err) {
       setError(messageOf(err));
     }
@@ -227,6 +236,30 @@ export default function DeliveryJobDrawer({ job, onClose }: { job: DeliveryJob |
                   <Button variant="yellow" disabled={busy} onClick={() => void accept()}>
                     {busy ? "Accepting…" : "Accept job"}
                   </Button>
+                </div>
+              </div>
+            )}
+
+            {job.status === "dispatched" && job.accepted && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-link/35 bg-link/10 p-2.5 text-sm">
+                <SellerIcon name="truck" size={18} />
+                <div className="grid gap-2">
+                  <span>
+                    <b>Confirm pickup.</b> Confirm you collected the goods from the seller. The delivery OTP stays visible to the
+                    customer and is required at drop-off.
+                  </span>
+                  <Button variant="yellow" disabled={busy} onClick={() => void pickup()}>
+                    {busy ? "Confirming." : "Confirm pickup"}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {job.status === "picked_up" && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-ok/40 bg-ok/10 p-2.5 text-sm">
+                <SellerIcon name="check" size={18} />
+                <div>
+                  <b>Picked up.</b> Goods collected from the seller. Collect the delivery OTP at drop-off to complete the delivery.
                 </div>
               </div>
             )}

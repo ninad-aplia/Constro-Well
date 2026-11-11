@@ -44,6 +44,11 @@ export default function SellerTable({ offers }: { offers: ProductOffer[] }) {
                       ? ` · Serves ${offer.serviceablePincodes.length} pincodes`
                       : ""}
                   </span>
+                  <span className="block text-[12px] text-muted">
+                    {offer.bulkTiers.length
+                      ? `Bulk: ${offer.bulkTiers.map(([qty, pct]) => `${qty}+ ${pct}% off`).join(", ")}`
+                      : "Standard bulk tiers"}
+                  </span>
                 </td>
                 <td className="border-b border-line px-2.5 py-2.5 text-right font-bold">
                   {inr(offer.price)}

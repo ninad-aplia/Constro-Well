@@ -43,7 +43,7 @@ inspection, `R` = report/audit. "Read" vs "write" noted where they differ.
 | B5 | Product images / document upload | MISSING | S | No storage abstraction |
 | B6 | Inventory & stock management | COMPLETE | T,S | Stock endpoint; concurrency caveat (see Data doc) |
 | B7 | Pricing & minimum quantity | COMPLETE | T,S | Price/min-qty persisted |
-| B8 | Bulk pricing | PARTIAL | S | `Product.bulkFlag`; per-offer bulk edit not exposed |
+| B8 | Bulk pricing | COMPLETE | T,S,B | Per-offer `SellerOffer.bulkTiers` (2026-11-12, task 6.7): seller edit UI, server/cart Decimal pricing, product page + seller table, FastAPI parity; empty = marketplace defaults |
 | B9 | Incoming order management | COMPLETE | T,S,B | Seller order list scoped to own shipments |
 | B10 | Accept/reject | COMPLETE | T,S | Reject restores stock + refunds escrow |
 | B11 | Pack/dispatch | COMPLETE | T,S | Dispatch assigns owned driver, resets OTP |
@@ -61,8 +61,8 @@ inspection, `R` = report/audit. "Read" vs "write" noted where they differ.
 | C1 | Driver registration/profile | PARTIAL | S | Settings page read; no self-serve registration |
 | C2 | Driver verification/KYC | MISSING | S | No document lifecycle |
 | C3 | Job assignment | COMPLETE | T,S | Dispatch assigns driver; driver jobs list |
-| C4 | Accept/reject job | PARTIAL | T,S | Accept idempotent; driver reject not implemented |
-| C5 | Pickup confirmation | MISSING | S | No pickup transition in state machine |
+| C4 | Accept/reject job | COMPLETE | T,S | Accept idempotent; driver decline (`dispatched → packed`, reason event, assignment/OTP cleared) shipped 2026-11-12 (task 7.2d) - seller re-dispatches another driver |
+| C5 | Pickup confirmation | COMPLETE | T,S | `picked_up` state added (2026-11-12): driver `POST /api/driver/jobs/[id]/pickup`, dispatch-only, idempotent, row-locked (task 7.2c) - no POD photo storage (C8) |
 | C6 | Delivery workflow | COMPLETE | T,S,B | Accept → deliver → review; failed-attempt side-branch now resolves via seller reassign-retry or mark-missed (2026-11-11, task 7.2b, T+S only, no browser check) — no automatic deadline-timeout transition (needs WP-5 background jobs) |
 | C7 | OTP verification | COMPLETE | T,S,B | 3-try lockout, encrypted + hashed |
 | C8 | Proof of delivery (persisted) | PARTIAL | S | `deliveredQty` + client-attested photo flag; no photo storage |
@@ -82,8 +82,8 @@ inspection, `R` = report/audit. "Read" vs "write" noted where they differ.
 | D5 | Order monitoring/detail | COMPLETE | T,S,B | Tasks 9.11/9.12 |
 | D6 | Shipment/delivery oversight | COMPLETE | T,S | Dedicated `/admin/shipments` ("Deliveries" nav), cross-seller, paginated, status filter (2026-11-11) — read-only, no actions |
 | D7 | Audit activity + filters | COMPLETE | T,S,B | Tasks 9.8/9.14 |
-| D8 | Admin actor investigation | PARTIAL | S | Actor filter exists; no drill-down profile |
-| D9 | Disputes/refunds/escalations | BLOCKED | S | `ShipmentIssue` readable, no resolution ops |
+| D8 | Admin actor investigation | COMPLETE | T,S,B | Audited `/admin/actors/[id]` drill-down (2026-11-12, task 9.16): profile, totals, top actions, latest 20 events; owner-only scope; activity-log actor links; proxy 404 |
+| D9 | Disputes/refunds/escalations | COMPLETE | S,B | WP-2 admin dispute & refund resolution (2026-11-12): `/admin/disputes` queue + detail, full/partial/reject with mandatory reason + evidence, claim/confirmed-COD caps, COD-confirmed gate, `refunded`/`settled` transitions, seller-funded `customer_refund` adjustment plus proportional `commission_credit` (assessment never mutated, surplus carried as seller credit, reversal auto-compensates), audited reads/writes |
 | D10 | Financial/escrow oversight | PARTIAL | T,S | Overview totals; no ledger operations |
 | D11 | Payout/settlement operations | BLOCKED | S | No settlement job or payout API |
 | D12 | Configuration/settings | MISSING | S | Prototype-only |
@@ -122,16 +122,17 @@ where a capability spans read/write (e.g. reviews = PARTIAL because read exists
 but write is missing). `BLOCKED` = owner decision, external integration, or an
 approved schema change; `MISSING` = no implementation and no external blocker.
 
-**Tally (78 rows), updated 2026-11-11 (task 7.2b + D6):**
+**Tally (78 rows), updated 2026-11-12 (WP-2 dispute/refund resolution):**
 
-- COMPLETE: **32** (was 31 — D6 moved from PARTIAL: dedicated `/admin/shipments`
-  cross-seller monitoring view shipped)
-- PARTIAL: **26** (was 27 — D6 moved out)
-- MISSING: **14** (A7b,14,16 · B1,2,5,15 · C2,5,11,12 · D12 · E9,15)
-- BLOCKED: **6** (D4 KYC review, D9 disputes/refunds, D11 payout/settlement —
-  owner rule/schema decisions; E6 payment provider, E7 file storage, E8
-  notifications — external providers)
+- COMPLETE: **37** (was 36 - D9 disputes/refunds shipped 2026-11-12)
+- PARTIAL: **23**
+- MISSING: **13** (A7b,14,16 · B1,2,5,15 · C2,11,12 · D12 · E9,15)
+- BLOCKED: **5** (D4 KYC review, D11 payout/settlement - owner rule/schema
+  decisions; E6 payment provider, E7 file storage, E8 notifications - external
+  providers)
 - IMPLEMENTED_UNVERIFIED: **0**
 - NOT_IN_SCOPE: **0**
+
+**Release candidate 2026-11-12:** commit `6895884` on `feature/backend-mvp` contains the verified implementation for D9, D8, B8, C4, C5, D6 and the WP-1 finance foundation (350 backend tests, 182 Vitest, tsc/ESLint/build clean). Not pushed: production needs the three pending Supabase migrations before the code can serve traffic - see `HANDOFF.md`.
 
 (P0/P1/P2/P3 severity per row is assigned in `IMPLEMENTATION_ROADMAP.md`.)

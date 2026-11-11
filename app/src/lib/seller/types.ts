@@ -10,6 +10,7 @@ export type SellerOrderStatus =
   | "accepted"
   | "packed"
   | "dispatched"
+  | "picked_up"
   | "failed"
   | "review"
   | "disputed"

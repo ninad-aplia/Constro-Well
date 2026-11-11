@@ -6,6 +6,7 @@ export const ORDER_STATUS: Record<SellerOrderStatus, { label: string; tone: "ok"
   accepted: { label: "To dispatch", tone: "info" },
   packed: { label: "Packed", tone: "info" },
   dispatched: { label: "On the road", tone: "info" },
+  picked_up: { label: "Picked up", tone: "info" },
   failed: { label: "Failed attempt", tone: "bad" },
   review: { label: "Delivered, in review", tone: "ok" },
   disputed: { label: "Disputed", tone: "bad" },

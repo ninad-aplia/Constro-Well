@@ -2,6 +2,7 @@
 // `requireSeller`; every query is scoped by sellerId and no client-supplied
 // seller/product ownership is accepted.
 import { Prisma, type PrismaClient, type Seller } from "@prisma/client";
+import { normalizeBulkTiers } from "@/lib/shop/pricing";
 import { db } from "@/server/db";
 import { ApiError } from "@/server/http";
 import type { SellerProductDto } from "@/lib/api/dto";
@@ -37,6 +38,7 @@ function serialize(offer: OfferWithProduct): SellerProductDto {
     minOrderQty: offer.minOrderQty,
     reorderLevel: offer.reorderLevel,
     leadTimeDays: offer.leadTimeDays,
+    bulkTiers: normalizeBulkTiers(offer.bulkTiers),
     status: offer.status,
     soldCount: offer.soldCount,
     verified: offer.verified,
@@ -95,6 +97,7 @@ export async function createSellerProduct(
         minOrderQty: input.minOrderQty,
         reorderLevel: input.reorderLevel,
         leadTimeDays: input.leadTimeDays,
+        bulkTiers: input.bulkTiers,
         status: nextStatus,
       },
       include: offerInclude,
@@ -134,6 +137,7 @@ export async function updateSellerProduct(
   if (input.minOrderQty !== undefined) data.minOrderQty = input.minOrderQty;
   if (input.reorderLevel !== undefined) data.reorderLevel = input.reorderLevel;
   if (input.leadTimeDays !== undefined) data.leadTimeDays = input.leadTimeDays;
+  if (input.bulkTiers !== undefined) data.bulkTiers = input.bulkTiers;
 
   const offer = await client.sellerOffer.update({
     where: { id: current.id },

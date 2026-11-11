@@ -63,7 +63,13 @@ export async function fetchSellerAdjustments(baseUrl = ""): Promise<SellerAdjust
 }
 
 export async function createSellerAdjustment(
-  input: { type: "customer_refund"; amount: string; reason: string; evidenceRef?: string },
+  input: {
+    type: "customer_refund";
+    amount: string;
+    reason: string;
+    evidenceRef?: string;
+    shipmentId?: string;
+  },
   baseUrl = "",
 ): Promise<SellerAdjustmentDto> {
   return apiFetch<SellerAdjustmentDto>("/api/seller/finance/adjustments", {

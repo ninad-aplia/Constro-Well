@@ -12,13 +12,43 @@ export const BULK: [number, number][] = [
   [200, 10],
 ];
 
-export function bulkTier(q: number): [number, number] | undefined {
-  return [...BULK].reverse().find(([n]) => q >= n);
+export type BulkTiers = readonly (readonly [number, number])[];
+
+/**
+ * Normalises a per-offer tier list from JSON/API input: integer thresholds
+ * (2..100000), integer percentages (1..90), duplicate thresholds removed and
+ * ascending order. Invalid entries are dropped rather than trusted.
+ */
+export function normalizeBulkTiers(raw: unknown): [number, number][] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<number>();
+  const tiers: [number, number][] = [];
+  for (const entry of raw) {
+    if (!Array.isArray(entry) || entry.length !== 2) continue;
+    const [qty, percent] = entry;
+    if (!Number.isInteger(qty) || qty < 2 || qty > 100_000) continue;
+    if (!Number.isInteger(percent) || percent < 1 || percent > 90) continue;
+    if (seen.has(qty)) continue;
+    seen.add(qty);
+    tiers.push([qty, percent]);
+  }
+  return tiers.sort((a, b) => a[0] - b[0]);
+}
+
+/** An offer with no custom tiers keeps the marketplace defaults. */
+export function effectiveBulkTiers(raw: unknown): BulkTiers {
+  const custom = normalizeBulkTiers(raw);
+  return custom.length ? custom : BULK;
+}
+
+export function bulkTier(q: number, tiers: BulkTiers = BULK): [number, number] | undefined {
+  const found = [...tiers].reverse().find(([n]) => q >= n);
+  return found ? [found[0], found[1]] : undefined;
 }
 
 /** Unit price of one unit of an offer at quantity q (prototype `unitPrice`). */
-export function unitPrice(offer: SellerOffer, q: number): number {
-  const t = bulkTier(q);
+export function unitPrice(offer: SellerOffer, q: number, tiers: BulkTiers = BULK): number {
+  const t = bulkTier(q, tiers);
   return Math.round(offer.price * (1 - (t ? t[1] : 0) / 100));
 }
 

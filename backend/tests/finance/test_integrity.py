@@ -77,7 +77,7 @@ async def test_allocation_service_rejects_cross_seller_assessment(fdata):
 
     # The receivable is untouched and the remittance is still fully unallocated.
     statement = await service.seller_statement(fdata.db, ids["a_seller"])
-    assert statement["commission"] == {"assessed": "10.00", "remitted": "0.00", "outstanding": "10.00"}
+    assert statement["commission"] == {"assessed": "10.00", "remitted": "0.00", "outstanding": "10.00", "creditApplied": "0.00", "creditBalance": "0.00"}
     assert statement["remittances"]["unallocated"] == "0.00"
 
 
@@ -123,6 +123,10 @@ async def test_adjustment_service_rejects_foreign_and_unknown_references(fdata):
     ids = await _two_sellers(fdata)
     outsider_user = await fdata.user("seller")
     outsider = await fdata.seller(outsider_user)
+    # Snapshot global counts: a dev database may already hold unrelated rows, so
+    # the invariant is "these failed calls added nothing", not "the table is empty".
+    adjustments_before = await fdata.db.scalar(select(func.count()).select_from(SellerAdjustment))
+    audits_before = await _audit_count(fdata.db, service.AUDIT_ADJUSTMENT_CREATE)
 
     cases = [
         ({"shipment_id": ids["shipment_id"]}, "shipmentId"),
@@ -145,8 +149,8 @@ async def test_adjustment_service_rejects_foreign_and_unknown_references(fdata):
         assert caught.value.status_code == 422, field
         assert caught.value.field == field
 
-    assert await fdata.db.scalar(select(func.count()).select_from(SellerAdjustment)) == 0
-    assert await _audit_count(fdata.db, service.AUDIT_ADJUSTMENT_CREATE) == 0
+    assert await fdata.db.scalar(select(func.count()).select_from(SellerAdjustment)) == adjustments_before
+    assert await _audit_count(fdata.db, service.AUDIT_ADJUSTMENT_CREATE) == audits_before
 
 
 async def test_adjustment_rejects_mismatched_shipment_and_order(fdata):
@@ -178,7 +182,7 @@ async def test_adjustment_rejects_foreign_shipment_over_http(fdata, finance_clie
     ids = await _two_sellers(fdata)
     response = await finance_client.post(
         "/api/seller/finance/adjustments",
-        json={"type": "customer_refund", "amount": "5.00", "reason": "x", "shipmentId": ids["shipment_id"]},
+        json={"type": "customer_refund", "amount": "5.00", "reason": "Foreign reference", "evidenceRef": "TEST", "shipmentId": ids["shipment_id"]},
         cookies=seller_auth["cookie"],
     )
     assert response.status_code == 422, response.text
@@ -189,7 +193,7 @@ async def test_adjustment_rejects_foreign_order_over_http(fdata, finance_client:
     ids = await _two_sellers(fdata)
     response = await finance_client.post(
         "/api/seller/finance/adjustments",
-        json={"type": "customer_refund", "amount": "5.00", "reason": "x", "orderId": ids["order_id"]},
+        json={"type": "customer_refund", "amount": "5.00", "reason": "Foreign reference", "evidenceRef": "TEST", "orderId": ids["order_id"]},
         cookies=seller_auth["cookie"],
     )
     assert response.status_code == 422, response.text

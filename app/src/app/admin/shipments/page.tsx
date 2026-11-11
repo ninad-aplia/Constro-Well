@@ -24,7 +24,7 @@ export const instant = false;
 // The real `ShipmentStatus` enum (Prisma schema) — fixed vocabulary, so a
 // static list is simpler and safer than round-tripping a filter-options call.
 const SHIPMENT_STATUSES = [
-  "new", "accepted", "packed", "dispatched", "failed", "review",
+  "new", "accepted", "packed", "dispatched", "picked_up", "failed", "review",
   "disputed", "settled", "rejected", "missed", "cancelled", "refunded",
 ] as const;
 

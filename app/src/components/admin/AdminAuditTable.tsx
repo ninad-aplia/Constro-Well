@@ -1,6 +1,7 @@
 // Activity log table: append-only audit rows, server-rendered.
 import Link from "next/link";
 import { auditActionLabel, formatAuditMetadata, formatAuditTime } from "@/lib/admin/activity";
+import { actorHref } from "@/lib/admin/actors";
 import type { AuditEventRecord } from "@/lib/api/adminApi";
 
 export default function AdminAuditTable({
@@ -59,7 +60,9 @@ export default function AdminAuditTable({
                   {formatAuditTime(event.createdAt)}
                 </td>
                 <td className="px-4 py-3">
-                  <span className="block font-semibold">{event.actor.name}</span>
+                  <Link href={actorHref(event.actor.id)} className="block font-semibold hover:underline">
+                    {event.actor.name}
+                  </Link>
                   <span className="block font-mono text-[11px] text-muted">{event.actor.id}</span>
                 </td>
                 <td className="px-4 py-3">

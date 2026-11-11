@@ -111,7 +111,9 @@ class SellerAdjustment(Base):
     seller_id: Mapped[str] = mapped_column("sellerId", Text)
     shipment_id: Mapped[str | None] = mapped_column("shipmentId", Text, nullable=True)
     order_id: Mapped[str | None] = mapped_column("orderId", Text, nullable=True)
-    type: Mapped[str] = mapped_column("type", _enum("SellerAdjustmentType", "customer_refund", "adjustment", "reversal"))
+    type: Mapped[str] = mapped_column(
+        "type", _enum("SellerAdjustmentType", "customer_refund", "adjustment", "commission_credit", "reversal")
+    )
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     reason: Mapped[str] = mapped_column(Text)
     evidence_ref: Mapped[str | None] = mapped_column("evidenceRef", Text, nullable=True)

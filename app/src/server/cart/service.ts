@@ -18,6 +18,7 @@ import {
   evaluateCoupon,
   loadCoupon,
   money,
+  offerBulkTiers,
   taxFor,
   unitPrice,
 } from "./pricing";
@@ -92,7 +93,8 @@ function toItem(item: CartWithItems["items"][number]): CartItemDto {
   const offer = item.sellerOffer;
   const issue = itemIssue(offer, item.qty);
   const available = issue === null;
-  const unit = unitPrice(offer.price, item.qty);
+  const tiers = offerBulkTiers(offer.bulkTiers);
+  const unit = unitPrice(offer.price, item.qty, tiers);
   const lineTotal = available ? unit.mul(item.qty) : new D(0);
   const art = categoryArt(offer.product.category.name);
   return {
@@ -115,7 +117,7 @@ function toItem(item: CartWithItems["items"][number]): CartItemDto {
     lineTotal: money(lineTotal),
     available,
     issue,
-    bulk: bulkPercent(item.qty) > 0,
+    bulk: bulkPercent(item.qty, tiers) > 0,
     savedForLater: item.savedForLater,
     hue: art.hue,
     art: art.art,

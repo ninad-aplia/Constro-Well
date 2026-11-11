@@ -9,6 +9,12 @@ export const deliverSchema = z
   })
   .strict();
 
+export const declineJobSchema = z
+  .object({
+    reason: z.string().trim().min(3, "Give a reason for declining").max(300),
+  })
+  .strict();
+
 export const issueSchema = z
   .object({
     type: z.enum(["failed_attempt", "damaged_goods", "short_quantity"]),

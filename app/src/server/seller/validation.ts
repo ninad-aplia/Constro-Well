@@ -1,6 +1,20 @@
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 
+const bulkTiers = z
+  .array(
+    z.tuple([
+      z.number().int().min(2).max(100_000),
+      z.number().int().min(1).max(90),
+    ]),
+  )
+  .max(5)
+  .transform((tiers) => [...tiers].sort((a, b) => a[0] - b[0]))
+  .refine(
+    (tiers) => new Set(tiers.map(([minQty]) => minQty)).size === tiers.length,
+    "Bulk tier thresholds must be distinct",
+  );
+
 const money = z
   .union([z.string(), z.number()])
   .transform((value) => new Prisma.Decimal(value))
@@ -23,6 +37,7 @@ export const createSellerProductSchema = z
     minOrderQty: minOrderQty.default(1),
     reorderLevel: reorderLevel.default(0),
     leadTimeDays: leadTimeDays.default(1),
+    bulkTiers: bulkTiers.default([]),
     status: status.optional(),
   })
   .strict();
@@ -34,6 +49,7 @@ export const updateSellerProductSchema = z
     minOrderQty: minOrderQty.optional(),
     reorderLevel: reorderLevel.optional(),
     leadTimeDays: leadTimeDays.optional(),
+    bulkTiers: bulkTiers.optional(),
     status: status.optional(),
   })
   .strict()

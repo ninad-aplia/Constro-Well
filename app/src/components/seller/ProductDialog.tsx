@@ -21,6 +21,7 @@ interface FormState {
   minOrderQty: number;
   reorderLevel: number;
   leadTimeDays: number;
+  bulkTiers: [number, number][];
 }
 
 const EMPTY: FormState = {
@@ -30,6 +31,7 @@ const EMPTY: FormState = {
   minOrderQty: 1,
   reorderLevel: 0,
   leadTimeDays: 1,
+  bulkTiers: [],
 };
 
 function toForm(product: SellerProductDto | null): FormState {
@@ -41,6 +43,7 @@ function toForm(product: SellerProductDto | null): FormState {
     minOrderQty: product.minOrderQty,
     reorderLevel: product.reorderLevel,
     leadTimeDays: product.leadTimeDays,
+    bulkTiers: product.bulkTiers ?? [],
   };
 }
 
@@ -103,6 +106,16 @@ function ProductForm({
     if (!Number.isInteger(form.leadTimeDays) || form.leadTimeDays < 0) {
       next.leadTimeDays = "Enter a valid lead time";
     }
+    const tiers = [...form.bulkTiers].sort((a, b) => a[0] - b[0]);
+    if (tiers.length > 5) {
+      next.bulkTiers = "Use at most 5 tiers";
+    } else if (tiers.some(([qty]) => !Number.isInteger(qty) || qty < 2 || qty > 100_000)) {
+      next.bulkTiers = "Tier quantity must be a whole number of 2 or more";
+    } else if (tiers.some(([, pct]) => !Number.isInteger(pct) || pct < 1 || pct > 90)) {
+      next.bulkTiers = "Tier discount must be a whole number between 1% and 90%";
+    } else if (new Set(tiers.map(([qty]) => qty)).size !== tiers.length) {
+      next.bulkTiers = "Tier quantities must be distinct";
+    }
     setErrors(next);
     if (Object.keys(next).length) return;
 
@@ -115,6 +128,7 @@ function ProductForm({
         minOrderQty: form.minOrderQty,
         reorderLevel: form.reorderLevel,
         leadTimeDays: form.leadTimeDays,
+        bulkTiers: tiers,
       };
       const saved = product
         ? await updateSellerProduct(product.offerId, input)
@@ -251,6 +265,84 @@ function ProductForm({
         Buyers automatically get 3% off at 10+ units, 6% at 50+ and 10% at 200+. Platform commission is{" "}
         {COMMISSION_RATE * 100}% of the item value.
       </p>
+
+      <section className="rounded-lg border border-line p-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <b className="text-sm">Bulk pricing for this listing</b>
+          <Button
+            type="button"
+            size="sm"
+            variant="line"
+            disabled={form.bulkTiers.length >= 5}
+            onClick={() =>
+              set("bulkTiers", [
+                ...form.bulkTiers,
+                [Math.max(10, form.minOrderQty), 3] as [number, number],
+              ])
+            }
+          >
+            Add tier
+          </Button>
+        </div>
+        <p className="mt-1 text-[13px] text-muted">
+          Optional. Leave empty to use the marketplace defaults above; otherwise these tiers replace them for this
+          listing only.
+        </p>
+        {form.bulkTiers.length > 0 && (
+          <div className="mt-2 grid gap-2">
+            {form.bulkTiers.map(([qty, pct], index) => (
+              <div key={index} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+                <label className="grid gap-1 text-[13px] font-semibold">
+                  From quantity
+                  <input
+                    type="number"
+                    min={2}
+                    className="h-9 rounded-lg border border-line bg-panel px-2"
+                    value={qty}
+                    onChange={(event) =>
+                      set(
+                        "bulkTiers",
+                        form.bulkTiers.map((tier, i) =>
+                          i === index ? [Number(event.target.value), tier[1]] : tier,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <label className="grid gap-1 text-[13px] font-semibold">
+                  % off
+                  <input
+                    type="number"
+                    min={1}
+                    max={90}
+                    className="h-9 rounded-lg border border-line bg-panel px-2"
+                    value={pct}
+                    onChange={(event) =>
+                      set(
+                        "bulkTiers",
+                        form.bulkTiers.map((tier, i) =>
+                          i === index ? [tier[0], Number(event.target.value)] : tier,
+                        ),
+                      )
+                    }
+                  />
+                </label>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="line"
+                  onClick={() => set("bulkTiers", form.bulkTiers.filter((_, i) => i !== index))}
+                >
+                  Remove
+                </Button>
+              </div>
+            ))}
+          </div>
+        )}
+        {errors.bulkTiers && (
+          <p className="mt-1 text-[13px] font-medium text-bad">{errors.bulkTiers}</p>
+        )}
+      </section>
 
       {apiError && (
         <p role="alert" className="rounded-lg border border-bad bg-panel px-3 py-2 text-[13px] font-medium text-bad">

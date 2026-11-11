@@ -9,6 +9,8 @@ import { toDeliveryJob } from "./driverAdapter";
 import type { DeliveryJob, DeliveryState } from "@/lib/delivery/types";
 import {
   acceptDriverJob,
+  confirmDriverPickup,
+  declineDriverJob,
   deliverDriverJob,
   fetchDriverJob,
   reportDriverJobIssue,
@@ -31,6 +33,8 @@ interface DeliveryStoreValue {
   state: DeliveryState;
   busyId: string | null;
   acceptJob: (job: DeliveryJob) => Promise<void>;
+  confirmPickup: (job: DeliveryJob) => Promise<void>;
+  declineJob: (job: DeliveryJob, reason: string) => Promise<void>;
   confirmDelivery: (job: DeliveryJob, input: ConfirmDeliveryInput) => Promise<void>;
   reportIssue: (job: DeliveryJob, input: ReportIssueInput) => Promise<void>;
 }
@@ -82,6 +86,32 @@ export default function DeliveryStoreProvider({
     [replace, toast],
   );
 
+  const confirmPickup = useCallback(
+    async (job: DeliveryJob) => {
+      setBusyId(job.shipmentId);
+      try {
+        replace(await confirmDriverPickup(job.shipmentId));
+        toast.show("Pickup confirmed. Head to the drop-off.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [replace, toast],
+  );
+
+  const declineJob = useCallback(
+    async (job: DeliveryJob, reason: string) => {
+      setBusyId(job.shipmentId);
+      try {
+        replace(await declineDriverJob(job.shipmentId, reason));
+        toast.show("Job declined. The seller can assign another vehicle.");
+      } finally {
+        setBusyId(null);
+      }
+    },
+    [replace, toast],
+  );
+
   const confirmDelivery = useCallback(
     async (job: DeliveryJob, input: ConfirmDeliveryInput) => {
       setBusyId(job.shipmentId);
@@ -112,7 +142,7 @@ export default function DeliveryStoreProvider({
   );
 
   return (
-    <Ctx.Provider value={{ state, busyId, acceptJob, confirmDelivery, reportIssue }}>
+    <Ctx.Provider value={{ state, busyId, acceptJob, confirmPickup, declineJob, confirmDelivery, reportIssue }}>
       {children}
     </Ctx.Provider>
   );

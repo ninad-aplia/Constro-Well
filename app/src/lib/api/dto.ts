@@ -25,6 +25,8 @@ export interface OfferDto {
   verified: boolean;
   rating: number | null;
   serviceablePincodes: string[];
+  /** Per-offer bulk tiers; empty means the marketplace default tiers apply. */
+  bulkTiers: [number, number][];
   purchasable: boolean;
 }
 
@@ -72,6 +74,7 @@ export interface SellerProductDto {
   minOrderQty: number;
   reorderLevel: number;
   leadTimeDays: number;
+  bulkTiers: [number, number][];
   status: "active" | "paused";
   soldCount: number;
   verified: boolean;

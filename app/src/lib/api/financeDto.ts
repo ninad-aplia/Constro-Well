@@ -3,7 +3,7 @@
 
 export type CollectionStatus = "pending" | "confirmed" | "disputed" | "cancelled";
 export type RemittanceStatus = "initiated" | "received" | "allocated" | "failed" | "returned";
-export type AdjustmentType = "customer_refund" | "adjustment" | "reversal";
+export type AdjustmentType = "customer_refund" | "adjustment" | "commission_credit" | "reversal";
 export type AdjustmentStatus = "open" | "applied";
 
 export interface CodCollectionDto {
@@ -96,9 +96,15 @@ export interface SellerStatementDto {
     discrepancyCount: number;
     discrepancyAmount: string;
   };
-  commission: { assessed: string; remitted: string; outstanding: string };
+  commission: {
+    assessed: string;
+    remitted: string;
+    outstanding: string;
+    creditApplied: string;
+    creditBalance: string;
+  };
   remittances: { received: string; unallocated: string; initiated: string };
-  adjustments: { net: string };
+  adjustments: { net: string; commissionCredits: string };
   legacyEscrow: {
     held: string;
     commission: string;

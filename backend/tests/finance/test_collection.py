@@ -152,6 +152,18 @@ async def test_collection_discrepancy_listing(fdata, finance_client: AsyncClient
 
 
 async def test_confirm_writes_audit_event(fdata, finance_client: AsyncClient, seller_auth):
+    from sqlalchemy import func, select
+
+    from fastapi_app.models.audit import AuditEvent
+
+    # Historical events may already exist in a dev database; assert the delta.
+    before = int(
+        await fdata.db.scalar(
+            select(func.count())
+            .select_from(AuditEvent)
+            .where(AuditEvent.action == AUDIT_COLLECTION_CONFIRM)
+        )
+    )
     shipment_id = await _make_shipment(fdata, seller_auth["seller_id"], user_id=seller_auth["user_id"])
     await fdata.collection(shipment_id, seller_auth["seller_id"], expected="100.00")
     await finance_client.post(
@@ -160,11 +172,7 @@ async def test_confirm_writes_audit_event(fdata, finance_client: AsyncClient, se
         cookies=seller_auth["cookie"],
     )
 
-    from sqlalchemy import select, func
-
-    from fastapi_app.models.audit import AuditEvent
-
     count = await fdata.db.scalar(
         select(func.count()).select_from(AuditEvent).where(AuditEvent.action == AUDIT_COLLECTION_CONFIRM)
     )
-    assert int(count) == 1
+    assert int(count) == before + 1

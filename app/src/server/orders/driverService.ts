@@ -165,6 +165,93 @@ export async function acceptDriverJob(driverId: string, shipmentId: string): Pro
   );
 }
 
+/** Driver confirms the goods were physically collected from the seller. */
+export async function confirmDriverPickup(driverId: string, shipmentId: string): Promise<DriverJobDto> {
+  return db.$transaction(
+    async (tx) => {
+      // Row lock keeps a double-click from writing two pickup events.
+      await tx.$queryRaw`SELECT "id" FROM "Shipment" WHERE "id" = ${shipmentId} FOR UPDATE`;
+      const shipment = await tx.shipment.findUnique({
+        where: { id: shipmentId },
+        include: shipmentInclude,
+      });
+      if (!shipment || shipment.driverId !== driverId) {
+        throw new ApiError(404, "shipment_not_found", "Shipment not found");
+      }
+      if (shipment.status === "picked_up") {
+        return toDto(shipment); // idempotent retry, no duplicate event
+      }
+      if (shipment.status !== "dispatched") {
+        throw new ApiError(409, "invalid_transition", "Only a dispatched job can be confirmed as picked up");
+      }
+      const now = new Date();
+      await tx.shipment.update({ where: { id: shipmentId }, data: { status: "picked_up" } });
+      await tx.shipmentEvent.create({
+        data: { shipmentId, actor: "driver", message: "Driver confirmed pickup from the seller", at: now },
+      });
+      await refreshOrderStage(tx, shipment.orderId);
+      const fresh = await tx.shipment.findUniqueOrThrow({
+        where: { id: shipmentId },
+        include: shipmentInclude,
+      });
+      return toDto(fresh);
+    },
+    { timeout: 15_000 },
+  );
+}
+
+/** Driver declines a dispatched job; it returns to `packed` for reassignment. */
+export async function declineDriverJob(
+  driverId: string,
+  shipmentId: string,
+  reason: string,
+): Promise<DriverJobDto> {
+  return db.$transaction(
+    async (tx) => {
+      await tx.$queryRaw`SELECT "id" FROM "Shipment" WHERE "id" = ${shipmentId} FOR UPDATE`;
+      const shipment = await tx.shipment.findUnique({
+        where: { id: shipmentId },
+        include: shipmentInclude,
+      });
+      if (!shipment || shipment.driverId !== driverId) {
+        throw new ApiError(404, "shipment_not_found", "Shipment not found");
+      }
+      if (shipment.status !== "dispatched") {
+        throw new ApiError(409, "invalid_transition", "Only a dispatched job can be declined");
+      }
+      const now = new Date();
+      // Back to the seller's dispatch queue: clear the assignment + OTP so a new
+      // driver/vehicle can be dispatched. COD expectation and stock are untouched.
+      await tx.shipment.update({
+        where: { id: shipmentId },
+        data: {
+          status: "packed",
+          driverId: null,
+          vehicleId: null,
+          otpHash: null,
+          otpEncrypted: null,
+          otpTries: 0,
+        },
+      });
+      await tx.shipmentEvent.create({
+        data: {
+          shipmentId,
+          actor: "driver",
+          message: `Driver declined delivery job: ${reason}`,
+          at: now,
+        },
+      });
+      await refreshOrderStage(tx, shipment.orderId);
+      const fresh = await tx.shipment.findUniqueOrThrow({
+        where: { id: shipmentId },
+        include: shipmentInclude,
+      });
+      return toDto(fresh);
+    },
+    { timeout: 15_000 },
+  );
+}
+
 function quantities(shipment: ShipmentWithRelations): { totalQty: number; itemValue: Prisma.Decimal } {
   return shipment.lines.reduce(
     (sum, line) => ({
@@ -200,7 +287,7 @@ export async function deliverDriverShipment(
       if (!shipment || shipment.driverId !== driverId) {
         return { ok: false, status: 404, code: "shipment_not_found", message: "Shipment not found" };
       }
-      if (shipment.status !== "dispatched") {
+      if (shipment.status !== "dispatched" && shipment.status !== "picked_up") {
         return {
           ok: false,
           status: 409,
@@ -349,7 +436,7 @@ export async function reportDriverIssue(
       if (!shipment || shipment.driverId !== driverId) {
         throw new ApiError(404, "shipment_not_found", "Shipment not found");
       }
-      if (shipment.status !== "dispatched") {
+      if (shipment.status !== "dispatched" && shipment.status !== "picked_up") {
         throw new ApiError(409, "invalid_transition", "Only a shipment on the road can be reported");
       }
       if (shipment.issue) {

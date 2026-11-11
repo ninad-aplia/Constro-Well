@@ -288,6 +288,33 @@ class AdminAuditFilterOptionsOut(CamelModel):
     actors: list[AdminAuditActorOption]
 
 
+class AdminActorProfileOut(CamelModel):
+    id: str
+    name: str
+    email: str
+    role: str
+    created_at: datetime
+
+
+class AdminActorSummaryOut(CamelModel):
+    total_events: int
+    distinct_actions: int
+    first_seen: datetime | None
+    last_seen: datetime | None
+
+
+class AdminActorActionCountOut(CamelModel):
+    action: str
+    count: int
+
+
+class AdminActorDetailOut(CamelModel):
+    actor: AdminActorProfileOut
+    summary: AdminActorSummaryOut
+    actions: list[AdminActorActionCountOut]
+    events: list[AuditEventOut]
+
+
 class AdminOverviewOut(CamelModel):
     generated_at: datetime
     windows: AdminOverviewWindows

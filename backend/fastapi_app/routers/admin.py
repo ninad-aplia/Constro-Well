@@ -22,6 +22,10 @@ from fastapi_app.core.security import require_admin
 from fastapi_app.domains.admin import service
 from fastapi_app.models.identity import User
 from fastapi_app.schemas.admin import (
+    AdminActorActionCountOut,
+    AdminActorDetailOut,
+    AdminActorProfileOut,
+    AdminActorSummaryOut,
     AdminAuditActorOption,
     AdminAuditFilterOptionsOut,
     AdminEscrowTypeOut,
@@ -187,6 +191,96 @@ async def audit_filter_options(
     return AdminAuditFilterOptionsOut(
         actions=actions,
         actors=[AdminAuditActorOption(id=actor_id, name=name) for actor_id, name in actors],
+    )
+
+
+def _actor_id(raw: str) -> str:
+    value = raw.strip()
+    if not value or len(value) > 100:
+        raise ApiError(400, "validation_error", "String must contain at most 100 character(s)", "id")
+    return value
+
+
+@router.get(
+    "/actors/{actor_id}/exists",
+    include_in_schema=False,
+)
+async def actor_exists(
+    actor_id: str,
+    _admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> dict:
+    """Lightweight existence check for the Next.js proxy (no audit row)."""
+    if await service.get_admin_actor(db, _actor_id(actor_id)) is None:
+        raise ApiError(404, "actor_not_found", "Administrator not found")
+    return {"exists": True}
+
+
+@router.get(
+    "/actors/{actor_id}",
+    response_model=AdminActorDetailOut,
+    summary="Administrator audit drill-down",
+)
+async def actor_detail(
+    actor_id: str,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+) -> AdminActorDetailOut:
+    aid = _actor_id(actor_id)
+    try:
+        actor = await service.get_admin_actor(db, aid)
+        if actor is None:
+            raise ApiError(404, "actor_not_found", "Administrator not found")
+        total, distinct_actions, first_seen, last_seen, actions, events = (
+            await service.get_actor_activity(db, aid)
+        )
+        await service.record_admin_audit(
+            db,
+            actor_user_id=admin.id,
+            action=service.ADMIN_ACTOR_DETAIL,
+            target_type="User",
+            target_id=aid,
+            metadata={"total": total},
+        )
+        await db.commit()
+    except ApiError:
+        await db.rollback()
+        raise
+    except Exception:
+        await db.rollback()
+        logger.exception("admin_actor_detail_failed")
+        raise ApiError(500, "internal_error", "Something went wrong") from None
+
+    return AdminActorDetailOut(
+        actor=AdminActorProfileOut(
+            id=actor.id,
+            name=actor.name,
+            email=actor.email,
+            role=actor.role,
+            created_at=actor.created_at,
+        ),
+        summary=AdminActorSummaryOut(
+            total_events=total,
+            distinct_actions=distinct_actions,
+            first_seen=first_seen,
+            last_seen=last_seen,
+        ),
+        actions=[
+            AdminActorActionCountOut(action=action, count=int(count))
+            for action, count in actions
+        ],
+        events=[
+            AuditEventOut(
+                id=event.id,
+                action=event.action,
+                actor=AuditActorOut(id=actor_row.id, name=actor_row.name),
+                target_type=event.target_type,
+                target_id=event.target_id,
+                metadata=service.safe_metadata(event.audit_metadata),
+                created_at=event.created_at,
+            )
+            for event, actor_row in events
+        ],
     )
 
 

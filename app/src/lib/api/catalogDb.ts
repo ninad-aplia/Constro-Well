@@ -58,6 +58,7 @@ export interface ProductOffer {
   verified: boolean;
   rating: number | null;
   serviceablePincodes: string[];
+  bulkTiers: [number, number][];
 }
 
 function asCategory(name: string): Category {
@@ -124,6 +125,7 @@ function offerOf(offer: OfferDto): ProductOffer {
     verified: offer.verified,
     rating: offer.rating,
     serviceablePincodes: offer.serviceablePincodes,
+    bulkTiers: offer.bulkTiers,
   };
 }
 

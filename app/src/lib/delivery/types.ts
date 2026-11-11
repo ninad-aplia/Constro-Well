@@ -4,7 +4,7 @@
 import type { SellerOrderDocs, SellerOrderEvent, SellerOrderIssue } from "@/lib/seller/types";
 
 /** Subset of `ShipmentStatus` relevant once a driver is assigned. */
-export type DeliveryStatus = "dispatched" | "failed" | "review" | "disputed" | "settled";
+export type DeliveryStatus = "dispatched" | "picked_up" | "failed" | "review" | "disputed" | "settled";
 
 export interface DeliveryJob {
   /** Shipment code shown to the driver (e.g. BG-123456-1). */

@@ -52,6 +52,7 @@ class OfferOut(CamelModel):
     verified: bool
     rating: float | None
     serviceable_pincodes: list[str]
+    bulk_tiers: list[list[int]]
     purchasable: bool
 
 

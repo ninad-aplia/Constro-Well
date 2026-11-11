@@ -14,7 +14,7 @@ from fastapi_app.core.config import get_settings
 from fastapi_app.core.db import dispose_engine
 from fastapi_app.core.errors import register_exception_handlers
 from fastapi_app.core.logging import RequestLogMiddleware, configure_logging
-from fastapi_app.routers import admin, auth, catalog, finance, health
+from fastapi_app.routers import admin, auth, catalog, disputes, finance, health
 
 DESCRIPTION = (
     "Authoritative backend for the Constro Well construction-materials marketplace. "
@@ -61,6 +61,7 @@ def create_app() -> FastAPI:
     app.include_router(auth.router)
     app.include_router(catalog.router)
     app.include_router(admin.router)
+    app.include_router(disputes.router)
     app.include_router(finance.seller_router)
     app.include_router(finance.driver_router)
     app.include_router(finance.admin_router)

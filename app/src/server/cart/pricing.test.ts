@@ -3,6 +3,7 @@ import { Prisma } from "@prisma/client";
 import {
   deliveryFeeFor,
   evaluateCoupon,
+  offerBulkTiers,
   taxFor,
   unitPrice,
   type CouponRule,
@@ -56,5 +57,21 @@ describe("cart pricing", () => {
     const free = rule({ code: "FREESHIP", minSubtotal: D(500), freeDelivery: true });
     expect(evaluateCoupon(free, D("500"), true).freeDelivery).toBe(true);
     expect(() => evaluateCoupon(free, D("499"), true)).toThrow();
+  });
+});
+
+describe("per-offer bulk pricing", () => {
+  it("keeps marketplace defaults for an empty tier list", () => {
+    const tiers = offerBulkTiers([]);
+    expect(unitPrice(D("100.00"), 9, tiers).toFixed(2)).toBe("100.00");
+    expect(unitPrice(D("100.00"), 10, tiers).toFixed(2)).toBe("97.00");
+    expect(unitPrice(D("100.00"), 50, tiers).toFixed(2)).toBe("94.00");
+  });
+
+  it("applies custom tiers and rounds exact decimals", () => {
+    const tiers = offerBulkTiers([[4, 12], [12, 25]]);
+    expect(unitPrice(D("99.90"), 3, tiers).toFixed(2)).toBe("99.90");
+    expect(unitPrice(D("99.90"), 4, tiers).toFixed(2)).toBe("87.91");
+    expect(unitPrice(D("99.90"), 12, tiers).toFixed(2)).toBe("74.93");
   });
 });

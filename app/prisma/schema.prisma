@@ -64,6 +64,7 @@ enum ShipmentStatus {
   accepted
   packed
   dispatched
+  picked_up
   failed
   review
   disputed
@@ -154,6 +155,7 @@ enum RemittanceAllocationKind {
 enum SellerAdjustmentType {
   customer_refund
   adjustment
+  commission_credit
   reversal
 }
 
@@ -325,6 +327,8 @@ model SellerOffer {
   price        Decimal       @db.Decimal(14, 2) // GST-inclusive (D8)
   stock        Int           @default(0)
   minOrderQty  Int           @default(1)
+  // Per-offer bulk tiers: [[minUnits, percentOff], ...]. Empty = marketplace defaults.
+  bulkTiers    Json          @default("[]")
   status       ProductStatus @default(active)
   reorderLevel Int           @default(0)
   soldCount    Int           @default(0)

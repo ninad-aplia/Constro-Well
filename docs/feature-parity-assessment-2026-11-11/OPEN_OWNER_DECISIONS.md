@@ -9,6 +9,25 @@ be responsibly inferred. Everything else is engineering execution.
 - An assigned delivery **driver may collect cash as the seller's agent**.
 - **Constro-Well does not collect or custody COD proceeds.**
 
+## Resolved (2026-11-12)
+
+**3. Refund & adjustment policy (P1) - APPROVED by the owner.** Sellers may
+record a `customer_refund` request with a reason and evidence reference; an admin
+authorises and applies it; the seller/driver pays the customer in cash and the
+platform only records and audits the adjustment (seller-funded cash only - no
+platform-funded or payment-gateway refunds; payment-provider decision #8 stays
+separate). Approvals are full, partial or rejected with a mandatory resolution
+reason; the approved amount is capped by `ShipmentIssue.claim` (damaged goods with
+no recorded claim: capped by confirmed COD); the COD collection must be
+`confirmed` before a refund is applied. Full approval closes the shipment as
+`refunded`, partial approval and rejection as `settled`, and the original issue,
+claim, evidence and history are preserved. An approved refund reduces commission
+proportionally at the applicable policy rate, recorded as a `commission_credit`
+adjustment at exact decimal precision: the original assessment is never mutated,
+already allocated/remitted commission becomes a carried seller credit, duplicate
+credits are rejected, and reversing the refund reverses its credit. Implemented
+as WP-2 (see `HANDOFF.md`).
+
 ## Outstanding
 
 1. **Commission rules (P0).** Commission rate and calculation basis (order value,
@@ -18,8 +37,9 @@ be responsibly inferred. Everything else is engineering execution.
 2. **Remittance (P0).** Frequency/deadline, permitted methods, and the receipt
    evidence required before a remittance is treated as platform cash.
 
-3. **Refund & adjustment policy (P1).** Which party may issue customer refunds and
-   adjustments, under what evidence, and how they reduce the commission basis.
+3. **Refund & adjustment policy (P1).** RESOLVED 2026-11-12 - see "Resolved"
+   above (sellers request, admins authorise/apply, seller-funded cash only,
+   proportional commission credit at the policy rate).
 
 4. **Penalty policy (P2).** Late-remittance or non-compliance penalties, if any.
 

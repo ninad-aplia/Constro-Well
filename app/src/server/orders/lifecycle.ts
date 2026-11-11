@@ -5,7 +5,7 @@ import type { Prisma } from "@prisma/client";
 // Exported so other seller-facing aggregates (e.g. performance stats) reuse
 // the same shipment-status classification instead of a second, drifting copy.
 export const DELIVERED = new Set(["review", "disputed", "settled", "refunded"]);
-export const SHIPPED = new Set(["dispatched", "review", "disputed", "settled", "failed", "refunded"]);
+export const SHIPPED = new Set(["dispatched", "picked_up", "review", "disputed", "settled", "failed", "refunded"]);
 export const TERMINAL_CANCEL = new Set(["cancelled", "rejected", "missed"]);
 
 export async function refreshOrderStage(tx: Prisma.TransactionClient, orderId: string): Promise<void> {

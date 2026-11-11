@@ -255,6 +255,10 @@ async def seller_create_adjustment(
     user, seller = deps
     if body.type != "customer_refund":
         raise ApiError(403, "forbidden", "Sellers may only record customer refunds")
+    if len(body.reason.strip()) < 3:
+        raise ApiError(422, "validation_error", "Give a reason for the refund", "reason")
+    if not body.evidence_ref or len(body.evidence_ref.strip()) < 3:
+        raise ApiError(422, "validation_error", "An evidence reference is required", "evidenceRef")
     try:
         result = await service.create_adjustment(
             db,

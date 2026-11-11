@@ -12,7 +12,7 @@ PRODUCT_SUMMARY_KEYS = {
 }
 OFFER_KEYS = {
     "id", "sellerName", "sellerCity", "price", "stock", "minOrderQty",
-    "leadTimeDays", "verified", "rating", "serviceablePincodes", "purchasable",
+    "leadTimeDays", "verified", "rating", "serviceablePincodes", "bulkTiers", "purchasable",
 }
 PRIVATE_OFFER_KEYS = {"gstin", "bankRef", "phone", "ownerUserId", "passwordHash"}
 

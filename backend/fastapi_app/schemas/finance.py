@@ -99,6 +99,8 @@ class SellerStatementCommissionOut(CamelModel):
     assessed: str
     remitted: str
     outstanding: str
+    credit_applied: str
+    credit_balance: str
 
 
 class SellerStatementRemittancesOut(CamelModel):
@@ -109,6 +111,7 @@ class SellerStatementRemittancesOut(CamelModel):
 
 class SellerStatementAdjustmentsOut(CamelModel):
     net: str
+    commission_credits: str
 
 
 class SellerStatementLegacyEscrowOut(CamelModel):

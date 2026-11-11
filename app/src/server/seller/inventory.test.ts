@@ -73,12 +73,14 @@ describe.skipIf(!hasDb)("seller inventory service", () => {
           minOrderQty: 1,
           reorderLevel: 0,
           leadTimeDays: 2,
+          bulkTiers: [[50, 6], [10, 3]],
         },
         tx,
       );
       expect(created.price).toBe("777.00");
       expect(created.status).toBe("active");
       expect(created.name).toBe(product!.name);
+      expect(created.bulkTiers).toEqual([[10, 3], [50, 6]]);
 
       const listed = await listSellerProducts(seller!.id, tx);
       expect(listed.map((p) => p.offerId)).toContain(created.offerId);
@@ -96,6 +98,14 @@ describe.skipIf(!hasDb)("seller inventory service", () => {
       );
       expect(reactivated.stock).toBe(5);
       expect(reactivated.status).toBe("active");
+
+      const tiered = await updateSellerProduct(
+        seller!.id,
+        created.offerId,
+        { bulkTiers: [[25, 20], [5, 10]] },
+        tx,
+      );
+      expect(tiered.bulkTiers).toEqual([[5, 10], [25, 20]]);
 
       await expect(
         updateSellerProduct(
@@ -124,6 +134,7 @@ describe.skipIf(!hasDb)("seller inventory service", () => {
             minOrderQty: 1,
             reorderLevel: 0,
             leadTimeDays: 1,
+            bulkTiers: [],
           },
           tx,
         ),
@@ -139,6 +150,7 @@ describe.skipIf(!hasDb)("seller inventory service", () => {
             minOrderQty: 1,
             reorderLevel: 0,
             leadTimeDays: 1,
+            bulkTiers: [],
           },
           tx,
         ),

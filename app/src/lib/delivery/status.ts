@@ -4,6 +4,7 @@ import type { DeliveryStatus } from "./types";
 
 export const DELIVERY_STATUS: Record<DeliveryStatus, { label: string; tone: "ok" | "warn" | "bad" | "info" }> = {
   dispatched: { label: "On the road", tone: "info" },
+  picked_up: { label: "Picked up", tone: "info" },
   failed: { label: "Failed attempt", tone: "bad" },
   review: { label: "Delivered, in review", tone: "ok" },
   disputed: { label: "Disputed", tone: "bad" },

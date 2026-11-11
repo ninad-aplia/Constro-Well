@@ -1,6 +1,121 @@
 # HANDOFF.md - current checkpoint for the next IDE
 
-**Last updated:** 2026-11-11 (seller failed-delivery reassignment checkpoint) · **Writer agent:** Claude Code
+**Last updated:** 2026-11-12 (release candidate commit; production verified read-only) · **Writer agent:** OpenCode
+
+## Release candidate (2026-11-12) - committed, deliberately not pushed
+
+- **Commit:** `6895884` "feat: seller-collected COD finance, disputes/refunds and portal workflows" on `feature/backend-mvp` (90 files: WP-1 finance, WP-2 disputes/refunds, C4/C5/D6/D8/B8, migrations, tests, docs). Excluded from the commit: `app/check-*.cjs`, `app/tmp-*.cjs`, `app/tests/tmp-diag*.spec.ts`, `app/tests/example.spec.ts`, `artifacts/` (generated demo media/build logs), `app/.github/`, and `app/.env` (git-ignored).
+- **Verification before commit:** `pytest tests` **350 passed** (the 4 catalogue contract-equivalence tests need a live Next API; they pass 14/14 with `NEXT_API_URL` set), Vitest **182/182**, `tsc --noEmit` 0, `eslint src` 0, `npm run build` 0. Fixed one release-blocking test defect: `tests/finance/test_collection.py` asserted a global audit count; it now asserts the delta. Also removed the local E2E orders/collections/assessments created during the previous phase (they made the assessment-run suite depend on an empty finance table).
+- **Push state:** `origin/feature/backend-mvp` is at `344f16b`; a dry-run push shows a clean fast-forward `344f16b..6895884` (no force, credentials available via the Windows manager helper).
+- **Why it is not pushed yet:** the new code selects `SellerOffer.bulkTiers` and uses the `picked_up` / `commission_credit` enum values. The production database's migration level cannot be confirmed from this environment (no Supabase connection string or dashboards here), and migrations `20261112120000_add_picked_up_shipment_status`, `20261112180000_add_seller_offer_bulk_tiers`, `20261112190000_add_commission_credit_adjustment_type` must be applied to Supabase **before** this code serves traffic or product/seller pages will fail on the missing column/values. Pushing first would deploy un-migrated code against live data, so the deploy is deliberately held.
+- **Production snapshot (read-only, 2026-11-12):** Render service `constro-well` (Blueprint `render.yaml`, rootDir `app`, Node 22, `node .next/standalone/server.js`, health check `/api/health`) is live at `https://constro-well.onrender.com`; `/api/health` → `200 {"status":"ok","database":"ok"}`; `/`, `/search?q=cement`, `/product/0`, `/login`, `/register`, `/cart` → 200. Demo seed accounts do not exist there (admin/seller/driver login → 401), so authenticated portal and workflow smoke tests could not run against production.
+- **Render branch evidence:** `render.yaml` exists only on `feature/backend-mvp` (committed in `75ecef0`), not on `main`; the service therefore deploys that branch. No Render/Supabase API credentials exist in this environment, so services, env values and logs could not be inspected directly.
+- **Owner action to finish the release (in order):** 1) apply the three pending migrations to Supabase from `app/` with the production `DATABASE_URL` (`npx prisma migrate deploy` — never `migrate dev`/`db push`/reset); 2) confirm `APP_ORIGIN`, `DATABASE_URL`, `OTP_ENCRYPTION_KEY` on the Render service; 3) `git push origin feature/backend-mvp` (fast-forward, no force); 4) watch the Render deploy and re-run `/api/health` plus the authenticated smoke checks; 5) optionally seed demo accounts on a database that is intended to be a demo.
+
+## Cross-portal workflow verification (2026-11-12) - no defects found, no code changed
+
+Method: production build on `:3022` (`next start`, `FASTAPI_BASE_URL`/`FINANCE_API_URL` → fresh FastAPI `:8022`), driven with real HTTP sessions for the seeded demo accounts (no mocks, no browser). Ran the actual customer → seller → driver → admin journey.
+
+- **Customer:** `/api/products/0/offers` → add to cart (min-order enforced) → cart totals → COD checkout (`POST /api/orders`, idempotency key) → order detail with per-seller shipment, `review` OTP visibility, stage tracking. Cancellation before dispatch: stock 380 → 370 → 380, shipment and `CodCollection` cancelled, repeat cancel `409`.
+- **Seller:** orders board → accept → pack → dispatch (bulk order correctly demands a weighbridge reference) → COD collections list → confirm collection.
+- **Driver:** jobs list → pickup → deliver with the customer-visible OTP → shipment `review`, order stage advances.
+- **Admin:** `/api/admin/{orders,shipments,disputes,users,sellers,audit-events}` and finance reads all `200`; `/admin`, `/admin/orders`, `/admin/shipments`, `/admin/disputes`, `/admin/finance`, `/admin/users`, `/admin/sellers`, `/admin/activity` all render `200` authenticated.
+- **Live WP-2 chain re-proved on real data** (order `BG-282342`, COD confirmed 3982): customer report issue → shipment `disputed`; admin detail shows cap 3982 and COD `confirmed`; seller refund request with evidence; admin approves 100 → shipment `settled`, `customer_refund` + `commission_credit` 5.00 applied, seller statement `creditApplied 5.00 / creditBalance 5.00`; duplicate resolution `409`. The temporary 5% policy was deleted afterwards; the refund records are genuine bookkeeping for that dev order.
+- **Suites:** `pytest tests` **374/374** with a live Next server (`NEXT_API_URL=http://127.0.0.1:3022`); without one, the 4 catalogue contract-equivalence tests fail only because they compare FastAPI against the Next API (environmental, not a defect). Focused admin+finance **295/295**, dispute suite **11/11**.
+
+Dev-data notes: E2E orders `BG-750947` (delivered + settled dispute), `BG-971564` (cancelled), `BG-282342` (delivered, settled with a 100.00 refund and 5.00 commission credit) exist in the local DB; no policies remain.
+
+## Last completed task (WP-2 - Admin dispute & refund resolution - 2026-11-12)
+
+Branch `feature/backend-mvp` @ `344f16b` - nothing committed, staged, pushed or deployed. C4, C5, D6, D8, B8 and the other uncommitted work are untouched.
+
+**Owner policy applied (decision #3 now resolved, see `OPEN_OWNER_DECISIONS.md`).** Sellers request a `customer_refund` with reason + evidence; an admin authorises and applies it; the seller/driver pays the customer in cash; the platform records and audits only. Approvals are capped by `ShipmentIssue.claim` (damaged goods with no claim: confirmed COD), the COD collection must be `confirmed`, and an approved refund reduces commission proportionally at the policy rate.
+
+- **Schema:** one additive migration `20261112190000_add_commission_credit_adjustment_type` (adds `SellerAdjustmentType.commission_credit`). No table/column changes.
+- **Backend:** `backend/fastapi_app/domains/disputes/service.py` + `routers/disputes.py` + `schemas/disputes.py` + `models/orders.py` (`ShipmentIssue` read mapping) + `models/finance.py` enum. `GET /api/admin/disputes`, `GET /api/admin/disputes/{shipmentId}`, `POST /api/admin/disputes/{shipmentId}/resolve`. Resolution is row-locked, admin-only, requires a reason (evidence too when approving), validates `0 < amount ≤ cap` server-side, is idempotent (a resolved dispute is 409 and disappears from the queue but stays readable), and writes `ShipmentEvent` + `admin.disputes.resolve` audit + finance audit rows in one transaction.
+- **Accounting:** an approval creates an applied `customer_refund` (seller-funded cash; the platform never moves money) plus an applied `commission_credit` = refund × rate (the assessment's rate when one exists, else the active policy rate), `Decimal` 2dp half-up. Statement: `outstanding = max(0, assessed − netAllocated − credits)`, surplus exposed as `creditBalance`, `creditApplied`/`commissionCredits` on `/seller/finance`. The original `CommissionAssessment` is never mutated; a duplicate credit is 409; reversing the refund auto-reverses its credit (manual refunds without a credit are a no-op). Rejection closes the shipment `settled` with no adjustments; full approval closes it `refunded`, partial `settled`.
+- **UI:** `Disputes` admin nav item, `/admin/disputes` queue, `/admin/disputes/[shipmentId]` detail (issue/claim/COD/lines/events, refund cap + commission source, seller request) and `AdminDisputeResolveForm` (server-recomputed preview, blocked-approval banner that still allows rejection). Seller refund form now requires evidence and can link the request to a shipment.
+- **Verified 2026-11-12:** focused `backend/tests/admin/test_admin_disputes.py` **11/11**; full `pytest tests/admin tests/finance` **295/295**; Vitest **182/182**; `npx tsc --noEmit` 0; `npx eslint src` 0; `npm run build` 0. Authenticated browser walkthrough (Playwright, chromium, production build on `:3015` + FastAPI `:8030`) **5/5**: seller records an evidenced request linked to a dispute; admin approves in full (INR 60 → refund 60.00, commission reduction 3.00, shipment `refunded`); admin cannot approve an unconfirmed-COD dispute but can reject it (`settled`); seller statement shows the commission credits; unauthenticated `/admin/disputes` redirects to login. Fixture rows (`BG-WP2-1/2`) and the temporary 5% policy used for the walkthrough were deleted afterwards, restoring the seeded DB.
+- **Fixed during verification:** the detail route read `params.id` while the folder is `[shipmentId]` (always 404); resolving then refreshing 404'd because detail only served open disputes; rejection was wrongly gated on confirmed COD + policy (a stuck collection could trap a dispute forever); a no-claim cap was applied to non-damaged issue types.
+- **Local data note:** the walkthrough's own rows (`BG-WP2-1`, `BG-WP2-2`) and the temporary 5% policy were deleted afterwards. The seeded damaged-goods dispute `BG-50221` is now `settled` with an "Admin rejected the refund claim" `ShipmentEvent` from the rejection walkthrough (its issue/claim/history are intact); re-seeding the demo data restores it to `disputed`.
+- **Next:** finish task 7.4's remaining admin-console scope (reassign rejected/timed-out shipments, late nudges, failed attempts, vendor scorecards) - see `TASKS.md`.
+
+### Environment notes discovered this session
+- Local Postgres 18 listens on `127.0.0.1:5433` (Windows service `postgresql-x64-18`). Its `max_connections` is 100 and every `next start`/`uvicorn` process holds a pool - running several verification servers concurrently exhausts it (`sorry, too many clients already`). Run one backend + one frontend, and stop the ones you are done with.
+- For browser verification prefer the production build: `next start -p <free port>` from `app/` with `FASTAPI_BASE_URL`/`FINANCE_API_URL` pointing at the FastAPI port. `next start` warns about `output: standalone`, but it serves correctly; `next dev` on a copied instance went into a Fast Refresh reload loop, so avoid multiple dev servers.
+- Killing **all** `python -m uvicorn` processes also stops the pre-existing `:8000` dev backend; restart it with `uvicorn fastapi_app.main:app --host 127.0.0.1 --port 8000 --log-level warning` if the `:3000` dev server is in use.
+
+## Last completed task (B8 - Per-offer bulk pricing - task 6.7 - 2026-11-12)
+
+Branch `feature/backend-mvp` @ `344f16b` - nothing committed, staged, pushed or deployed.
+
+**Scope:** matrix B8. Previously every offer used the same global tiers; `Product.bulkFlag` only marks bulk goods. No owner decision needed.
+
+- **Schema:** `SellerOffer.bulkTiers` JSON via additive migration `20261112180000_add_seller_offer_bulk_tiers`. Empty means the marketplace defaults (10+/3%, 50+/6%, 200+/10%) so existing offers are unchanged.
+- **Server:** seller create/edit validation normalises tiers (≤5, qty 2..100000, 1..90%, distinct ascending); inventory persists/returns them. Cart/order pricing resolves the offer's tiers in Prisma Decimal; the client never supplies prices. FastAPI catalogue exposes the same field.
+- **UI:** ProductDialog has a per-listing tier editor (add/remove, validation, defaults note); `/product/[id]` shows the selected offer's tiers in the BuyBox/bulk panel and SellerTable labels each offer's tiers.
+- **Verified:** full Vitest **182/182**; focused pricing/cart/inventory/validation **37/37**; FastAPI catalogue **42/42** (contract against the current dev server); `tsc`, ESLint and production build clean. Live check: UltraBuild offer 390.00 with `10+ 15%` → cart unit price **331.50**; custom tier rendered on `/product/0`; offer restored afterwards.
+- **Next:** the highest-priority unblocked MVP workflow remaining is **WP-2 admin dispute/refund resolution**, but its refund policy is an open owner decision (`OPEN_OWNER_DECISIONS.md` #3). Recover that decision/requirements before implementation; otherwise D8/B8 are both complete.
+
+## Last completed task (D8 - Admin actor investigation - task 9.16 - 2026-11-12)
+
+Branch `feature/backend-mvp` @ `344f16b` - nothing committed, staged, pushed or deployed.
+
+**Scope:** the parity matrix's D8 ("actor filter exists; no drill-down profile"). No owner decision or schema change needed; reuses `AuditEvent` and the existing Admin read/audit patterns.
+
+- **Backend:** `GET /api/admin/actors/{actor_id}` returns the administrator profile, summary (total events, distinct actions, first/last recorded), top 20 action counts and the latest 20 events (safe metadata only). Administrator accounts only - an unknown or non-admin id is `404 actor_not_found`; the role check runs in Python because `User.role` is a native PostgreSQL enum. The read and its `admin.actors.detail` audit row commit together (fail-closed 500). `GET /api/admin/actors/{id}/exists` is a non-auditing helper for the Next proxy.
+- **Frontend:** `/admin/actors/[id]` shows profile, totals, most frequent actions and latest activity with loading/error/unauthorized/forbidden states; activity-log actor names now link to it. `proxy.ts` returns a real HTTP 404 for unknown actors and keeps the existing seller/order 404s.
+- **Verified:** focused FastAPI `tests/admin/test_admin_actor_detail.py` **20/20** (auth, 404 scope, contract/ordering/privacy, audit-once, rollback, exists) and full admin suite **110/110**; Vitest actor-link helpers **2/2**; `tsc`/ESLint clean. HTTP check: activity actor link → page 200 with drill-down sections; unknown actor 404; page read wrote `admin.actors.detail` (targetType `User`).
+- **Next:** **B8 - per-offer bulk pricing** (PARTIAL: `Product.bulkFlag` exists; per-offer bulk edit is not exposed). Inspect the B8 definition and pricing architecture before changing anything.
+
+## Hotfix (2026-11-12) - blank homepage / continuous refresh in dev
+
+Root cause: Next 16 blocks dev-only resources for origins other than `localhost`; the app was opened at `127.0.0.1:3001`, so `/_next/hmr` was refused (`ERR_INVALID_HTTP_RESPONSE`), the dev overlay showed its "1 Issue" indicator, and Fast Refresh retried/reloaded the page. A second, stale `next start` process (PID 26732, started 16:51) still serves `:3000` from an old build whose CSS chunks 500/404, so opening `:3000` shows an unstyled/blank page.
+
+Fix: `app/next.config.ts` now sets `allowedDevOrigins: ["127.0.0.1"]` (dev-only; no production effect). Verified on `http://127.0.0.1:3001`: styled homepage, 20s with 1 load/0 HMR errors/0 Suspense errors; customer `/orders`, seller `/seller/orders`, driver `/delivery/jobs`, admin `/admin/shipments` all 200 with content and one load each; `tsc` clean. Use the dev server on `:3001` (or stop the stale `:3000` process) - do not run `next start` against a tree that has been rebuilt by `next dev`.
+
+## Last completed task (demo readiness + driver job decline - task 7.2d - 2026-11-12)
+
+Branch `feature/backend-mvp` @ `344f16b` - nothing committed, staged, pushed or deployed.
+
+### Demonstration readiness (verified over HTTP)
+- **Working local stack:** Next `npm run dev` from `app/` (binds **3001** while port 3000 is held by a stale server in this environment) + FastAPI `uvicorn fastapi_app.main:app --host 127.0.0.1 --port 8001` from `backend/`. The long-running `:8000` process predates the `/api/admin/shipments` route - do not reuse it.
+- **Note:** start Next with `FASTAPI_BASE_URL` and `FINANCE_API_URL` pointing at the current FastAPI port (both are server-side envs; `.env` only sets `FINANCE_API_URL`).
+- **Pages verified authenticated (200 + real rows):** customer `/`, `/search`, `/cart`, `/orders`; seller `/seller`, `/seller/orders`, `/seller/finance`, `/seller/products`, `/seller/delivery`, `/seller/settings`; driver `/delivery`, `/delivery/jobs`, `/delivery/history`, `/delivery/settings`; admin `/admin`, `/admin/users`, `/admin/shipments` (incl. `?status=dispatched`), `/admin/finance`, `/admin/orders`, `/admin/sellers`, `/admin/activity`.
+- **Demo accounts** (seed, domain `@demo.constrowell.test`; password = seed `DEMO_PASSWORD`, never committed): admin `constro.well.admin@…`; sellers `imran.shaikh@…` (UltraBuild) + 6 more; drivers `ramesh.kumar@…`, `naveen.r@…`, `imtiyaz.khan@…`; customers `deepa.r@…`, `rohit.s@…`, etc. Demo dispatched jobs `BG-50231` (Ramesh) and `BG-50229` (Naveen) appear in both the seller and driver portals.
+- **Known non-blocking noise:** Next 16 dev logs `Date.now()`-during-prerender errors for `/admin*` responses; the pages still return HTTP 200 with correct data, and no admin source calls `Date.now()`. Stale dev processes on `:3000`/`:8000` are environment leftovers, not repo defects.
+
+### C4 - driver job decline (task 7.2d)
+- `POST /api/driver/jobs/[shipmentId]/decline` (`declineDriverJob`): driver-ownership scoped (`requireDriver` + cross-driver 404), row-locked, zod reason 3-300 chars.
+- `dispatched → packed`: clears `driverId`, `vehicleId`, `otpHash`, `otpEncrypted`, `otpTries` and appends `ShipmentEvent` "Driver declined delivery job: <reason>". COD `CodCollection`, stock and escrow are untouched; parent stage recomputes to `packed`, so the seller's existing re-dispatch path works.
+- Prevents duplicates/invalid transitions: after the decline the shipment is no longer assigned to that driver (repeat = 404, same ownership rule as cross-driver); `picked_up`/delivered states return 409.
+- Driver UI: `Decline` button on the assigned-jobs list + `DeclineJobDialog` with reasons; store action refreshes the job list (declined job leaves the active queue).
+- **Verified:** `vitest run src/server/orders/driverService.test.ts src/lib/delivery/selectors.test.ts` → **16/16** (driver 12 incl. 2 new decline tests: clears assignment/OTP, preserves COD, stage packed, seller re-dispatches; duplicate/non-assigned/picked-up/after-delivery rejections; selector 4 incl. decline eligibility + pickup active list); `tsc --noEmit` 0; ESLint 0. No schema change.
+
+## Last completed task (driver pickup confirmation - task 7.2c - 2026-11-12)
+
+Branch `feature/backend-mvp` @ `344f16b` - nothing committed, staged, pushed or deployed (task rules).
+
+Picked as the highest-priority unfinished **unblocked** business workflow: the parity matrix's C5 "Pickup confirmation" and HANDOFF's own next-candidate list both put it first - the physical flow jumped straight from seller dispatch to OTP delivery with no record that the driver actually collected the goods. No owner decision was needed.
+
+### What shipped
+- **Schema/migration:** `picked_up` added to `ShipmentStatus` via additive `20261112120000_add_picked_up_shipment_status` (`ALTER TYPE ... ADD VALUE ... AFTER 'dispatched'`). No table/column/data change; Prisma remains the migration authority. Applied to the local DB only (7 migrations now).
+- **API:** `POST /api/driver/jobs/[shipmentId]/pickup` (`confirmDriverPickup`) - driver-ownership scoped, row-locked, idempotent (exactly one `ShipmentEvent`), 409 from any status other than `dispatched`. Delivery and driver issue reporting now accept `picked_up` as an on-road state, so pickup stays optional for in-flight/seed shipments.
+- **Customer:** the delivery OTP stays visible while the shipment is `picked_up` (`server/orders/service.ts`), and the parent `Order.stage` remains `shipped` (`lifecycle.ts` SHIPPED set). Customer order page already renders the status generically ("Picked up").
+- **Seller:** status label + "On the road" filter include `picked_up`; performance stats treat it as dispatched.
+- **Driver portal:** "Confirm pickup" action (store + API client + drawer) after accepting a job, "Picked up" banner/status, active-jobs list and overview count include the state.
+- **Admin/FastAPI:** `/admin/shipments` filter and the FastAPI status vocabulary include `picked_up`; while touching that vocabulary the already-real `refunded` value was added to the backend constant/model so the existing UI filter no longer 400s (small correctness fix in the same surface).
+
+### Verified (focused, this session)
+| Check | Result |
+|---|---|
+| `vitest run src/server/orders/driverService.test.ts` | **10/10 passed** (3 new: idempotent pickup keeps OTP + shipped stage; deliver after pickup; cross-driver 404 + post-delivery 409) |
+| `pytest tests/admin/test_admin_overview.py tests/admin/test_admin_shipments.py` | **22/22 passed** (overview status tally updated 11→13) |
+| `npx tsc --noEmit` / ESLint (touched files) | exit 0 / 0 problems |
+| Browser check | Not run |
+
+### Next unblocked candidates
+C4 driver reject/decline assigned job (PARTIAL, smallest remaining delivery gap), D8 admin actor investigation (PARTIAL, no owner decision), B8 per-offer bulk pricing UI (PARTIAL). WP-2 admin dispute resolution and KYC remain blocked on owner decisions.
 
 ## Release checkpoint (2026-11-11 - pushed)
 

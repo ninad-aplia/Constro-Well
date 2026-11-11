@@ -969,8 +969,8 @@ async def reverse_adjustment(
     )
     if original is None:
         raise ApiError(404, "adjustment_not_found", "Adjustment not found")
-    if original.type not in ("customer_refund", "adjustment"):
-        raise ApiError(409, "invalid_transition", "Only a refund or adjustment can be reversed")
+    if original.type not in ("customer_refund", "adjustment", "commission_credit"):
+        raise ApiError(409, "invalid_transition", "Only a refund, adjustment or commission credit can be reversed")
     if original.status != "applied":
         raise ApiError(409, "invalid_transition", "Only an applied adjustment can be reversed")
 
@@ -1007,6 +1007,55 @@ async def reverse_adjustment(
         target_id=reversal.id,
         metadata={"reversesId": adjustment_id, "amount": str(original.amount)},
     )
+
+    # A refund from a dispute also created a commission credit. Reversing the
+    # refund must reverse that credit too, or the seller would keep a credit for
+    # cash that was never refunded. Manual refunds without a credit are a no-op.
+    if original.type == "customer_refund" and original.shipment_id:
+        credits = (
+            await db.execute(
+                select(SellerAdjustment)
+                .where(
+                    SellerAdjustment.type == "commission_credit",
+                    SellerAdjustment.shipment_id == original.shipment_id,
+                    SellerAdjustment.status == "applied",
+                )
+                .with_for_update()
+            )
+        ).scalars().all()
+        for credit in credits:
+            credit_reversed = await db.scalar(
+                select(SellerAdjustment).where(SellerAdjustment.reverses_id == credit.id)
+            )
+            if credit_reversed is not None:
+                continue
+            credit_reversal = SellerAdjustment(
+                id=new_id("adj"),
+                seller_id=credit.seller_id,
+                shipment_id=credit.shipment_id,
+                order_id=credit.order_id,
+                type="reversal",
+                amount=credit.amount,
+                reason=f"Commission credit reversed: {reason}",
+                status="applied",
+                created_by_user_id=admin_user_id,
+                applied_by_user_id=admin_user_id,
+                applied_at=now,
+                reverses_id=credit.id,
+                created_at=now,
+                updated_at=now,
+            )
+            db.add(credit_reversal)
+            await db.flush()
+            await record_finance_audit(
+                db,
+                actor_user_id=admin_user_id,
+                action=AUDIT_ADJUSTMENT_REVERSE,
+                target_type="SellerAdjustment",
+                target_id=credit_reversal.id,
+                metadata={"reversesId": credit.id, "amount": str(credit.amount), "kind": "commission_credit"},
+            )
+
     return reversal
 
 
@@ -1025,7 +1074,11 @@ async def list_seller_adjustments(db: AsyncSession, seller_id: str) -> list[Sell
 
 
 def _net_adjustment(rows: list[SellerAdjustment]) -> Decimal:
-    """Resolve applied adjustments (debit +, credit −, reversal negates)."""
+    """Resolve applied cash adjustments (debit +, credit -, reversal negates).
+
+    Commission credits are excluded here; they are not cash refunds and are
+    resolved separately by `_commission_credit_net`.
+    """
     by_id = {row.id: row for row in rows}
     net = ZERO
     for row in rows:
@@ -1040,6 +1093,20 @@ def _net_adjustment(rows: list[SellerAdjustment]) -> Decimal:
             elif ref is not None and ref.type == "adjustment":
                 net -= row.amount
     return net
+
+
+def _commission_credit_net(rows: list[SellerAdjustment]) -> Decimal:
+    """Applied commission credits minus their compensating reversals."""
+    by_id = {row.id: row for row in rows}
+    credits = ZERO
+    for row in rows:
+        if row.type == "commission_credit":
+            credits += row.amount
+        elif row.type == "reversal":
+            ref = by_id.get(row.reverses_id)
+            if ref is not None and ref.type == "commission_credit":
+                credits -= row.amount
+    return credits
 
 
 async def seller_statement(db: AsyncSession, seller_id: str) -> dict:
@@ -1098,12 +1165,15 @@ async def seller_statement(db: AsyncSession, seller_id: str) -> dict:
     adjustments = await list_seller_adjustments(db, seller_id)
     applied = [a for a in adjustments if a.status == "applied"]
     adjustment_net = _net_adjustment(applied)
+    commission_credits = _commission_credit_net(applied)
 
-    # Commission outstanding is purely assessed minus remitted. Customer-refund
-    # adjustments are the seller's own cash actions (refunding a customer) and are
-    # kept separately visible — no unapproved accounting rule is assumed to make
-    # them reduce commission owed.
-    outstanding = money(assessed) - money(net_allocated)
+    # Approved customer refunds create commission credits. The original
+    # assessment stays untouched; credits reduce outstanding commission and any
+    # surplus (from already-allocated/remitted commission) is carried as a seller
+    # credit against future assessments.
+    outstanding_raw = money(assessed) - money(net_allocated) - money(commission_credits)
+    outstanding = money(max(ZERO, outstanding_raw))
+    credit_balance = money(max(ZERO, -outstanding_raw))
 
     # Remittances.
     received = await db.scalar(
@@ -1147,13 +1217,18 @@ async def seller_statement(db: AsyncSession, seller_id: str) -> dict:
             "assessed": str(money(assessed)),
             "remitted": str(money(net_allocated)),
             "outstanding": str(outstanding),
+            "creditApplied": str(money(commission_credits)),
+            "creditBalance": str(money(credit_balance)),
         },
         "remittances": {
             "received": str(money(received)),
             "unallocated": str(unallocated),
             "initiated": str(money(initiated)),
         },
-        "adjustments": {"net": str(adjustment_net)},
+        "adjustments": {
+            "net": str(adjustment_net),
+            "commissionCredits": str(money(commission_credits)),
+        },
         "legacyEscrow": {key: str(money(value)) for key, value in escrow.items()},
     }
 

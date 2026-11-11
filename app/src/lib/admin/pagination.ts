@@ -27,6 +27,10 @@ export function ordersHref(page: number): string {
   return page <= 1 ? "/admin/orders" : `/admin/orders?page=${page}`;
 }
 
+export function disputesHref(page: number): string {
+  return page <= 1 ? "/admin/disputes" : `/admin/disputes?page=${page}`;
+}
+
 export function shipmentsHref(status: string, page: number): string {
   const query = new URLSearchParams();
   if (status) query.set("status", status);

@@ -2,7 +2,7 @@
 // produces a JS float. Bulk tiers reuse the approved BULK table from
 // lib/shop/pricing.ts so the prototype rule has one source of truth.
 import { Prisma } from "@prisma/client";
-import { BULK } from "@/lib/shop/pricing";
+import { BULK, effectiveBulkTiers, type BulkTiers, normalizeBulkTiers } from "@/lib/shop/pricing";
 import { ApiError } from "@/server/http";
 
 const D = Prisma.Decimal;
@@ -80,16 +80,25 @@ export function money(value: Prisma.Decimal): string {
   return value.toFixed(2);
 }
 
-export function bulkPercent(qty: number): number {
-  const tier = [...BULK].reverse().find(([minimum]) => qty >= minimum);
+export function bulkPercent(qty: number, tiers: BulkTiers = BULK): number {
+  const tier = [...tiers].reverse().find(([minimum]) => qty >= minimum);
   return tier ? tier[1] : 0;
 }
 
-export function unitPrice(price: Prisma.Decimal, qty: number): Prisma.Decimal {
-  const percent = bulkPercent(qty);
+export function unitPrice(price: Prisma.Decimal, qty: number, tiers: BulkTiers = BULK): Prisma.Decimal {
+  const percent = bulkPercent(qty, tiers);
   if (!percent) return price.toDecimalPlaces(2, ROUND);
   const factor = new D(1).minus(new D(percent).div(100));
   return price.mul(factor).toDecimalPlaces(2, ROUND);
+}
+
+/** Bounded, normalised per-offer tiers for pricing (empty = global defaults). */
+export function offerBulkTiers(raw: unknown): BulkTiers {
+  return effectiveBulkTiers(raw);
+}
+
+export function configuredBulkTiers(raw: unknown): [number, number][] {
+  return normalizeBulkTiers(raw);
 }
 
 export function deliveryFeeFor(

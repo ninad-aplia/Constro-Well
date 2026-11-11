@@ -113,7 +113,7 @@ async def test_admin_success_matches_database(admin_client: AsyncClient, admin_d
 
     shipment_map = {row["status"]: row["count"] for row in body["shipmentsByStatus"]}
     assert shipment_map["new"] >= 1
-    assert len(shipment_map) == 11
+    assert len(shipment_map) == 13
 
     assert len(body["ordersPerDay"]) == 30
     assert all(set(day) == {"date", "count"} for day in body["ordersPerDay"])

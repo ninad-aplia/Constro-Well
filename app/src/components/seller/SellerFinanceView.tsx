@@ -185,6 +185,10 @@ export default function SellerFinanceView() {
           <span className="text-[13px] font-semibold text-muted">Commission outstanding</span>
           <b className="font-display text-[22px] font-bold">{inr(statement.commission.outstanding)}</b>
           <span className="text-[13px] text-muted">Assessed {inr(statement.commission.assessed)} · remitted {inr(statement.commission.remitted)}</span>
+          <span className="text-[13px] text-muted">
+            {inr(statement.commission.creditApplied)} refund commission credits applied
+            {Number(statement.commission.creditBalance) > 0 ? ` · ${inr(statement.commission.creditBalance)} carried credit` : ""}
+          </span>
         </Card>
         <Card rounded="lg" className="grid gap-1.5 p-4">
           <span className="text-[13px] font-semibold text-muted">Remittances received</span>
@@ -302,7 +306,7 @@ export default function SellerFinanceView() {
           </div>
         </Card>
 
-        <RefundForm busy={busy === "refund"} onSubmit={(input) => run("refund", () => createSellerAdjustment(input), "Refund recorded for admin review.")} />
+        <RefundForm busy={busy === "refund"} shipments={collections.map((c) => c.shipmentId)} onSubmit={(input) => run("refund", () => createSellerAdjustment(input), "Refund recorded for admin review.")} />
       </div>
     </div>
   );
@@ -399,17 +403,35 @@ function RemittanceForm({ busy, onSubmit }: { busy: boolean; onSubmit: (input: {
   );
 }
 
-function RefundForm({ busy, onSubmit }: { busy: boolean; onSubmit: (input: { type: "customer_refund"; amount: string; reason: string; evidenceRef?: string }) => void }) {
+function RefundForm({
+  busy,
+  shipments,
+  onSubmit,
+}: {
+  busy: boolean;
+  shipments: string[];
+  onSubmit: (input: { type: "customer_refund"; amount: string; reason: string; evidenceRef?: string; shipmentId?: string }) => void;
+}) {
   const [amount, setAmount] = useState("");
   const [reason, setReason] = useState("");
   const [evidenceRef, setEvidenceRef] = useState("");
+  const [shipmentId, setShipmentId] = useState("");
   return (
     <Card rounded="lg" className="grid gap-3 p-[18px]">
       <h2 className="font-display text-lg font-bold">Record a customer refund</h2>
-      <p className="text-[13px] text-muted">You refund customers from your own cash; record it here for admin review. Refunds do not change your commission.</p>
+      <p className="text-[13px] text-muted">You refund customers from your own cash; record the request with evidence for admin review. Admin-approved refunds reduce commission owed proportionally at the policy rate.</p>
       <label className="grid gap-1 text-[13px] font-semibold">
         Amount (₹)
         <input inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="rounded-md border border-line bg-bg px-2 py-1.5" placeholder="0.00" />
+      </label>
+      <label className="grid gap-1 text-[13px] font-semibold">
+        Shipment (optional)
+        <select value={shipmentId} onChange={(e) => setShipmentId(e.target.value)} className="rounded-md border border-line bg-bg px-2 py-1.5">
+          <option value="">Not linked to a shipment</option>
+          {shipments.map((id) => (
+            <option key={id} value={id}>{id}</option>
+          ))}
+        </select>
       </label>
       <label className="grid gap-1 text-[13px] font-semibold">
         Reason
@@ -419,7 +441,7 @@ function RefundForm({ busy, onSubmit }: { busy: boolean; onSubmit: (input: { typ
         Evidence ref (optional)
         <input value={evidenceRef} onChange={(e) => setEvidenceRef(e.target.value)} className="rounded-md border border-line bg-bg px-2 py-1.5" />
       </label>
-      <Button variant="yellow" disabled={busy || !amount || !reason} onClick={() => onSubmit({ type: "customer_refund", amount, reason, evidenceRef: evidenceRef || undefined })}>
+      <Button variant="yellow" disabled={busy || !amount || !reason} onClick={() => onSubmit({ type: "customer_refund", amount, reason, evidenceRef: evidenceRef || undefined, ...(shipmentId ? { shipmentId } : {}) })}>
         {busy ? "Submitting…" : "Record refund"}
       </Button>
     </Card>

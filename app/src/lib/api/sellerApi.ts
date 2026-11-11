@@ -16,6 +16,7 @@ export interface CreateSellerProductInput {
   minOrderQty?: number;
   reorderLevel?: number;
   leadTimeDays?: number;
+  bulkTiers?: [number, number][];
   status?: "active" | "paused";
 }
 
@@ -25,6 +26,7 @@ export interface UpdateSellerProductInput {
   minOrderQty?: number;
   reorderLevel?: number;
   leadTimeDays?: number;
+  bulkTiers?: [number, number][];
   status?: "active" | "paused";
 }
 

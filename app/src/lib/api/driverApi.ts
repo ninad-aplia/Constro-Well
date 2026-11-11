@@ -16,6 +16,22 @@ export async function acceptDriverJob(shipmentId: string): Promise<DriverJobDto>
   return response.job;
 }
 
+export async function confirmDriverPickup(shipmentId: string): Promise<DriverJobDto> {
+  const response = await apiFetch<{ job: DriverJobDto }>(
+    `/api/driver/jobs/${encodeURIComponent(shipmentId)}/pickup`,
+    { method: "POST" },
+  );
+  return response.job;
+}
+
+export async function declineDriverJob(shipmentId: string, reason: string): Promise<DriverJobDto> {
+  const response = await apiFetch<{ job: DriverJobDto }>(
+    `/api/driver/jobs/${encodeURIComponent(shipmentId)}/decline`,
+    { method: "POST", body: JSON.stringify({ reason }) },
+  );
+  return response.job;
+}
+
 export async function deliverDriverJob(
   shipmentId: string,
   input: { otp: string; deliveredQty: number },

@@ -45,6 +45,90 @@ export interface AuditEventsResponse {
   pagination: AdminUsersPagination;
 }
 
+export interface AdminActorProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  createdAt: string;
+}
+
+export interface AdminActorSummary {
+  totalEvents: number;
+  distinctActions: number;
+  firstSeen: string | null;
+  lastSeen: string | null;
+}
+
+export interface AdminActorActionCount {
+  action: string;
+  count: number;
+}
+
+export interface AdminActorDetail {
+  actor: AdminActorProfile;
+  summary: AdminActorSummary;
+  actions: AdminActorActionCount[];
+  events: AuditEventRecord[];
+}
+
+export interface AdminDisputeRow {
+  shipmentId: string;
+  shipmentCode: string;
+  shipmentStatus: string;
+  orderId: string;
+  orderCode: string;
+  sellerId: string;
+  sellerName: string;
+  customerName: string;
+  issueType: string;
+  issueNote: string;
+  claim: string | null;
+  auto: boolean;
+  codStatus: string | null;
+  expectedAmount: string;
+  collectedAmount: string | null;
+  createdAt: string;
+}
+
+export interface AdminDisputesResponse {
+  disputes: AdminDisputeRow[];
+  pagination: AdminUsersPagination;
+}
+
+export interface AdminDisputeRefundRequest {
+  id: string;
+  amount: string;
+  reason: string;
+  evidenceRef: string | null;
+  status: string;
+  createdAt: string;
+}
+
+export interface AdminDisputeDetail extends AdminDisputeRow {
+  customerEmail: string;
+  shipmentCreatedAt: string;
+  deliveredQty: number | null;
+  commissionRate: string | null;
+  commissionSource: "assessment" | "policy" | "none";
+  maxRefund: string | null;
+  refundRequest: AdminDisputeRefundRequest | null;
+  lines: Array<{ name: string; unit: string; qty: number; unitPrice: string; lineValue: string }>;
+  events: Array<{ actor: string; message: string; at: string }>;
+}
+
+export interface AdminDisputeResolution {
+  shipmentId: string;
+  shipmentStatus: string;
+  decision: "approve" | "reject";
+  refundAmount: string;
+  commissionReduction: string;
+  commissionRate: string;
+  refundAdjustmentId: string | null;
+  commissionCreditId: string | null;
+  message: string;
+}
+
 export interface AdminSeller {
   id: string;
   storeName: string;
@@ -250,6 +334,43 @@ export async function fetchAuditEvents(
   if (filters.to) query.set("to", filters.to);
   return apiFetch<AuditEventsResponse>(
     `/api/admin/audit-events?${query.toString()}`,
+    { headers: cookie ? { cookie } : undefined, cache: "no-store" },
+    baseUrl(),
+  );
+}
+
+export async function fetchAdminActor(
+  actorId: string,
+  cookie: string,
+): Promise<AdminActorDetail> {
+  if (!adminApiConfigured()) throw new AdminApiUnavailableError();
+  return apiFetch<AdminActorDetail>(
+    `/api/admin/actors/${encodeURIComponent(actorId)}`,
+    { headers: cookie ? { cookie } : undefined, cache: "no-store" },
+    baseUrl(),
+  );
+}
+
+export async function fetchAdminDisputes(
+  page: number,
+  pageSize: number,
+  cookie: string,
+): Promise<AdminDisputesResponse> {
+  if (!adminApiConfigured()) throw new AdminApiUnavailableError();
+  return apiFetch<AdminDisputesResponse>(
+    `/api/admin/disputes?page=${page}&pageSize=${pageSize}`,
+    { headers: cookie ? { cookie } : undefined, cache: "no-store" },
+    baseUrl(),
+  );
+}
+
+export async function fetchAdminDispute(
+  shipmentId: string,
+  cookie: string,
+): Promise<AdminDisputeDetail> {
+  if (!adminApiConfigured()) throw new AdminApiUnavailableError();
+  return apiFetch<AdminDisputeDetail>(
+    `/api/admin/disputes/${encodeURIComponent(shipmentId)}`,
     { headers: cookie ? { cookie } : undefined, cache: "no-store" },
     baseUrl(),
   );

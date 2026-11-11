@@ -41,6 +41,7 @@ class SellerOffer(Base):
     price: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     stock: Mapped[int] = mapped_column(Integer)
     min_order_qty: Mapped[int] = mapped_column("minOrderQty", Integer)
+    bulk_tiers: Mapped[list] = mapped_column("bulkTiers", JSON)
     status: Mapped[str] = mapped_column(Text)
     lead_time_days: Mapped[int] = mapped_column("leadTimeDays", Integer)
     verified: Mapped[bool] = mapped_column(Boolean)

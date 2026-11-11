@@ -26,8 +26,8 @@ import ProductSpecsTable from "@/components/product/ProductSpecsTable";
 import ProductReviews from "@/components/product/ProductReviews";
 import RecordView from "@/components/product/RecordView";
 import { fmt, inr } from "@/lib/shop/format";
+import { effectiveBulkTiers } from "@/lib/shop/pricing";
 import {
-  getBulkTiers,
   getFrequentlyBoughtTogether,
   getProductById,
   getProductReviews,
@@ -51,14 +51,14 @@ export default async function ProductPage({
   const product = await getProductById(id);
   if (!product) notFound();
 
-  const [offers, fbt, similar, reviews, histogram, bulkTiers] = await Promise.all([
+  const [offers, fbt, similar, reviews, histogram] = await Promise.all([
     getSellerOffers(product.id),
     getFrequentlyBoughtTogether(product.id),
     getSimilarProducts(product.id),
     getProductReviews(product.id),
     getRatingBreakdown(product.id),
-    getBulkTiers(),
   ]);
+  const bulkTiers = effectiveBulkTiers(offers[0]?.bulkTiers);
 
   const specRows: [string, string][] = [
     ...product.specs.map((s) => s.split(": ") as [string, string]),
@@ -156,6 +156,7 @@ export default async function ProductPage({
               id={product.id}
               offerId={offers[0].id}
               price={offers[0].price}
+              bulkTiers={offers[0].bulkTiers}
               unit={product.unit}
               sellerName={offers[0].name}
               minOrderQty={offers[0].minOrderQty}

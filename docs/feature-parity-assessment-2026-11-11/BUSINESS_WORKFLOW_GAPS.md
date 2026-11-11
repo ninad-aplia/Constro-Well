@@ -35,12 +35,14 @@ transaction boundaries, authorization, failure paths and missing states.
 ## 3. Driver assignment → successful delivery
 
 - **Actors:** seller (assign), driver (accept/deliver).
-- **Path:** dispatch assigns `vehicleId/driverId` → driver accepts → OTP → deliver.
+- **Path:** dispatch assigns `vehicleId/driverId` → driver accepts → **pickup confirmation (`picked_up`, 2026-11-12)** → OTP → deliver.
+- **Decline path (2026-11-12):** the assigned driver can decline a dispatched job with a reason; it returns to `packed` with the assignment/OTP cleared and a `ShipmentEvent` recorded, and the seller re-dispatches another driver/vehicle. COD/stock/escrow untouched.
 - **Records:** `Shipment.driverId/status/deliveredAt/deliveredQty`,
   `ShipmentEvent`, parent `Order.stage` derived.
 - **Authz:** `requireDriver` + cross-driver 404.
-- **Gaps:** pickup confirmation missing; POD evidence is a boolean + quantity
-  only (no photo storage).
+- **Gaps:** POD evidence is a boolean + quantity only (no photo storage).
+  Pickup confirmation is optional at the API level (delivery still accepts a
+  `dispatched` shipment, so in-flight/seed rows keep working).
 - **Test need:** covered; add POD storage when storage lands.
 
 ## 4. Failed delivery, reassignment & retry

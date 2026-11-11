@@ -10,9 +10,11 @@ import Button from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
 import PreviewDisclosure from "./PreviewDisclosure";
 import DeliveryJobDrawer from "./DeliveryJobDrawer";
+import DeclineJobDialog from "./DeclineJobDialog";
 import { useDeliveryStore } from "./DeliveryStoreProvider";
-import { ASSIGNED_FILTERS, getActiveDeliveries } from "@/lib/delivery/selectors";
+import { ASSIGNED_FILTERS, canDeclineJob, getActiveDeliveries } from "@/lib/delivery/selectors";
 import { DELIVERY_STATUS } from "@/lib/delivery/status";
+import type { DeliveryJob } from "@/lib/delivery/types";
 import { ApiClientError } from "@/lib/api/client";
 
 function messageOf(error: unknown): string {
@@ -20,11 +22,12 @@ function messageOf(error: unknown): string {
 }
 
 export default function DeliveryJobsView({ initialFilter, initialOpen }: { initialFilter: string; initialOpen: string | null }) {
-  const { state, busyId, acceptJob } = useDeliveryStore();
+  const { state, busyId, acceptJob, declineJob } = useDeliveryStore();
   const toast = useToast();
   const [filter, setFilter] = useState(initialFilter);
   const [query, setQuery] = useState("");
   const [drawerId, setDrawerId] = useState<string | null>(initialOpen);
+  const [declineTarget, setDeclineTarget] = useState<DeliveryJob | null>(null);
 
   const active = getActiveDeliveries(state);
   const activeFilter = ASSIGNED_FILTERS.find((f) => f.key === filter) || ASSIGNED_FILTERS[0];
@@ -108,8 +111,13 @@ export default function DeliveryJobsView({ initialFilter, initialOpen }: { initi
                       Accept job
                     </Button>
                   )}
+                  {canDeclineJob(j) && (
+                    <Button size="sm" variant="line" disabled={busyId === j.shipmentId} onClick={() => setDeclineTarget(j)}>
+                      Decline
+                    </Button>
+                  )}
                   <Button size="sm" variant="yellow" onClick={() => setDrawerId(j.shipmentId)}>
-                    {j.status === "dispatched" ? "Complete delivery" : "Details"}
+                    {j.status === "dispatched" || j.status === "picked_up" ? "Complete delivery" : "Details"}
                   </Button>
                 </div>
               </div>
@@ -119,6 +127,15 @@ export default function DeliveryJobsView({ initialFilter, initialOpen }: { initi
       )}
 
       <DeliveryJobDrawer job={drawerJob} onClose={() => setDrawerId(null)} />
+      <DeclineJobDialog
+        job={declineTarget}
+        busy={busyId !== null && busyId === declineTarget?.shipmentId}
+        onClose={() => setDeclineTarget(null)}
+        onDecline={async (reason) => {
+          if (!declineTarget) return;
+          await declineJob(declineTarget, reason);
+        }}
+      />
     </div>
   );
 }

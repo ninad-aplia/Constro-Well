@@ -1,5 +1,5 @@
 import { afterAll, describe, expect, it } from "vitest";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import {
   addCartItem,
   applyCoupon,
@@ -130,5 +130,27 @@ describe.skipIf(!hasDb)("cart service against PostgreSQL", () => {
       const cart = await getCart(userId);
       expect(cart.items[0].qty).toBeLessThanOrEqual(first.stock);
     });
+  });
+
+  it("applies a per-offer custom bulk tier and keeps the offer defaults when cleared", async () => {
+    const { first } = await offers();
+    const threshold = Math.max(2, first.minOrderQty);
+    const original = first.bulkTiers as Prisma.InputJsonValue;
+    try {
+      await prisma!.sellerOffer.update({
+        where: { id: first.id },
+        data: { bulkTiers: [[threshold, 25]] },
+      });
+
+      await withCustomer(async (userId) => {
+        const cart = await addCartItem(userId, first.id, threshold);
+        const item = cart.items.find((candidate) => candidate.offerId === first.id)!;
+        const expected = (Math.round(Number(first.price) * 75) / 100).toFixed(2);
+        expect(item.unitPrice).toBe(expected);
+        expect(item.bulk).toBe(true);
+      });
+    } finally {
+      await prisma!.sellerOffer.update({ where: { id: first.id }, data: { bulkTiers: original } });
+    }
   });
 });

@@ -50,6 +50,29 @@ def _money(value: Decimal) -> str:
     return f"{value:.2f}"
 
 
+def _bulk_tiers(raw) -> list[list[int]]:
+    """Matches `normalizeBulkTiers` in the Next.js pricing module."""
+    if not isinstance(raw, list):
+        return []
+    seen: set[int] = set()
+    tiers: list[list[int]] = []
+    for entry in raw:
+        if not isinstance(entry, (list, tuple)) or len(entry) != 2:
+            continue
+        qty, percent = entry
+        if isinstance(qty, bool) or isinstance(percent, bool):
+            continue
+        if not isinstance(qty, int) or not (2 <= qty <= 100_000):
+            continue
+        if not isinstance(percent, int) or not (1 <= percent <= 90):
+            continue
+        if qty in seen:
+            continue
+        seen.add(qty)
+        tiers.append([qty, percent])
+    return sorted(tiers, key=lambda tier: tier[0])
+
+
 def _slugify(value: str) -> str:
     return "-".join(part for part in ("".join(c if c.isalnum() else "-" for c in value.lower())).split("-") if part)
 
@@ -190,6 +213,7 @@ def _offer(offer: SellerOffer, seller: Seller, pincodes: dict[str, list[str]]) -
         verified=offer.verified,
         rating=offer.rating,
         serviceable_pincodes=pincodes.get(seller.id, []),
+        bulk_tiers=_bulk_tiers(offer.bulk_tiers),
         purchasable=offer.status == "active" and offer.stock >= offer.min_order_qty,
     )
 

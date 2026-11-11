@@ -1,5 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { bulkTier, calcTotals, couponCheck, unitPrice, FREE_DELIVERY_AT, DELIVERY_FEE, COD_CAP } from "./pricing";
+import {
+  BULK,
+  bulkTier,
+  calcTotals,
+  couponCheck,
+  effectiveBulkTiers,
+  normalizeBulkTiers,
+  unitPrice,
+  FREE_DELIVERY_AT,
+  DELIVERY_FEE,
+  COD_CAP,
+} from "./pricing";
 import type { SellerOffer } from "./types";
 
 const offer: SellerOffer = { name: "Test Seller", price: 100, days: 2, verified: true, rating: 4.5 };
@@ -26,8 +37,7 @@ describe("bulkTier", () => {
 describe("unitPrice", () => {
   it("charges full price below the bulk threshold", () => {
     expect(unitPrice(offer, 1)).toBe(100);
-  });
-  it("applies the bulk discount at and above the threshold, rounded", () => {
+  });  it("applies the bulk discount at and above the threshold, rounded", () => {
     expect(unitPrice(offer, 10)).toBe(97); // 100 * 0.97
     expect(unitPrice(offer, 200)).toBe(90); // 100 * 0.90
   });
@@ -88,5 +98,37 @@ describe("calcTotals", () => {
   it("respects the COD cap as an independent concern (not auto-rejected by calcTotals)", () => {
     const t = calcTotals([{ total: COD_CAP + 1, q: 1 }], null, true);
     expect(t.total).toBeGreaterThan(COD_CAP);
+  });
+});
+
+describe("per-offer bulk tiers", () => {
+  it("falls back to the marketplace defaults when no tiers are configured", () => {
+    expect(effectiveBulkTiers([])).toEqual(BULK);
+    expect(effectiveBulkTiers(null)).toEqual(BULK);
+    expect(unitPrice(offer, 10, effectiveBulkTiers([]))).toBe(97);
+  });
+
+  it("applies a custom tier at and above its threshold, replacing defaults", () => {
+    const tiers = effectiveBulkTiers([[5, 20], [25, 40]]);
+    expect(unitPrice(offer, 4, tiers)).toBe(100);
+    expect(unitPrice(offer, 5, tiers)).toBe(80);
+    expect(unitPrice(offer, 25, tiers)).toBe(60);
+    expect(bulkTier(4, tiers)).toBeUndefined();
+  });
+
+  it("normalises ragged input, drops invalid rows and sorts tiers", () => {
+    expect(
+      normalizeBulkTiers([
+        [50, 6],
+        [10, 3],
+        [10, 9],
+        [1, 5],
+        [10, 0],
+        ["20", 4],
+        [20, 101],
+        [30, 10],
+      ]),
+    ).toEqual([[10, 3], [50, 6], [30, 10]].sort((a, b) => a[0] - b[0]));
+    expect(normalizeBulkTiers("not-a-list")).toEqual([]);
   });
 });
