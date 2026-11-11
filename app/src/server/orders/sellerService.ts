@@ -18,6 +18,7 @@ import { ApiError } from "@/server/http";
 import {
   DELIVERED,
   SHIPPED,
+  cancelCodCollection,
   refreshOrderStage,
   refundHeldEscrow,
   restoreReservedStock,
@@ -329,6 +330,7 @@ export async function rejectShipment(
 
       // Keep the held entry as audit history and record the refund separately.
       await refundHeldEscrow(tx, shipment, "Shipment rejected, held amount refunded", now);
+      await cancelCodCollection(tx, shipment.id);
 
       await tx.shipmentEvent.create({
         data: { shipmentId, actor: "vendor", message: `Rejected: ${reason}`, at: now },
@@ -440,14 +442,161 @@ export async function dispatchShipment(
 }
 
 /**
- * Real escrow-ledger aggregate (EscrowEntry is the only persisted financial
- * model — there is no separate Payout/Settlement table). `held` entries are
- * created when an order is paid (server/orders/service.ts); `commission` and
- * `released` only appear once a shipment's review window has closed and it
- * settles (server/orders/lifecycle.ts / prisma/seed.ts); `refund` reverses a
- * `held` entry for a cancelled/rejected shipment; `withdrawn` is a real bank
- * transfer out, independent of any single shipment. Nothing here executes a
- * payout — this only reads what has already happened.
+ * Reassigns a failed delivery attempt to a (possibly different) vehicle/driver
+ * and retries: `failed → dispatched` with a fresh OTP. Only the logistics
+ * failure case (`status: "failed"`, opened by 3 wrong OTP tries or a driver's
+ * "failed attempt" report) is eligible — a goods-condition dispute
+ * (`disputed`: short quantity / damaged goods) is a refund-policy question
+ * (WP-2 admin resolution, not a logistics retry) and is untouched here.
+ */
+export async function redispatchShipment(
+  sellerId: string,
+  shipmentId: string,
+  input: DispatchInput,
+): Promise<SellerShipmentDto> {
+  return db.$transaction(
+    async (tx) => {
+      const shipment = await tx.shipment.findFirst({
+        where: { id: shipmentId, sellerId },
+        include: shipmentInclude,
+      });
+      if (!shipment) throw new ApiError(404, "shipment_not_found", "Shipment not found");
+      if (shipment.status !== "failed") {
+        throw new ApiError(409, "invalid_transition", "Only a failed delivery attempt can be reassigned");
+      }
+      if (!input.challan || !input.invoice) {
+        throw new ApiError(422, "docs_required", "Challan and GST invoice are required");
+      }
+
+      const vehicle = await tx.vehicle.findFirst({
+        where: { id: input.vehicleId, sellerId },
+        select: { id: true, regNumber: true, driverId: true },
+      });
+      if (!vehicle) throw new ApiError(404, "vehicle_not_found", "Vehicle not found");
+      if (vehicle.driverId) {
+        const driver = await tx.driver.findFirst({ where: { id: vehicle.driverId, sellerId } });
+        if (!driver) throw new ApiError(422, "driver_unavailable", "The vehicle driver is not active for this seller");
+      }
+
+      const itemValue = shipment.lines.reduce(
+        (sum, line) => sum.plus(line.lineValue),
+        new Prisma.Decimal(0),
+      );
+      const needsEway = itemValue.gte(EWAY_THRESHOLD);
+      const needsWeighbridge = shipment.lines.some((line) => line.product.bulkFlag);
+      if (needsEway && !/^\d{12}$/.test(input.eway ?? "")) {
+        throw new ApiError(422, "eway_required", "A 12-digit e-way bill is required");
+      }
+      if (needsWeighbridge && (input.weighbridge ?? "").trim().length < 3) {
+        throw new ApiError(422, "weighbridge_required", "A weighbridge slip is required");
+      }
+
+      const now = new Date();
+      const late = shipment.dispatchBy ? now.getTime() > shipment.dispatchBy.getTime() : false;
+      const otp = generateOtp();
+      const otpHash = await hashOtp(otp);
+      const otpEncrypted = encryptOtp(otp);
+      const updated = await tx.shipment.updateMany({
+        where: { id: shipmentId, sellerId, status: "failed" },
+        data: {
+          status: "dispatched",
+          vehicleId: vehicle.id,
+          driverId: vehicle.driverId,
+          slot: input.slot,
+          docsChallan: input.challan,
+          docsInvoice: input.invoice,
+          docsEway: input.eway ?? null,
+          docsWeighbridge: input.weighbridge ?? null,
+          late,
+          otpHash,
+          otpEncrypted,
+          otpTries: 0,
+        },
+      });
+      if (updated.count === 0) {
+        throw new ApiError(409, "invalid_transition", "This shipment was already processed");
+      }
+      // The failed-attempt issue is resolved by the retry; `ShipmentIssue` is the
+      // current dispute slot for this shipment (schema comment), not permanent
+      // history — the full narrative survives in the append-only ShipmentEvent log.
+      if (shipment.issue) {
+        await tx.shipmentIssue.delete({ where: { shipmentId } });
+      }
+      await tx.shipmentEvent.create({
+        data: {
+          shipmentId,
+          actor: "vendor",
+          message: `Reassigned to ${vehicle.regNumber} after a failed delivery attempt, customer OTP regenerated`,
+          at: now,
+        },
+      });
+      await refreshOrderStage(tx, shipment.orderId);
+      const fresh = await tx.shipment.findUniqueOrThrow({
+        where: { id: shipmentId },
+        include: shipmentInclude,
+      });
+      return toDto(fresh);
+    },
+    { timeout: 15_000 },
+  );
+}
+
+/**
+ * Gives up on a failed delivery attempt: `failed → missed` (a terminal status
+ * already modeled in `TERMINAL_CANCEL`, but nothing previously set it).
+ * Restores reserved stock and cancels the COD expectation exactly like a
+ * pre-dispatch reject, since the goods never reached the customer and no cash
+ * was ever collected.
+ */
+export async function markShipmentMissed(
+  sellerId: string,
+  shipmentId: string,
+  reason: string,
+): Promise<SellerShipmentDto> {
+  return db.$transaction(
+    async (tx) => {
+      const shipment = await tx.shipment.findFirst({
+        where: { id: shipmentId, sellerId },
+        include: shipmentInclude,
+      });
+      if (!shipment) throw new ApiError(404, "shipment_not_found", "Shipment not found");
+      if (shipment.status !== "failed") {
+        throw new ApiError(409, "invalid_transition", "Only a failed delivery attempt can be marked missed");
+      }
+
+      const now = new Date();
+      const updated = await tx.shipment.updateMany({
+        where: { id: shipmentId, sellerId, status: "failed" },
+        data: { status: "missed" },
+      });
+      if (updated.count === 0) {
+        throw new ApiError(409, "invalid_transition", "This shipment was already processed");
+      }
+
+      await restoreReservedStock(tx, shipment.lines);
+      await refundHeldEscrow(tx, shipment, "Delivery marked as missed, held amount refunded", now);
+      await cancelCodCollection(tx, shipment.id);
+
+      await tx.shipmentEvent.create({
+        data: { shipmentId, actor: "vendor", message: `Marked as missed: ${reason}`, at: now },
+      });
+      await refreshOrderStage(tx, shipment.orderId);
+      const fresh = await tx.shipment.findUniqueOrThrow({
+        where: { id: shipmentId },
+        include: shipmentInclude,
+      });
+      return toDto(fresh);
+    },
+    { timeout: 15_000 },
+  );
+}
+
+/**
+ * LEGACY escrow-ledger aggregate (read-only, pre-cutover). `EscrowEntry` is the
+ * historical platform-custody model — it is NOT current COD cash and never
+ * implies Constro-Well holds a seller's money. Seller-collected COD accounting
+ * (collections, commission, remittances, reconciliation) lives in the FastAPI
+ * finance domain; this summary only renders pre-cutover history.
  */
 export async function sellerPaymentsSummary(sellerId: string): Promise<SellerPaymentsDto> {
   const [seller, entries] = await Promise.all([

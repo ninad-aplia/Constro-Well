@@ -75,3 +75,31 @@ export async function dispatchSellerShipment(
   );
   return response.order;
 }
+
+/** Reassigns a failed delivery attempt to a (possibly different) vehicle/driver and retries. */
+export async function redispatchSellerShipment(
+  shipmentId: string,
+  input: SellerDispatchInput,
+  baseUrl = "",
+): Promise<SellerShipmentDto> {
+  const response = await apiFetch<{ order: SellerShipmentDto }>(
+    `/api/seller/orders/${encodeURIComponent(shipmentId)}/redispatch`,
+    { method: "POST", body: JSON.stringify(input) },
+    baseUrl,
+  );
+  return response.order;
+}
+
+/** Gives up on a failed delivery attempt: restores stock, cancels the COD expectation. */
+export async function markSellerShipmentMissed(
+  shipmentId: string,
+  reason: string,
+  baseUrl = "",
+): Promise<SellerShipmentDto> {
+  const response = await apiFetch<{ order: SellerShipmentDto }>(
+    `/api/seller/orders/${encodeURIComponent(shipmentId)}/missed`,
+    { method: "POST", body: JSON.stringify({ reason }) },
+    baseUrl,
+  );
+  return response.order;
+}

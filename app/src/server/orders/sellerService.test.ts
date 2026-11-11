@@ -10,7 +10,9 @@ import {
   dispatchShipment,
   getSellerShipment,
   listSellerOrders,
+  markShipmentMissed,
   packShipment,
+  redispatchShipment,
   rejectShipment,
   sellerPaymentsSummary,
   sellerPerformanceStats,
@@ -117,6 +119,8 @@ async function cleanup() {
     const order = await prisma.order.findUnique({ where: { code }, select: { id: true } });
     if (!order) continue;
     await prisma.escrowEntry.deleteMany({ where: { orderId: order.id } });
+    await prisma.codCollection.deleteMany({ where: { shipment: { orderId: order.id } } });
+    await prisma.commissionAssessment.deleteMany({ where: { shipment: { orderId: order.id } } });
     await prisma.shipmentIssue.deleteMany({ where: { shipment: { orderId: order.id } } });
     await prisma.shipmentEvent.deleteMany({ where: { shipment: { orderId: order.id } } });
     await prisma.orderLine.deleteMany({ where: { orderId: order.id } });
@@ -138,10 +142,12 @@ async function cleanup() {
 }
 
 describe.skipIf(!hasDb)("seller order lifecycle", { timeout: 30_000 }, () => {
+  // Cleanup now deletes rows for 10 sellers/customers across 6 tests; the
+  // default 10s hook timeout was observed to flake under concurrent DB load.
   afterAll(async () => {
     await cleanup();
     if (prisma) await prisma.$disconnect();
-  });
+  }, 30_000);
 
   it("lists only own shipments, accepts, packs, dispatches and blocks repeats", async () => {
     const first = await makeSeller(1, "0");
@@ -186,7 +192,7 @@ describe.skipIf(!hasDb)("seller order lifecycle", { timeout: 30_000 }, () => {
     ).rejects.toMatchObject({ status: 409 });
   });
 
-  it("rejects once, restores stock and refunds escrow", async () => {
+  it("rejects once, restores stock and cancels the COD collection", async () => {
     const seller = await makeSeller(3, "0");
     const order = await customerWithOrder(seller.offer.id);
     const shipmentId = order.shipments[0].id;
@@ -197,24 +203,35 @@ describe.skipIf(!hasDb)("seller order lifecycle", { timeout: 30_000 }, () => {
     expect(rejected.status).toBe("rejected");
     expect((await prisma!.sellerOffer.findUnique({ where: { id: seller.offer.id } }))!.stock).toBe(20);
     expect(rejected.events.at(-1)?.message).toContain("Rejected");
-    const refunds = await prisma!.escrowEntry.count({ where: { shipmentId, type: "refund" } });
-    expect(refunds).toBe(1);
+    // No platform-held escrow; the pending COD collection is cancelled instead.
+    const collection = await prisma!.codCollection.findUnique({ where: { shipmentId } });
+    expect(collection?.status).toBe("cancelled");
 
     await expect(rejectShipment(seller.seller.id, shipmentId, "Again")).rejects.toMatchObject({ status: 409 });
     expect((await prisma!.sellerOffer.findUnique({ where: { id: seller.offer.id } }))!.stock).toBe(20);
   });
 
-  it("computes the payments balance and ledger from real escrow entries, scoped to the seller", async () => {
+  it("computes the legacy escrow summary from historical entries, scoped to the seller", async () => {
     const seller = await makeSeller(4, "0");
     const other = await makeSeller(5, "1");
-    await customerWithOrder(seller.offer.id); // left "new" — its held amount should land in pendingRelease
+    const openOrder = await customerWithOrder(seller.offer.id); // no escrow created — simulate a legacy held row
+    const openShipmentId = openOrder.shipments[0].id;
+    const openOrderRow = await prisma!.order.findUniqueOrThrow({ where: { code: openOrder.code }, select: { id: true } });
 
-    // A second, settled shipment: simulate the commission+release the review
-    // window normally produces (prisma/seed.ts does the same thing directly).
+    // A still-open legacy shipment: held only, which lands in pendingRelease.
+    await prisma!.escrowEntry.create({
+      data: { orderId: openOrderRow.id, shipmentId: openShipmentId, sellerId: seller.seller.id, type: "held", amount: "100.00", note: "legacy held" },
+    });
+
+    // A settled legacy shipment: simulate the commission+release the review
+    // window normally produced (prisma/seed.ts does the same thing directly).
     const settledOrder = await customerWithOrder(seller.offer.id);
     const settledShipmentId = settledOrder.shipments[0].id;
     const settledOrderRow = await prisma!.order.findUniqueOrThrow({ where: { code: settledOrder.code }, select: { id: true } });
     await prisma!.shipment.update({ where: { id: settledShipmentId }, data: { status: "settled" } });
+    await prisma!.escrowEntry.create({
+      data: { orderId: settledOrderRow.id, shipmentId: settledShipmentId, sellerId: seller.seller.id, type: "held", amount: "100.00", note: "legacy held" },
+    });
     await prisma!.escrowEntry.create({
       data: { orderId: settledOrderRow.id, shipmentId: settledShipmentId, sellerId: seller.seller.id, type: "commission", amount: "5.00", note: "test commission" },
     });
@@ -229,7 +246,7 @@ describe.skipIf(!hasDb)("seller order lifecycle", { timeout: 30_000 }, () => {
     expect(summary.totalReleased).toBe("95.00");
     expect(summary.totalWithdrawn).toBe("40.00");
     expect(summary.balance.available).toBe("55.00");
-    expect(Number(summary.balance.pendingRelease)).toBeGreaterThan(0); // the still-"new" first order's held amount
+    expect(summary.balance.pendingRelease).toBe("100.00"); // the still-open legacy held
     expect(summary.balance.frozen).toBe("0.00");
     expect(summary.ledger.some((e) => e.shipmentCode && e.type === "held")).toBe(true);
     expect(summary.bankRef).toBe("Test bank");
@@ -264,5 +281,106 @@ describe.skipIf(!hasDb)("seller order lifecycle", { timeout: 30_000 }, () => {
     expect(stats.ontime).toBe(1);
     expect(score).toBeGreaterThanOrEqual(0);
     expect(score).toBeLessThanOrEqual(100);
+  });
+
+  it("reassigns a failed delivery attempt to a new vehicle, resets the OTP and clears the issue", async () => {
+    const seller = await makeSeller(7, "0");
+    const other = await makeSeller(8, "1");
+    const order = await customerWithOrder(seller.offer.id);
+    const shipmentId = order.shipments[0].id;
+    await acceptShipment(seller.seller.id, shipmentId);
+    await packShipment(seller.seller.id, shipmentId);
+    await dispatchShipment(seller.seller.id, shipmentId, {
+      vehicleId: seller.vehicle.id,
+      slot: "Today, 2 to 6 pm",
+      challan: true,
+      invoice: true,
+      weighbridge: "WB-1234",
+    });
+    const otpHashAfterDispatch = (await prisma!.shipment.findUniqueOrThrow({ where: { id: shipmentId } })).otpHash;
+
+    // Simulate what `deliverDriverShipment` does after 3 wrong OTP tries.
+    await prisma!.shipment.update({ where: { id: shipmentId }, data: { status: "failed", otpTries: 3 } });
+    await prisma!.shipmentIssue.create({
+      data: { shipmentId, type: "failed_attempt", note: "OTP entered incorrectly 3 times.", auto: false },
+    });
+
+    const secondDriver = await prisma!.driver.create({
+      data: { sellerId: seller.seller.id, code: `d-${randomUUID()}`, name: "Second Driver", phone: "9800000099" },
+    });
+    created.drivers.push(secondDriver.id);
+    const secondVehicle = await prisma!.vehicle.create({
+      data: { sellerId: seller.seller.id, code: `v-${randomUUID()}`, regNumber: `KA${randomUUID().slice(0, 6).toUpperCase()}`, type: "Truck", driverId: secondDriver.id },
+    });
+    created.vehicles.push(secondVehicle.id);
+
+    await expect(
+      redispatchShipment(other.seller.id, shipmentId, {
+        vehicleId: secondVehicle.id,
+        slot: "Today, 2 to 6 pm",
+        challan: true,
+        invoice: true,
+        weighbridge: "WB-5678",
+      }),
+    ).rejects.toMatchObject({ status: 404 });
+
+    const reassigned = await redispatchShipment(seller.seller.id, shipmentId, {
+      vehicleId: secondVehicle.id,
+      slot: "Today, 2 to 6 pm",
+      challan: true,
+      invoice: true,
+      weighbridge: "WB-5678",
+    });
+    expect(reassigned.status).toBe("dispatched");
+    expect(reassigned.vehicleId).toBe(secondVehicle.id);
+    expect(reassigned.issue).toBeNull();
+    expect(reassigned.events.at(-1)?.message).toContain("Reassigned");
+
+    const fresh = await prisma!.shipment.findUniqueOrThrow({ where: { id: shipmentId } });
+    expect(fresh.otpTries).toBe(0);
+    expect(fresh.otpHash).not.toBe(otpHashAfterDispatch);
+    expect(await prisma!.shipmentIssue.findUnique({ where: { shipmentId } })).toBeNull();
+
+    // No longer "failed": a second reassignment attempt is rejected.
+    await expect(
+      redispatchShipment(seller.seller.id, shipmentId, {
+        vehicleId: seller.vehicle.id,
+        slot: "Today, 2 to 6 pm",
+        challan: true,
+        invoice: true,
+        weighbridge: "WB-5678",
+      }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("marks a failed delivery as missed once, restoring stock and cancelling the COD collection", async () => {
+    const seller = await makeSeller(9, "0");
+    const other = await makeSeller(10, "1");
+    const order = await customerWithOrder(seller.offer.id);
+    const shipmentId = order.shipments[0].id;
+    await acceptShipment(seller.seller.id, shipmentId);
+    await packShipment(seller.seller.id, shipmentId);
+    await dispatchShipment(seller.seller.id, shipmentId, {
+      vehicleId: seller.vehicle.id,
+      slot: "Today, 2 to 6 pm",
+      challan: true,
+      invoice: true,
+      weighbridge: "WB-1234",
+    });
+    const stockAfterDispatch = (await prisma!.sellerOffer.findUnique({ where: { id: seller.offer.id } }))!.stock;
+    expect(stockAfterDispatch).toBe(19);
+    await prisma!.shipment.update({ where: { id: shipmentId }, data: { status: "failed", otpTries: 3 } });
+
+    await expect(markShipmentMissed(other.seller.id, shipmentId, "Not mine")).rejects.toMatchObject({ status: 404 });
+
+    const missed = await markShipmentMissed(seller.seller.id, shipmentId, "Customer unreachable after repeated attempts");
+    expect(missed.status).toBe("missed");
+    expect(missed.events.at(-1)?.message).toContain("Marked as missed");
+    expect((await prisma!.sellerOffer.findUnique({ where: { id: seller.offer.id } }))!.stock).toBe(20);
+    const collection = await prisma!.codCollection.findUnique({ where: { shipmentId } });
+    expect(collection?.status).toBe("cancelled");
+
+    await expect(markShipmentMissed(seller.seller.id, shipmentId, "Again")).rejects.toMatchObject({ status: 409 });
+    expect((await prisma!.sellerOffer.findUnique({ where: { id: seller.offer.id } }))!.stock).toBe(20);
   });
 });

@@ -12,6 +12,8 @@ import PreviewDisclosure from "./PreviewDisclosure";
 import OrderDrawer from "./OrderDrawer";
 import DispatchDialog from "./DispatchDialog";
 import RejectDialog from "./RejectDialog";
+import ReassignDialog from "./ReassignDialog";
+import MissedDialog from "./MissedDialog";
 import { toSellerOrder } from "./orderAdapter";
 import { ACCEPT_WINDOW_HOURS, DISPATCH_WINDOW_HOURS } from "@/lib/seller/rules";
 import { ORDER_FILTERS } from "@/lib/seller/selectors";
@@ -23,7 +25,9 @@ import {
   acceptSellerShipment,
   dispatchSellerShipment,
   fetchSellerOrders,
+  markSellerShipmentMissed,
   packSellerShipment,
+  redispatchSellerShipment,
   rejectSellerShipment,
   type SellerDispatchInput,
 } from "@/lib/api/sellerOrderApi";
@@ -56,6 +60,8 @@ export default function OrdersView({
   const [drawerId, setDrawerId] = useState<string | null>(initialOpen);
   const [dispatchTarget, setDispatchTarget] = useState<SellerOrder | null>(null);
   const [rejectTarget, setRejectTarget] = useState<SellerOrder | null>(null);
+  const [reassignTarget, setReassignTarget] = useState<SellerOrder | null>(null);
+  const [missedTarget, setMissedTarget] = useState<SellerOrder | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
   useEffect(() => {
@@ -188,6 +194,8 @@ export default function OrdersView({
                 <div className="flex flex-wrap justify-start gap-1.5 md:justify-end">
                   {order.status === "new" && <Button size="sm" variant="yellow" disabled={busy === order.shipmentId} onClick={() => void run(order, () => acceptSellerShipment(order.shipmentId!)).catch(() => {})}>Accept</Button>}
                   {["accepted", "packed"].includes(order.status) && <Button size="sm" variant="yellow" disabled={busy === order.shipmentId} onClick={() => setDispatchTarget(order)}>Dispatch</Button>}
+                  {order.status === "failed" && <Button size="sm" variant="yellow" disabled={busy === order.shipmentId} onClick={() => setReassignTarget(order)}>Reassign</Button>}
+                  {order.status === "failed" && <Button size="sm" variant="line" disabled={busy === order.shipmentId} onClick={() => setMissedTarget(order)}>Mark missed</Button>}
                   <Button size="sm" variant="line" onClick={() => setDrawerId(order.shipmentId ?? order.id)}>Details</Button>
                 </div>
               </div>
@@ -207,6 +215,8 @@ export default function OrdersView({
         onPack={(order) => void run(order, () => packSellerShipment(order.shipmentId!)).catch(() => {})}
         onReject={(order) => setRejectTarget(order)}
         onDispatch={(order) => setDispatchTarget(order)}
+        onReassign={(order) => setReassignTarget(order)}
+        onMarkMissed={(order) => setMissedTarget(order)}
       />
 
       <DispatchDialog
@@ -227,6 +237,27 @@ export default function OrdersView({
         onReject={async (reason) => {
           if (rejectTarget) await run(rejectTarget, () => rejectSellerShipment(rejectTarget.shipmentId!, reason));
           setRejectTarget(null);
+        }}
+      />
+
+      <ReassignDialog
+        order={reassignTarget}
+        vehicles={(data?.vehicles ?? []).map((vehicle) => ({ id: vehicle.id, regNumber: vehicle.regNumber, type: vehicle.type, driverName: vehicle.driverName }))}
+        busy={!!busy}
+        onClose={() => setReassignTarget(null)}
+        onReassign={async (input: SellerDispatchInput) => {
+          if (reassignTarget) await run(reassignTarget, () => redispatchSellerShipment(reassignTarget.shipmentId!, input));
+          setReassignTarget(null);
+        }}
+      />
+
+      <MissedDialog
+        order={missedTarget}
+        busy={!!busy}
+        onClose={() => setMissedTarget(null)}
+        onMarkMissed={async (reason) => {
+          if (missedTarget) await run(missedTarget, () => markSellerShipmentMissed(missedTarget.shipmentId!, reason));
+          setMissedTarget(null);
         }}
       />
     </div>

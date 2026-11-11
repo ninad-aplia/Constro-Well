@@ -25,6 +25,8 @@ export default function OrderDrawer({
   onPack,
   onReject,
   onDispatch,
+  onReassign,
+  onMarkMissed,
 }: {
   order: SellerOrder | null;
   vehicles: Vehicle[];
@@ -36,6 +38,8 @@ export default function OrderDrawer({
   onPack: (order: SellerOrder) => void;
   onReject: (order: SellerOrder) => void;
   onDispatch: (order: SellerOrder) => void;
+  onReassign: (order: SellerOrder) => void;
+  onMarkMissed: (order: SellerOrder) => void;
 }) {
   if (!order) return null;
 
@@ -104,6 +108,15 @@ export default function OrderDrawer({
                 <div><b>{order.issue.type}.</b> {order.issue.note} Claim {order.issue.claim ? inr(order.issue.claim) : ""}. Your payout is frozen until an admin decides.</div>
               </div>
             )}
+            {order.status === "failed" && (
+              <div className="flex items-start gap-2.5 rounded-lg border border-bad/40 bg-bad/10 p-2.5 text-sm">
+                <SellerIcon name="alert" size={18} />
+                <div>
+                  <b>Delivery attempt failed{order.issue ? `: ${order.issue.note}` : "."}</b> Reassign a vehicle and driver to
+                  try again, or mark the shipment as missed to restore the reserved stock.
+                </div>
+              </div>
+            )}
 
             <dl className="grid grid-cols-[130px_1fr] gap-x-2.5 gap-y-1.5 text-sm">
               <dt className="text-muted">Buyer</dt>
@@ -157,7 +170,7 @@ export default function OrderDrawer({
           </div>
         </div>
 
-        {(order.status === "new" || ["accepted", "packed"].includes(order.status)) && (
+        {(order.status === "new" || ["accepted", "packed"].includes(order.status) || order.status === "failed") && (
           <div className="flex flex-wrap gap-2 border-t border-line p-4">
             {order.status === "new" && (
               <>
@@ -170,6 +183,12 @@ export default function OrderDrawer({
             )}
             {["accepted", "packed"].includes(order.status) && (
               <Button variant="yellow" disabled={busy} onClick={() => onDispatch(order)}>Dispatch</Button>
+            )}
+            {order.status === "failed" && (
+              <>
+                <Button variant="yellow" disabled={busy} onClick={() => onReassign(order)}>Reassign</Button>
+                <Button variant="line" disabled={busy} onClick={() => onMarkMissed(order)}>Mark as missed</Button>
+              </>
             )}
           </div>
         )}

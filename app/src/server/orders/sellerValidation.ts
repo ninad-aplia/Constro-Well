@@ -16,3 +16,7 @@ export const dispatchSchema = z
     weighbridge: z.string().trim().max(50).optional(),
   })
   .strict();
+
+export const missedSchema = z
+  .object({ reason: z.string().trim().min(3, "Give a reason").max(300) })
+  .strict();
